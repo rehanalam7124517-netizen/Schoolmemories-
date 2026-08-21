@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#090b12" />
   <title>The OG Legends — Our Memories</title>
-  <link rel="stylesheet" href="css/style.css?v=7.8.4.4" />
+  <link rel="stylesheet" href="css/style.css?v=7.9.0" />
 </head>
 <body>
   <div id="app">
@@ -20,7 +20,7 @@
           <button id="togglePin" class="icon-btn" aria-label="Show or hide PIN">👁️</button>
         </div>
         <button id="unlockBtn" class="primary-btn">ᴜɴʟᴏᴄᴋ ᴍᴇᴍᴏʀɪᴇꜱ</button>
-        <label class="remember-row"><input id="rememberDevice" type="checkbox" /> <span>ʀᴇᴍᴇᴍʙᴇʀ ᴛʜɪꜱ ᴅᴇᴠɪᴄᴇ</span></label>
+        <div class="remember-row">🔐 <span>ᴜɴʟᴏᴄᴋᴇᴅ ꜰᴏʀ ᴛʜɪꜱ ᴛᴀʙ • ʀᴇꜰʀᴇꜱʜ ᴡᴏɴ'ᴛ ᴀꜱᴋ ᴀɢᴀɪɴ</span></div>
         <div id="pinError" class="pin-error" aria-live="polite"></div>
       </div>
     </section>
@@ -227,8 +227,163 @@
 <dialog id="userProfileDialog" class="modal glass v7-modal"><button class="close-modal" data-close>✕</button><div id="userProfileBody"></div></dialog>
 <section id="userGate" class="user-gate" hidden><div class="user-gate-card glass"><div class="eyebrow">👤 ᴜꜱᴇʀ ᴀᴄᴄᴇꜱꜱ</div><h2>ᴡʜᴏ'ꜱ ᴏᴘᴇɴɪɴɢ ᴛʜᴇ ᴍᴇᴍᴏʀɪᴇꜱ?</h2><div class="user-gate-tabs"><button id="showLogin" class="mini-btn" type="button">ʟᴏɢɪɴ</button><button id="showRegister" class="mini-btn" type="button">ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜꜱᴇʀ</button></div><form id="localLoginForm" class="modal-form"><input id="loginUsername" placeholder="@ᴜꜱᴇʀɴᴀᴍᴇ" required><input id="loginPassword" type="password" placeholder="ᴘᴀꜱꜱᴡᴏʀᴅ" required><button class="primary-btn">ʟᴏɢɪɴ</button></form><form id="localRegisterForm" class="modal-form" hidden><label class="file-label">🖼️ ᴅᴘ<input id="registerDp" type="file" accept="image/*"></label><input id="registerName" placeholder="ᴅɪꜱᴘʟᴀʏ ɴᴀᴍᴇ" required><input id="registerUsername" placeholder="@ᴜɴɪQᴜᴇ ᴜꜱᴇʀɴᴀᴍᴇ" required><input id="registerPassword" type="password" minlength="4" placeholder="ᴘᴀꜱꜱᴡᴏʀᴅ" required><input id="registerConfirm" type="password" minlength="4" placeholder="ᴄᴏɴꜰɪʀᴍ ᴘᴀꜱꜱᴡᴏʀᴅ" required><button class="primary-btn">ᴄʀᴇᴀᴛᴇ ᴜꜱᴇʀ</button></form><div id="userGateError" class="pin-error"></div></div></section>
 
-  <dialog id="toolsDialog" class="modal glass v7-modal"><button class="close-modal" data-close>✕</button><div class="eyebrow">⚙️ ᴍᴇᴍᴏʀʏ ᴛᴏᴏʟꜱ</div><h3>ʙᴀᴄᴋᴜᴘ • ʀᴇꜱᴛᴏʀᴇ</h3><div class="tool-grid"><button id="exportBtn" class="tool-card">💾<b>ᴇxᴘᴏʀᴛ ʙᴀᴄᴋᴜᴘ</b><small>ꜱᴀᴠᴇ ʙʀᴏᴡꜱᴇʀ ᴅᴀᴛᴀ</small></button><label class="tool-card">📥<b>ɪᴍᴘᴏʀᴛ ʙᴀᴄᴋᴜᴘ</b><small>ʀᴇꜱᴛᴏʀᴇ ᴀ ᴊꜱᴏɴ ꜰɪʟᴇ</small><input id="importInput" type="file" accept="application/json" hidden></label><button id="restoreBtn" class="tool-card">♻️<b>ʀᴇꜱᴛᴏʀᴇ ᴄᴇɴᴛᴇʀ</b><small>ʙʀɪɴɢ ʜɪᴅᴅᴇɴ ɪᴛᴇᴍꜱ ʙᴀᴄᴋ</small></button></div><div id="restoreList" class="restore-list" hidden></div></dialog>
-  <script src="js/media-manifest.js?v=7.8.4.4"></script>
-  <script src="js/app.js?v=7.8.4.4"></script>
+
+
+  <dialog id="editUserDialog" class="modal glass v7-modal edit-user-dialog">
+    <button class="close-modal" data-close>✕</button>
+    <form id="editUserForm" class="modal-form">
+      <div class="eyebrow">✏️ ᴇᴅɪᴛ ᴘʀᴏꜰɪʟᴇ</div>
+      <h3>ᴜᴘᴅᴀᴛᴇ ʏᴏᴜʀ ᴘʀᴏꜰɪʟᴇ</h3>
+      <div class="edit-dp-preview"><img id="editDpPreview" src="assets/common.jpg" alt="DP"></div>
+      <label class="file-label">🖼️ ᴄʜᴀɴɢᴇ ᴅᴘ<input id="editDpInput" type="file" accept="image/*"></label>
+      <input id="editDisplayName" maxlength="40" placeholder="ᴅɪꜱᴘʟᴀʏ ɴᴀᴍᴇ" required>
+      <input id="editUsername" maxlength="30" placeholder="@ᴜꜱᴇʀɴᴀᴍᴇ" required>
+      <textarea id="editBio" maxlength="220" rows="4" placeholder="ʙɪᴏ (ᴏᴘᴛɪᴏɴᴀʟ)"></textarea>
+      <input id="editCurrentPassword" type="password" placeholder="ᴄᴜʀʀᴇɴᴛ ᴘᴀꜱꜱᴡᴏʀᴅ" required>
+      <input id="editNewPassword" type="password" minlength="4" placeholder="ɴᴇᴡ ᴘᴀꜱꜱᴡᴏʀᴅ (ᴏᴘᴛɪᴏɴᴀʟ)">
+      <input id="editConfirmPassword" type="password" minlength="4" placeholder="ᴄᴏɴꜰɪʀᴍ ɴᴇᴡ ᴘᴀꜱꜱᴡᴏʀᴅ">
+      <div id="editUserError" class="pin-error"></div>
+      <button class="primary-btn" type="submit">💾 ꜱᴀᴠᴇ ᴄʜᴀɴɢᴇꜱ</button>
+    </form>
+  </dialog>
+
+
+  <dialog id="commentsDialog" class="comments-dialog">
+    <div class="comments-shell">
+      <div class="comments-topbar"><button class="message-icon-btn" data-close type="button">←</button><div><b>💬 ᴄᴏᴍᴍᴇɴᴛꜱ</b><small id="commentsReelUser">@user</small></div><span></span></div>
+      <div id="commentsList" class="comments-list"></div>
+      <div class="comment-compose"><textarea id="commentText" rows="1" maxlength="500" placeholder="ᴀᴅᴅ ᴀ ᴄᴏᴍᴍᴇɴᴛ..."></textarea><button id="commentSendBtn" class="chat-send-btn" type="button">➤</button></div>
+    </div>
+  </dialog>
+
+
+  <dialog id="activityDialog" class="activity-dialog">
+    <div class="activity-shell">
+      <div class="activity-topbar"><button class="message-icon-btn" data-close type="button">←</button><div><b>🔔 ᴀᴄᴛɪᴠɪᴛʏ</b><small>ʟɪᴋᴇꜱ • ᴄᴏᴍᴍᴇɴᴛꜱ • ʀᴇᴘʟɪᴇꜱ</small></div><button id="activityClearBtn" class="message-icon-btn" type="button">🗑</button></div>
+      <div id="activityList" class="activity-list"></div>
+    </div>
+  </dialog>
+
+  <dialog id="messagesDialog" class="messages-dialog">
+    <div class="messages-shell">
+      <section id="messagesListView" class="messages-view">
+        <header class="messages-topbar">
+          <button id="messagesClose" class="message-icon-btn" type="button">←</button>
+          <div><b>💬 ᴍᴇꜱꜱᴀɢᴇꜱ</b><small>ᴛʜɪꜱ ᴅᴇᴠɪᴄᴇ ᴏɴʟʏ</small></div>
+          <span></span>
+        </header>
+        <div class="messages-tabs" role="tablist">
+          <button class="messages-tab active" data-message-tab="chats" type="button">💬 ᴄʜᴀᴛꜱ</button>
+          <button class="messages-tab" data-message-tab="groups" type="button">👥 ɢʀᴏᴜᴘꜱ</button>
+          <button class="messages-tab" data-message-tab="channels" type="button">📢 ᴄʜᴀɴɴᴇʟꜱ</button>
+        </div>
+        <div id="messagesChatsPanel" class="messages-panel active">
+          <div class="messages-search-wrap"><input id="messageUserSearch" placeholder="🔎 @ᴜꜱᴇʀɴᴀᴍᴇ / ᴜꜱᴇʀ ɪᴅ"></div>
+          <div id="messageSearchResults" class="message-user-results"></div>
+          <div class="messages-section-label">ʀᴇᴄᴇɴᴛ ᴄʜᴀᴛꜱ</div>
+          <div id="recentChats" class="recent-chats"></div>
+        </div>
+        <div id="messagesGroupsPanel" class="messages-panel" hidden>
+          <div class="messages-panel-actions"><button id="createGroupBtn" class="primary-btn small" type="button">＋ ᴄʀᴇᴀᴛᴇ ɢʀᴏᴜᴘ</button></div>
+          <div id="groupsList" class="social-list"></div>
+        </div>
+        <div id="messagesChannelsPanel" class="messages-panel" hidden>
+          <div class="messages-panel-actions"><button id="createChannelBtn" class="primary-btn small" type="button">＋ ᴄʀᴇᴀᴛᴇ ᴄʜᴀɴɴᴇʟ</button></div>
+          <div id="channelsList" class="social-list"></div>
+        </div>
+      </section>
+
+      <section id="chatView" class="messages-view" hidden>
+        <header class="chat-topbar">
+          <button id="chatBackBtn" class="message-icon-btn" type="button">←</button>
+          <button id="chatUserHead" class="chat-user-head" type="button"><img id="chatUserDp" src="assets/common.jpg"><span><b id="chatUsername">@user</b><small id="chatUserId">USER ID</small></span></button>
+          <button id="clearChatBtn" class="message-icon-btn danger" type="button">🗑</button>
+        </header>
+        <div id="chatMessages" class="chat-messages"></div>
+        <div class="chat-compose">
+          <input id="chatAttachInput" type="file" accept="image/*,video/*" hidden>
+          <button id="chatAttachBtn" class="message-icon-btn" type="button">＋</button>
+          <textarea id="chatText" rows="1" maxlength="1200" placeholder="ᴛʏᴘᴇ ᴀ ᴍᴇꜱꜱᴀɢᴇ..."></textarea>
+          <button id="chatSendBtn" class="chat-send-btn" type="button">➤</button>
+        </div>
+      </section>
+
+      <section id="groupChatView" class="messages-view" hidden>
+        <header class="chat-topbar">
+          <button id="groupBackBtn" class="message-icon-btn" type="button">←</button>
+          <div class="chat-user-head static-head"><img id="groupChatDp" src="assets/common.jpg"><span><b id="groupChatName">ɢʀᴏᴜᴘ</b><small id="groupChatMeta">0 ᴍᴇᴍʙᴇʀꜱ</small></span></div>
+          <button id="groupMoreBtn" class="message-icon-btn" type="button">⋮</button>
+        </header>
+        <div id="groupMessages" class="chat-messages"></div>
+        <div class="chat-compose">
+          <input id="groupAttachInput" type="file" accept="image/*,video/*" hidden>
+          <button id="groupAttachBtn" class="message-icon-btn" type="button">＋</button>
+          <textarea id="groupText" rows="1" maxlength="1200" placeholder="ᴍᴇꜱꜱᴀɢᴇ ɢʀᴏᴜᴘ..."></textarea>
+          <button id="groupSendBtn" class="chat-send-btn" type="button">➤</button>
+        </div>
+      </section>
+
+      <section id="channelView" class="messages-view" hidden>
+        <header class="chat-topbar">
+          <button id="channelBackBtn" class="message-icon-btn" type="button">←</button>
+          <div class="chat-user-head static-head"><img id="channelDp" src="assets/common.jpg"><span><b id="channelName">ᴄʜᴀɴɴᴇʟ</b><small id="channelMeta">0 ꜰᴏʟʟᴏᴡᴇʀꜱ</small></span></div>
+          <button id="channelFollowBtn" class="message-icon-btn wide-icon" type="button">＋</button>
+        </header>
+        <div id="channelPosts" class="channel-posts"></div>
+        <div id="channelCompose" class="chat-compose" hidden>
+          <input id="channelAttachInput" type="file" accept="image/*,video/*" hidden>
+          <button id="channelAttachBtn" class="message-icon-btn" type="button">＋</button>
+          <textarea id="channelText" rows="1" maxlength="1800" placeholder="ᴘᴏꜱᴛ ᴛᴏ ᴄʜᴀɴɴᴇʟ..."></textarea>
+          <button id="channelSendBtn" class="chat-send-btn" type="button">➤</button>
+        </div>
+      </section>
+    </div>
+  </dialog>
+
+  <dialog id="createGroupDialog" class="modal glass v7-modal">
+    <button class="close-modal" data-close type="button">✕</button>
+    <div class="eyebrow">👥 ᴄʀᴇᴀᴛᴇ ɢʀᴏᴜᴘ</div><h3>ɴᴇᴡ ɢʀᴏᴜᴘ</h3>
+    <form id="createGroupForm" class="modal-form">
+      <input id="groupNameInput" maxlength="50" placeholder="ɢʀᴏᴜᴘ ɴᴀᴍᴇ" required>
+      <label class="file-label">🖼️ ɢʀᴏᴜᴘ ᴅᴘ <input id="groupDpInput" type="file" accept="image/*"></label>
+      <textarea id="groupMembersInput" rows="4" placeholder="@ᴜꜱᴇʀ1, @ᴜꜱᴇʀ2 ..."></textarea>
+      <small class="form-help">ᴍᴇᴍʙᴇʀꜱ ᴋᴏ @ᴜꜱᴇʀɴᴀᴍᴇ ꜱᴇ ᴀᴅᴅ ᴋᴀʀᴏ • ᴄʀᴇᴀᴛᴏʀ ᴀᴜᴛᴏ ᴀᴅᴍɪɴ</small>
+      <button class="primary-btn" type="submit">ᴄʀᴇᴀᴛᴇ ɢʀᴏᴜᴘ</button>
+    </form>
+  </dialog>
+
+  <dialog id="createChannelDialog" class="modal glass v7-modal">
+    <button class="close-modal" data-close type="button">✕</button>
+    <div class="eyebrow">📢 ᴄʀᴇᴀᴛᴇ ᴄʜᴀɴɴᴇʟ</div><h3>ᴀᴅᴍɪɴ ᴄʜᴀɴɴᴇʟ</h3>
+    <form id="createChannelForm" class="modal-form">
+      <input id="channelNameInput" maxlength="50" placeholder="ᴄʜᴀɴɴᴇʟ ɴᴀᴍᴇ" required>
+      <label class="file-label">🖼️ ᴄʜᴀɴɴᴇʟ ᴅᴘ <input id="channelDpInput" type="file" accept="image/*"></label>
+      <textarea id="channelDescInput" rows="4" maxlength="300" placeholder="ᴄʜᴀɴɴᴇʟ ᴅᴇꜱᴄʀɪᴘᴛɪᴏɴ"></textarea>
+      <button class="primary-btn" type="submit">ᴄʀᴇᴀᴛᴇ ᴄʜᴀɴɴᴇʟ</button>
+    </form>
+  </dialog>
+
+
+
+  <dialog id="followListDialog" class="modal glass v7-modal"><button class="close-modal" data-close>✕</button><div class="eyebrow" id="followListTitle">👥 ꜰᴏʟʟᴏᴡᴇʀꜱ</div><div id="followListBody" class="follow-list"></div></dialog>
+
+  <dialog id="postViewerDialog" class="post-viewer-dialog">
+    <div class="post-viewer-shell">
+      <header class="post-viewer-topbar"><button id="postViewerClose" type="button">←</button><button id="postViewerUser" class="post-user-head" type="button"><img id="postViewerUserDp" src="assets/common.jpg"><b id="postViewerUsername">@user</b></button><span id="postViewerIndex">1 / 1</span></header>
+      <main id="postViewerStage" class="post-viewer-stage"></main>
+      <section class="post-viewer-info">
+        <div class="post-actions"><button id="postLikeBtn" type="button">♡</button><button id="postCommentBtn" type="button">💬</button><button id="postShareBtn" type="button">📤</button><button id="postDownloadBtn" type="button">⬇</button><button id="postDeleteBtn" type="button" hidden>🗑</button></div>
+        <div class="post-count-line"><b><span id="postLikeCount">0</span> ʟɪᴋᴇꜱ</b><button id="postCommentsCountBtn" type="button"><span id="postCommentCount">0</span> ᴄᴏᴍᴍᴇɴᴛꜱ</button></div>
+        <p id="postViewerCaption"></p><small id="postViewerTime"></small>
+        <div class="post-nav"><button id="postPrevBtn" type="button">←</button><button id="postNextBtn" type="button">→</button></div>
+      </section>
+    </div>
+  </dialog>
+
+  <dialog id="postCommentsDialog" class="comments-dialog"><div class="comments-shell"><div class="comments-topbar"><button id="postCommentsClose" class="message-icon-btn" type="button">←</button><div><b>💬 ᴄᴏᴍᴍᴇɴᴛꜱ</b><small>ᴘᴏꜱᴛ ᴄᴏɴᴠᴇʀꜱᴀᴛɪᴏɴ</small></div><span></span></div><div id="postCommentsList" class="comments-list"></div><div class="comment-compose"><textarea id="postCommentText" rows="1" maxlength="800" placeholder="ᴀᴅᴅ ᴀ ᴄᴏᴍᴍᴇɴᴛ..."></textarea><button id="postCommentSend" class="chat-send-btn" type="button">➤</button></div></div></dialog>
+
+  <dialog id="toolsDialog" class="modal glass v7-modal"><button class="close-modal" data-close>✕</button><div class="eyebrow">⚙️ ᴍᴇᴍᴏʀʏ ᴛᴏᴏʟꜱ</div><h3>ʙᴀᴄᴋᴜᴘ • ʀᴇꜱᴛᴏʀᴇ</h3><div id="adminStatus" class="admin-status" hidden>🛡️ ᴀᴅᴍɪɴ • @ᴠᴀʟᴏʀʀᴇʜᴀɴ</div><div class="tool-grid"><button id="activityOpenBtn" class="tool-card" type="button">🔔<b>ᴀᴄᴛɪᴠɪᴛʏ</b><small>ʟɪᴋᴇꜱ • ᴄᴏᴍᴍᴇɴᴛꜱ • ʀᴇᴘʟɪᴇꜱ</small></button><button id="exportBtn" class="tool-card">💾<b>ᴇxᴘᴏʀᴛ ʙᴀᴄᴋᴜᴘ</b><small>ꜱᴀᴠᴇ ʙʀᴏᴡꜱᴇʀ ᴅᴀᴛᴀ</small></button><label class="tool-card">📥<b>ɪᴍᴘᴏʀᴛ ʙᴀᴄᴋᴜᴘ</b><small>ʀᴇꜱᴛᴏʀᴇ ᴀ ᴊꜱᴏɴ ꜰɪʟᴇ</small><input id="importInput" type="file" accept="application/json" hidden></label><button id="restoreBtn" class="tool-card">♻️<b>ʀᴇꜱᴛᴏʀᴇ ᴄᴇɴᴛᴇʀ</b><small>ʙʀɪɴɢ ʜɪᴅᴅᴇɴ ɪᴛᴇᴍꜱ ʙᴀᴄᴋ</small></button><button id="logoutUserBtn" class="tool-card logout-tool" type="button">🚪<b>ʟᴏɢᴏᴜᴛ</b><small>ꜱᴡɪᴛᴄʜ ᴜꜱᴇʀ</small></button></div><div id="restoreList" class="restore-list" hidden></div></dialog>
+  <script src="js/media-manifest.js?v=8.2.0"></script>
+  <script src="js/app.js?v=8.2.0"></script>
 </body>
 </html>
