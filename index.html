@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#090b12" />
   <title>The OG Legends — Our Memories</title>
-  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/style.css?v=7.8.4.4" />
 </head>
 <body>
   <div id="app">
@@ -27,11 +27,12 @@
 
     <main id="siteShell" class="site-shell" hidden>
       <header class="topbar glass">
-        <button id="homeBtn" class="nav-icon" title="Home">🏠</button>
+        <button id="toolsBtn" class="nav-icon settings-top" title="Settings" aria-label="Settings">⚙️</button>
         <div class="top-title">👑 ᴛʜᴇ ᴏɢ ʟᴇɢᴇɴᴅꜱ</div>
         <div class="top-actions">
           <button id="musicBtn" class="nav-icon" title="Music">🎵</button>
           <button id="lockBtn" class="nav-icon" title="Lock again">🔒</button>
+          <button id="messageBtn" class="nav-icon message-top" title="Messages" aria-label="Messages">💬</button>
         </div>
       </header>
 
@@ -45,6 +46,7 @@
               <p>🏫 ᴍᴏᴛʜᴇʀ ᴛᴇʀᴇꜱᴀ ᴘᴜʙʟɪᴄ ꜱᴄʜᴏᴏʟ</p>
               <p>🎓 ʙᴀᴛᴄʜ 2025–26</p>
               <blockquote>“ᴡᴇ ᴄᴀᴍᴇ ᴀꜱ ᴄʟᴀꜱꜱᴍᴀᴛᴇꜱ, ᴡᴇ ʟᴇꜰᴛ ᴀꜱ ᴍᴇᴍᴏʀɪᴇꜱ.” ❤️</blockquote>
+              <div id="memoryStats" class="stats-strip glass-lite"></div>
               <button class="primary-btn jump-btn" data-target="1">ᴇxᴘʟᴏʀᴇ ᴍᴇᴍᴏʀɪᴇꜱ →</button>
             </div>
           </div>
@@ -82,17 +84,30 @@
           <div id="videoFolders" class="folders-grid"></div>
         </article>
 
-        <article class="page" data-page="5" id="wallPage">
+        <article class="page" data-page="5" id="memoryDayPage">
+          <div class="section-head memory-day-head"><div><div class="eyebrow">⭐ ᴅᴀɪʟʏ ᴍᴇᴍᴏʀɪᴇꜱ</div><h2>ᴍᴇᴍᴏʀɪᴇꜱ ᴏꜰ ᴛʜᴇ ᴅᴀʏ</h2></div><div class="memory-day-actions"><button id="memoryDayAdd" class="primary-btn small" type="button">＋ ᴀᴅᴅ</button><button id="memoryDayRandom" class="mini-btn" type="button">↻ ʀᴀɴᴅᴏᴍɪᴢᴇ</button></div></div>
+          <section id="memoryDaySection" class="memory-day-section memory-day-page" aria-label="Memories of the day">
+            <div id="memoryDayGrid" class="memory-day-grid"><div class="memory-day-loading">ʟᴏᴀᴅɪɴɢ ᴍᴇᴍᴏʀɪᴇꜱ...</div></div>
+          </section>
+        </article>
+
+        <article class="page" data-page="6" id="wallPage">
           <div class="section-head"><div><div class="eyebrow">📝 ᴍᴇᴍᴏʀʏ ᴡᴀʟʟ</div><h2>ʟɪɴᴇꜱ ᴡᴇ’ʟʟ ᴋᴇᴇᴘ</h2></div></div>
           <div class="wall-grid">
             <div class="quote-card glass">😂 “ᴛʜᴇ ʙᴇꜱᴛ ꜱᴛᴏʀɪᴇꜱ ᴀʟᴡᴀʏꜱ ꜱᴛᴀʀᴛᴇᴅ ᴡɪᴛʜ — ‘ʏᴀᴀʀ, ᴇᴋ ɪᴅᴇᴀ ʜᴀɪ…’”</div>
             <div class="quote-card glass">❤️ “ꜱᴏᴍᴇ ᴅᴀʏꜱ ʙᴇᴄᴏᴍᴇ ᴍᴇᴍᴏʀɪᴇꜱ ʙᴇꜰᴏʀᴇ ᴡᴇ ᴇᴠᴇɴ ʀᴇᴀʟɪꜱᴇ ɪᴛ.”</div>
             <div class="quote-card glass">👑 “ᴛʜᴇ ᴏɢ ʟᴇɢᴇɴᴅꜱ — ɴᴏᴛ ᴘᴇʀꜰᴇᴄᴛ, ʙᴜᴛ ᴅᴇꜰɪɴɪᴛᴇʟʏ ᴜɴꜰᴏʀɢᴇᴛᴛᴀʙʟᴇ.”</div>
             <div class="quote-card glass">🏫 “ᴛʜᴇ ᴄʟᴀꜱꜱʀᴏᴏᴍ ᴄʜᴀɴɢᴇᴅ. ᴛʜᴇ ᴘᴇᴏᴘʟᴇ ᴍᴏᴠᴇᴅ ᴏɴ. ᴛʜᴇ ᴍᴇᴍᴏʀɪᴇꜱ ꜱᴛᴀʏᴇᴅ.”</div>
+            <div class="quote-card glass">📸 “ᴏɴᴇ ᴘʜᴏᴛᴏ ᴄᴀɴ ʙʀɪɴɢ ʙᴀᴄᴋ ᴀ ᴡʜᴏʟᴇ ᴅᴀʏ ɪɴ ᴀ ꜱᴇᴄᴏɴᴅ.”</div>
+            <div class="quote-card glass">🎒 “ᴡᴇ ᴄᴀʀʀɪᴇᴅ ʙᴏᴏᴋꜱ ᴛᴏ ꜱᴄʜᴏᴏʟ ᴀɴᴅ ᴄᴀᴍᴇ ʙᴀᴄᴋ ᴡɪᴛʜ ꜱᴛᴏʀɪᴇꜱ.”</div>
+            <div class="quote-card glass">✨ “ᴛʜᴇ ᴏʀᴅɪɴᴀʀʏ ᴅᴀʏꜱ ᴡᴇʀᴇ ᴛʜᴇ ᴏɴᴇꜱ ᴛʜᴀᴛ ʙᴇᴄᴀᴍᴇ ꜱᴘᴇᴄɪᴀʟ.”</div>
+            <div class="quote-card glass">🤝 “ᴡᴇ ᴅɪᴅɴ’ᴛ ᴋɴᴏᴡ ᴡᴇ ᴡᴇʀᴇ ᴍᴀᴋɪɴɢ ᴍᴇᴍᴏʀɪᴇꜱ — ᴡᴇ ᴡᴇʀᴇ ᴊᴜꜱᴛ ʜᴀᴠɪɴɢ ꜰᴜɴ.”</div>
+            <div class="quote-card glass">🎓 “ᴛʜᴇ ʙᴀᴛᴄʜ ᴇɴᴅᴇᴅ, ʙᴜᴛ ᴛʜᴇ ᴄʜᴀᴘᴛᴇʀ ᴡɪʟʟ ᴀʟᴡᴀʏꜱ ʙᴇ ᴏᴜʀꜱ.”</div>
+            <div class="quote-card glass">❤️ “ᴅɪꜱᴛᴀɴᴄᴇ ᴄᴀɴ ᴄʜᴀɴɢᴇ ᴛʜᴇ ʀᴏᴜᴛɪɴᴇ, ɴᴏᴛ ᴛʜᴇ ᴍᴇᴍᴏʀɪᴇꜱ ᴡᴇ ꜱʜᴀʀᴇ.”</div>
           </div>
         </article>
 
-        <article class="page" data-page="6" id="randomPage">
+        <article class="page" data-page="7" id="randomPage">
           <div class="random-pro glass">
             <div class="random-kicker"><span>✦ ᴍᴇᴍᴏʀʏ ᴠᴀᴜʟᴛ</span><b>05 ᴍᴇᴍᴏʀɪᴇꜱ</b></div>
             <div class="big-emoji">🎲</div><div class="eyebrow">ꜱᴜʀᴘʀɪꜱᴇ ᴍᴇᴍᴏʀɪᴇꜱ</div><h2>ꜰɪᴠᴇ ᴍᴇᴍᴏʀɪᴇꜱ • ᴏɴᴇ ᴛɪᴍᴇ</h2>
@@ -102,7 +117,7 @@
           </div>
         </article>
 
-        <article class="page" data-page="7" id="finalPage">
+        <article class="page" data-page="8" id="finalPage">
           <div class="final-card glass">
             <img src="assets/common.jpg" alt="The OG Legends" />
             <div class="eyebrow">❤️ ᴛʜᴇ ᴇɴᴅ — ʙᴜᴛ ɴᴏᴛ ᴛʜᴇ ᴍᴇᴍᴏʀɪᴇꜱ</div>
@@ -115,12 +130,28 @@
             <div class="credit">ᴄʀᴇᴀᴛᴇᴅ ᴡɪᴛʜ ❤️ ʙʏ ʀᴇʜᴀɴ ᴀᴋʜᴛᴀʀ</div>
           </div>
         </article>
+
+        <article class="page reels-page" data-page="9" id="reelsPage">
+          <div class="section-head reels-head">
+            <div><div class="eyebrow">🎬 ᴏᴜʀ ʀᴇᴇʟꜱ</div><h2>ʀᴇᴇʟꜱ</h2></div>
+            
+          </div>
+          <div id="reelsFeed" class="reels-feed"><div class="empty-state">🎬 ɴᴏ ʀᴇᴇʟꜱ ʏᴇᴛ • ᴛᴀᴘ ᴄʀᴇᴀᴛᴇ</div></div>
+        </article>
       </section>
 
       <footer class="bottom-nav glass">
-        <button id="prevBtn">← ᴘʀᴇᴠ</button>
+        <button id="prevBtn" class="page-step">← ᴘʀᴇᴠ</button>
         <div id="pageDots" class="page-dots"></div>
-        <button id="nextBtn">ɴᴇxᴛ →</button>
+        <button id="nextBtn" class="page-step">ɴᴇxᴛ →</button>
+        <div class="legacy-tool-hooks" hidden><button id="searchBtn" type="button">Search</button><button id="favBtn" type="button">Fav</button></div>
+        <nav class="mobile-ribbon quick-ribbon" aria-label="Quick navigation">
+          <button id="mobileHomeBtn" type="button">🏠 <span>ʜᴏᴍᴇ</span></button>
+          <button id="reelsBtn" type="button">🎬 <span>ʀᴇᴇʟꜱ</span></button>
+          <button id="createReelBtn" class="create-reel-nav" type="button">＋ <span>ᴄʀᴇᴀᴛᴇ</span></button>
+          <button id="mobileSearchBtn" type="button">🔎 <span>ꜱᴇᴀʀᴄʜ</span></button>
+          <button id="profileNavBtn" type="button">👤 <span>ᴘʀᴏꜰɪʟᴇ</span></button>
+        </nav>
       </footer>
     </main>
   </div>
@@ -158,21 +189,46 @@
 
 
   <dialog id="newJourneyDialog" class="modal glass"><button class="close-modal" data-close>✕</button><form id="newJourneyForm" class="modal-form"><div class="eyebrow">＋ ᴀᴅᴅ ᴊᴏᴜʀɴᴇʏ ᴍᴇᴍᴏʀʏ</div><h3>ᴋᴇᴇᴘ ᴀɴᴏᴛʜᴇʀ ᴍᴏᴍᴇɴᴛ</h3><input id="journeyDate" placeholder="ᴅᴀᴛᴇ / ʏᴇᴀʀ" required><input id="journeyTitle" placeholder="ᴛɪᴛʟᴇ" required><textarea id="journeyMessage" maxlength="1400" placeholder="ʟᴏɴɢ ᴍᴇᴍᴏʀʏ / ꜱᴛᴏʀʏ" required></textarea><label class="file-label">🖼️/🎬 ᴘʜᴏᴛᴏ ᴏʀ ᴠɪᴅᴇᴏ <input id="journeyMedia" type="file" accept="image/*,video/*"></label><button class="primary-btn" type="submit">＋ ᴀᴅᴅ ᴛᴏ ᴊᴏᴜʀɴᴇʏ</button></form></dialog>
+  <dialog id="memoryDayPicker" class="modal glass v7-modal"><button class="close-modal" data-close>✕</button><div class="eyebrow">⭐ ᴍᴇᴍᴏʀɪᴇꜱ ᴏꜰ ᴛʜᴇ ᴅᴀʏ</div><h3>ᴄʜᴏᴏꜱᴇ ᴘʜᴏᴛᴏꜱ</h3><p class="memory-day-picker-note">ᴛᴀᴘ ᴀɴʏ ᴘʜᴏᴛᴏ ᴛᴏ ᴀᴅᴅ ɪᴛ. ʏᴏᴜ ᴄᴀɴ ᴋᴇᴇᴘ ᴀꜱ ᴍᴀɴʏ ᴀꜱ ʏᴏᴜ ᴡᴀɴᴛ.</p><div id="memoryDayPickerGrid" class="memory-day-picker-grid"></div></dialog>
+
   <dialog id="mediaViewerDialog" class="viewer-modal">
     <button class="viewer-close" data-close aria-label="Close">✕</button>
-    <div class="viewer-head"><span>🖼️ ᴍᴇᴍᴏʀʏ ᴠɪᴇᴡ</span><b id="viewerCount">1 / 1</b></div>
+    <div class="viewer-head"><div><span>🖼️ ᴍᴇᴍᴏʀʏ ᴠɪᴇᴡ</span><small id="viewerMetaLine"></small></div><b id="viewerCount">1 / 1</b></div>
     <div id="viewerStage" class="viewer-stage"></div>
     <div class="viewer-controls">
       <button id="viewerPrev">← ᴘʀᴇᴠ</button>
       <button id="viewerZoomOut" class="viewer-tool" title="Zoom out">−</button>
       <button id="viewerReset" class="viewer-tool" title="Reset zoom">↻</button>
       <button id="viewerZoomIn" class="viewer-tool" title="Zoom in">＋</button>
+      <button id="viewerFavourite" class="viewer-tool" title="Favourite">♡</button>
+      <button id="viewerInfo" class="viewer-tool" title="Caption and date">📝</button>
+      <button id="viewerShare" class="viewer-tool" title="Share">📤</button>
+      <button id="viewerSlideshow" class="viewer-tool" title="Slideshow">🎞️</button>
       <button id="viewerDownload" class="viewer-download">⬇ ᴅᴏᴡɴʟᴏᴀᴅ</button>
       <button id="viewerNext">ɴᴇxᴛ →</button>
     </div>
   </dialog>
 
-  <script src="js/media-manifest.js"></script>
-  <script src="js/app.js"></script>
+
+  <div id="unlockIntro" class="unlock-intro" hidden>
+    <div class="intro-mark">👑</div><div class="eyebrow">ᴛʜᴇ ᴏɢ ʟᴇɢᴇɴᴅꜱ</div><h2>ᴏᴜʀ ᴊᴏᴜʀɴᴇʏ • ᴏᴜʀ ᴍᴇᴍᴏʀɪᴇꜱ</h2><div class="intro-line"></div>
+  </div>
+
+  <dialog id="searchDialog" class="modal glass v7-modal"><button class="close-modal" data-close>✕</button><div class="eyebrow">🔎 ᴜꜱᴇʀ ꜱᴇᴀʀᴄʜ</div><h3>ꜰɪɴᴅ @ᴜꜱᴇʀɴᴀᴍᴇ / ᴜꜱᴇʀ ɪᴅ</h3><input id="searchInput" class="v7-input" placeholder="@ᴜꜱᴇʀɴᴀᴍᴇ ᴏʀ ᴜꜱᴇʀ ɪᴅ..." autocomplete="off"><div class="eyebrow recent-label">ʀᴇᴄᴇɴᴛ ᴜꜱᴇʀꜱ</div><div id="recentUsers" class="search-results"></div><div id="searchResults" class="search-results"></div></dialog>
+
+  <dialog id="favouritesDialog" class="modal glass v7-modal"><button class="close-modal" data-close>✕</button><div class="eyebrow">❤️ ꜰᴀᴠᴏᴜʀɪᴛᴇꜱ</div><h3>ᴍᴇᴍᴏʀɪᴇꜱ ʏᴏᴜ ᴋᴇᴘ ᴄʟᴏꜱᴇ</h3><div id="favouritesGrid" class="favourites-grid"></div></dialog>
+
+  <dialog id="metaDialog" class="modal glass v7-modal"><button class="close-modal" data-close>✕</button><form id="metaForm" class="modal-form"><div class="eyebrow">📝 ᴍᴇᴍᴏʀʏ ɪɴꜰᴏ</div><h3>ᴄᴀᴘᴛɪᴏɴ + ᴅᴀᴛᴇ</h3><input id="metaDate" placeholder="ᴅᴀᴛᴇ / ʏᴇᴀʀ"><textarea id="metaCaption" maxlength="500" placeholder="ᴡʀɪᴛᴇ ᴀ ᴄᴀᴘᴛɪᴏɴ / ᴍᴇᴍᴏʀʏ..."></textarea><button class="primary-btn" type="submit">💾 ꜱᴀᴠᴇ ɪɴꜰᴏ</button></form></dialog>
+
+  <dialog id="letterDialog" class="modal glass v7-modal"><button class="close-modal" data-close>✕</button><div class="eyebrow">💌 ꜰʀɪᴇɴᴅ ʟᴇᴛᴛᴇʀ</div><h3 id="letterTitle">ᴀ ʟᴇᴛᴛᴇʀ</h3><textarea id="letterText" class="letter-text" maxlength="3000"></textarea><div class="dialog-actions"><button id="saveLetterBtn" class="primary-btn small">💾 ꜱᴀᴠᴇ ʟᴇᴛᴛᴇʀ</button></div></dialog>
+
+
+  <dialog id="createReelDialog" class="modal glass v7-modal create-post-dialog"><button class="close-modal" data-close>✕</button><div class="eyebrow">➕ ᴄʀᴇᴀᴛᴇ</div><h3>ꜱʜᴀʀᴇ ᴀ ᴍᴏᴍᴇɴᴛ</h3><div id="createStep1" class="create-step"><button id="chooseReelBtn" class="create-choice" type="button">🎬<b>ʀᴇᴇʟ / ᴠɪᴅᴇᴏ</b></button><button id="choosePostBtn" class="create-choice" type="button">🖼️<b>ᴘʜᴏᴛᴏ ᴘᴏꜱᴛ</b></button></div><div id="createStep2" class="create-step" hidden><input id="createMediaInput" type="file" accept="video/*"><div id="createPreview" class="create-preview"></div><button id="createMediaNext" class="primary-btn" type="button">ɴᴇxᴛ →</button></div><div id="createStep3" class="create-step" hidden><textarea id="createCaption" maxlength="500" placeholder="📝 ᴄᴀᴘᴛɪᴏɴ (ᴏᴘᴛɪᴏɴᴀʟ)..."></textarea><button id="publishCreate" class="primary-btn" type="button">⬆️ ᴘᴏꜱᴛ</button></div></dialog>
+<dialog id="userProfileDialog" class="modal glass v7-modal"><button class="close-modal" data-close>✕</button><div id="userProfileBody"></div></dialog>
+<section id="userGate" class="user-gate" hidden><div class="user-gate-card glass"><div class="eyebrow">👤 ᴜꜱᴇʀ ᴀᴄᴄᴇꜱꜱ</div><h2>ᴡʜᴏ'ꜱ ᴏᴘᴇɴɪɴɢ ᴛʜᴇ ᴍᴇᴍᴏʀɪᴇꜱ?</h2><div class="user-gate-tabs"><button id="showLogin" class="mini-btn" type="button">ʟᴏɢɪɴ</button><button id="showRegister" class="mini-btn" type="button">ᴄʀᴇᴀᴛᴇ ɴᴇᴡ ᴜꜱᴇʀ</button></div><form id="localLoginForm" class="modal-form"><input id="loginUsername" placeholder="@ᴜꜱᴇʀɴᴀᴍᴇ" required><input id="loginPassword" type="password" placeholder="ᴘᴀꜱꜱᴡᴏʀᴅ" required><button class="primary-btn">ʟᴏɢɪɴ</button></form><form id="localRegisterForm" class="modal-form" hidden><label class="file-label">🖼️ ᴅᴘ<input id="registerDp" type="file" accept="image/*"></label><input id="registerName" placeholder="ᴅɪꜱᴘʟᴀʏ ɴᴀᴍᴇ" required><input id="registerUsername" placeholder="@ᴜɴɪQᴜᴇ ᴜꜱᴇʀɴᴀᴍᴇ" required><input id="registerPassword" type="password" minlength="4" placeholder="ᴘᴀꜱꜱᴡᴏʀᴅ" required><input id="registerConfirm" type="password" minlength="4" placeholder="ᴄᴏɴꜰɪʀᴍ ᴘᴀꜱꜱᴡᴏʀᴅ" required><button class="primary-btn">ᴄʀᴇᴀᴛᴇ ᴜꜱᴇʀ</button></form><div id="userGateError" class="pin-error"></div></div></section>
+
+  <dialog id="toolsDialog" class="modal glass v7-modal"><button class="close-modal" data-close>✕</button><div class="eyebrow">⚙️ ᴍᴇᴍᴏʀʏ ᴛᴏᴏʟꜱ</div><h3>ʙᴀᴄᴋᴜᴘ • ʀᴇꜱᴛᴏʀᴇ</h3><div class="tool-grid"><button id="exportBtn" class="tool-card">💾<b>ᴇxᴘᴏʀᴛ ʙᴀᴄᴋᴜᴘ</b><small>ꜱᴀᴠᴇ ʙʀᴏᴡꜱᴇʀ ᴅᴀᴛᴀ</small></button><label class="tool-card">📥<b>ɪᴍᴘᴏʀᴛ ʙᴀᴄᴋᴜᴘ</b><small>ʀᴇꜱᴛᴏʀᴇ ᴀ ᴊꜱᴏɴ ꜰɪʟᴇ</small><input id="importInput" type="file" accept="application/json" hidden></label><button id="restoreBtn" class="tool-card">♻️<b>ʀᴇꜱᴛᴏʀᴇ ᴄᴇɴᴛᴇʀ</b><small>ʙʀɪɴɢ ʜɪᴅᴅᴇɴ ɪᴛᴇᴍꜱ ʙᴀᴄᴋ</small></button></div><div id="restoreList" class="restore-list" hidden></div></dialog>
+  <script src="js/media-manifest.js?v=7.8.4.4"></script>
+  <script src="js/app.js?v=7.8.4.4"></script>
 </body>
 </html>
