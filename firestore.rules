@@ -1,0 +1,298 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && request.auth.uid == "U9D7P7hhukauNmUpLL6STrWtuma2";
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function reelOwner(reelId) {
+      return signedIn()
+        && get(/databases/$(database)/documents/reels/$(reelId)).data.ownerId == request.auth.uid;
+    }
+
+    function postOwner(postId) {
+      return signedIn()
+        && get(/databases/$(database)/documents/posts/$(postId)).data.ownerId == request.auth.uid;
+    }
+
+    function isChatMember(chatId) {
+      return signedIn()
+        && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
+    }
+
+    function isGroupMember(groupId) {
+      return signedIn()
+        && request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.members;
+    }
+
+    function isGroupAdmin(groupId) {
+      return signedIn()
+        && (
+          isAdmin()
+          || request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.admins
+        );
+    }
+
+    function leavesOnlySelf() {
+      return signedIn()
+        && request.auth.uid in resource.data.members
+        && !(request.auth.uid in request.resource.data.members)
+        && resource.data.members.toSet().difference(request.resource.data.members.toSet()).hasOnly([request.auth.uid])
+        && request.resource.data.members.toSet().difference(resource.data.members.toSet()).size() == 0
+        && resource.data.admins.toSet().difference(request.resource.data.admins.toSet()).hasOnly([request.auth.uid])
+        && request.resource.data.admins.toSet().difference(resource.data.admins.toSet()).size() == 0
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'members','memberUsernames','admins','adminUsernames','updated'
+        ]);
+    }
+
+    // USERS / PROFILES
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow create: if isOwner(uid) && request.resource.data.uid == uid;
+      allow update: if isAdmin() || (isOwner(uid) && request.resource.data.uid == uid);
+      allow delete: if isAdmin() || isOwner(uid);
+    }
+
+    // UNIQUE USERNAME -> UID MAP
+    match /usernames/{username} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.username == username;
+      allow update: if signedIn()
+                    && resource.data.uid == request.auth.uid
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.username == username;
+      allow delete: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+    }
+
+    // FOLLOW / UNFOLLOW
+    match /follows/{followId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+                    && request.resource.data.followerId == request.auth.uid
+                    && request.resource.data.targetId != request.auth.uid;
+      allow update: if false;
+      allow delete: if isAdmin() || (signedIn() && resource.data.followerId == request.auth.uid);
+    }
+
+    // REELS
+    match /reels/{reelId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isAdmin() || reelOwner(reelId);
+      allow delete: if isAdmin() || reelOwner(reelId);
+
+      match /likes/{uid} {
+        allow read: if signedIn();
+        allow create: if isOwner(uid);
+        allow update: if false;
+        allow delete: if isAdmin() || isOwner(uid) || reelOwner(reelId);
+      }
+
+      match /comments/{commentId} {
+        allow read: if signedIn();
+        allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+        allow update: if isAdmin() || (signedIn() && resource.data.ownerId == request.auth.uid);
+        allow delete: if isAdmin()
+                      || (signedIn() && resource.data.ownerId == request.auth.uid)
+                      || reelOwner(reelId);
+
+        match /likes/{uid} {
+          allow read: if signedIn();
+          allow create: if isOwner(uid);
+          allow update: if false;
+          allow delete: if isAdmin() || isOwner(uid) || reelOwner(reelId);
+        }
+
+        match /replies/{replyId} {
+          allow read: if signedIn();
+          allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+          allow update: if isAdmin() || (signedIn() && resource.data.ownerId == request.auth.uid);
+          allow delete: if isAdmin()
+                        || (signedIn() && resource.data.ownerId == request.auth.uid)
+                        || reelOwner(reelId);
+
+          match /likes/{uid} {
+            allow read: if signedIn();
+            allow create: if isOwner(uid);
+            allow update: if false;
+            allow delete: if isAdmin() || isOwner(uid) || reelOwner(reelId);
+          }
+        }
+      }
+    }
+
+    // POSTS
+    match /posts/{postId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isAdmin() || postOwner(postId);
+      allow delete: if isAdmin() || postOwner(postId);
+
+      match /likes/{uid} {
+        allow read: if signedIn();
+        allow create: if isOwner(uid);
+        allow update: if false;
+        allow delete: if isAdmin() || isOwner(uid) || postOwner(postId);
+      }
+
+      match /comments/{commentId} {
+        allow read: if signedIn();
+        allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+        allow update: if isAdmin() || (signedIn() && resource.data.ownerId == request.auth.uid);
+        allow delete: if isAdmin()
+                      || (signedIn() && resource.data.ownerId == request.auth.uid)
+                      || postOwner(postId);
+
+        match /likes/{uid} {
+          allow read: if signedIn();
+          allow create: if isOwner(uid);
+          allow update: if false;
+          allow delete: if isAdmin() || isOwner(uid) || postOwner(postId);
+        }
+
+        match /replies/{replyId} {
+          allow read: if signedIn();
+          allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+          allow update: if isAdmin() || (signedIn() && resource.data.ownerId == request.auth.uid);
+          allow delete: if isAdmin()
+                        || (signedIn() && resource.data.ownerId == request.auth.uid)
+                        || postOwner(postId);
+
+          match /likes/{uid} {
+            allow read: if signedIn();
+            allow create: if isOwner(uid);
+            allow update: if false;
+            allow delete: if isAdmin() || isOwner(uid) || postOwner(postId);
+          }
+        }
+      }
+    }
+
+    // ACTIVITY / NOTIFICATIONS
+    match /activities/{activityId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.recipientId == request.auth.uid);
+      allow create: if signedIn()
+                    && request.resource.data.actorId == request.auth.uid
+                    && request.resource.data.recipientId != request.auth.uid;
+      allow update: if isAdmin() || (signedIn() && resource.data.recipientId == request.auth.uid);
+      allow delete: if isAdmin() || (signedIn() && resource.data.recipientId == request.auth.uid);
+    }
+
+    // DIRECT CHATS
+    match /chats/{chatId} {
+      allow read: if signedIn() && request.auth.uid in resource.data.members;
+      allow create: if signedIn()
+                    && request.resource.data.creatorId == request.auth.uid
+                    && request.auth.uid in request.resource.data.members;
+      allow update: if signedIn()
+                    && request.auth.uid in resource.data.members
+                    && request.resource.data.members == resource.data.members
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'members','memberUsernames','lastMessage','lastMessageAt',
+                      'lastMessageSenderId','lastRead','clearedAt','updated'
+                    ]);
+      allow delete: if isAdmin() || (signedIn() && resource.data.creatorId == request.auth.uid);
+
+      match /messages/{messageId} {
+        allow read: if isChatMember(chatId);
+        allow create: if isChatMember(chatId) && request.resource.data.senderId == request.auth.uid;
+        allow update: if isAdmin() || (isChatMember(chatId) && resource.data.senderId == request.auth.uid);
+        allow delete: if isAdmin() || (isChatMember(chatId) && resource.data.senderId == request.auth.uid);
+      }
+    }
+
+    // GROUPS
+    match /groups/{groupId} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid in resource.data.members);
+      allow create: if signedIn()
+                    && request.resource.data.creatorId == request.auth.uid
+                    && request.auth.uid in request.resource.data.members
+                    && request.auth.uid in request.resource.data.admins;
+      allow update: if isAdmin()
+                    || (signedIn() && request.auth.uid in resource.data.admins)
+                    || leavesOnlySelf();
+      allow delete: if isAdmin() || (signedIn() && resource.data.creatorId == request.auth.uid);
+
+      match /messages/{messageId} {
+        allow read: if isGroupMember(groupId) || isAdmin();
+        allow create: if isGroupMember(groupId) && request.resource.data.senderId == request.auth.uid;
+        allow update: if isAdmin()
+                      || (isGroupMember(groupId) && resource.data.senderId == request.auth.uid);
+        allow delete: if isAdmin()
+                      || isGroupAdmin(groupId)
+                      || (isGroupMember(groupId) && resource.data.senderId == request.auth.uid);
+      }
+    }
+
+    // CHANNELS — only verified website admin creates/edits/deletes channels/posts
+    match /channels/{channelId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+
+      match /followers/{uid} {
+        allow read: if signedIn();
+        allow create: if isOwner(uid);
+        allow update: if false;
+        allow delete: if isAdmin() || isOwner(uid);
+      }
+
+      match /posts/{postId} {
+        allow read: if signedIn();
+        allow create, update, delete: if isAdmin();
+
+        match /likes/{uid} {
+          allow read: if signedIn();
+          allow create: if isOwner(uid);
+          allow update: if false;
+          allow delete: if isAdmin() || isOwner(uid);
+        }
+      }
+    }
+
+    // PER-USER SEEN REELS
+    match /seenReels/{uid}/items/{reelId} {
+      allow read, create, update, delete: if isOwner(uid);
+    }
+
+    // SCHOOL MEMORIES — all logged-in users view; verified admin modifies
+    match /memories/{memoryId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+    match /memoryFolders/{folderId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+    match /memoryOfDay/{memoryId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+    match /journeys/{journeyId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+    match /memoryProfiles/{profileId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // DEFAULT DENY
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -614,7 +614,23 @@ $('showLogin').onclick=()=>{$('localLoginForm').hidden=false;$('localRegisterFor
 $('showRegister').onclick=()=>{$('localLoginForm').hidden=true;$('localRegisterForm').hidden=false;$('userGateError').textContent=''};
 function fileToDataURL(file){return new Promise((resolve,reject)=>{if(!file)return resolve('');const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file)})}
 function dpUrl(u){return u?.dpData||(u?.dpBlob?URL.createObjectURL(u.dpBlob):'assets/common.jpg')}
-function firebaseEmailForUsername(username){return `${normUser(username)}@schoolmemories.app`}
+function firebaseLegacyEmailForUsername(username){return `${normUser(username)}@schoolmemories.app`}
+function firebaseEmailForUsername(username){
+  // Firebase Auth still needs an email internally, but users only enter @username.
+  // Hex encoding makes every allowed username (including dots/underscores) a valid email local-part.
+  const u=normUser(username);let hex='';for(const ch of new TextEncoder().encode(u))hex+=ch.toString(16).padStart(2,'0');
+  return `u${hex}@schoolmemories.app`;
+}
+async function firebaseUsernameSignIn(username,password){
+  // New accounts use the safe encoded internal email. Fall back to V8.5's legacy
+  // internal address so accounts created before this update keep working.
+  try{return await firebase.auth().signInWithEmailAndPassword(firebaseEmailForUsername(username),password)}
+  catch(ex){
+    if(['auth/invalid-credential','auth/user-not-found','auth/invalid-email','auth/wrong-password'].includes(ex.code))
+      return firebase.auth().signInWithEmailAndPassword(firebaseLegacyEmailForUsername(username),password);
+    throw ex;
+  }
+}
 async function firebaseProfileByUid(uid){
   const snap=await firebase.firestore().collection('users').doc(uid).get();
   return snap.exists?snap.data():null;
@@ -658,7 +674,7 @@ $('localLoginForm').onsubmit=async e=>{
   e.preventDefault();const err=$('userGateError');err.textContent='';
   try{
     await waitDB();if(!firebaseReady())return err.textContent='❌ ꜰɪʀᴇʙᴀꜱᴇ ɴᴏᴛ ᴄᴏɴɴᴇᴄᴛᴇᴅ';const username=normUser($('loginUsername').value),pw=$('loginPassword').value;
-    const cred=await firebase.auth().signInWithEmailAndPassword(firebaseEmailForUsername(username),pw);
+    const cred=await firebaseUsernameSignIn(username,pw);
     const profile=await firebaseProfileByUid(cred.user.uid);
     if(!profile){await firebase.auth().signOut();return err.textContent='❌ ᴘʀᴏꜰɪʟᴇ ᴅᴀᴛᴀ ɴᴏᴛ ꜰᴏᴜɴᴅ'}
     await syncFirebaseUserToLocal(profile);updateAccountUI();gate(false);e.target.reset();await restoreLastView();

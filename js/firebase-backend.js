@@ -171,7 +171,7 @@
   $('localLoginForm').onsubmit=async e=>{
     e.preventDefault();const err=$('userGateError');err.textContent='';
     try{
-      await waitDB();const username=normUser($('loginUsername').value),pw=$('loginPassword').value;const cred=await auth().signInWithEmailAndPassword(firebaseEmailForUsername(username),pw),profile=await firebaseProfileByUid(cred.user.uid);
+      await waitDB();const username=normUser($('loginUsername').value),pw=$('loginPassword').value;const cred=await firebaseUsernameSignIn(username,pw),profile=await firebaseProfileByUid(cred.user.uid);
       if(!profile){await auth().signOut();return err.textContent='❌ ᴘʀᴏꜰɪʟᴇ ᴅᴀᴛᴀ ɴᴏᴛ ꜰᴏᴜɴᴅ'}await syncFirebaseUserToLocal(profile);updateAccountUI();gate(false);e.target.reset();await restoreLastView();
     }catch(ex){console.error('Firebase login failed:',ex);err.textContent='❌ ᴡʀᴏɴɢ ᴜꜱᴇʀɴᴀᴍᴇ ᴏʀ ᴘᴀꜱꜱᴡᴏʀᴅ'}
   };
@@ -384,7 +384,19 @@
   // ---------- Direct messages (real-time text + small online media) ----------
   async function chatDocsForMe(){if(!currentUid())return [];const s=await db().collection('chats').where('members','array-contains',currentUid()).get();return s.docs.map(docData).sort((a,b)=>(b.updated||b.lastMessageAt||0)-(a.updated||a.lastMessageAt||0))}
   async function ensureChat(other){
-    const id=chatIdFor(currentUid(),other.uid),ref=db().collection('chats').doc(id),snap=await ref.get();if(!snap.exists)await ref.set({id,creatorId:currentUid(),members:[currentUid(),other.uid],memberUsernames:[currentLocalUser.username,other.username],created:now(),updated:now(),lastMessage:'',lastMessageAt:0,lastMessageSenderId:'',lastRead:{[currentUid()]:now()},clearedAt:{}});return ref
+    // Do not GET a not-yet-created chat: secure Firestore rules correctly deny
+    // that read and older V8.5 therefore failed with "Missing permissions".
+    const me=currentUid(),id=chatIdFor(me,other.uid),ref=db().collection('chats').doc(id);
+    const fresh={id,creatorId:me,members:[me,other.uid],memberUsernames:[currentLocalUser.username,other.username],created:now(),updated:now(),lastMessage:'',lastMessageAt:0,lastMessageSenderId:'',lastRead:{[me]:now()},clearedAt:{}};
+    try{
+      // Creates a new chat. If it already exists and was created by the other
+      // person, changing creatorId is denied; the member-safe update below wins.
+      await ref.set(fresh);
+    }catch(ex){
+      try{await ref.set({memberUsernames:[currentLocalUser.username,other.username],updated:now()},{merge:true})}
+      catch(ex2){throw ex2}
+    }
+    return ref;
   }
   renderRecentChats=async function(){
     const host=$('recentChats');host.innerHTML='';if(!currentUid())return;const [chats,users]=await Promise.all([chatDocsForMe(),onlineUsers()]),byUid=new Map(users.map(u=>[u.uid,u]));for(const c of chats){const oid=safeArray(c.members).find(x=>x!==currentUid()),u=byUid.get(oid);if(!u)continue;const lastRead=Number(c.lastRead?.[currentUid()]||0),unread=c.lastMessageSenderId&&c.lastMessageSenderId!==currentUid()&&Number(c.lastMessageAt||0)>lastRead,row=document.createElement('button');row.className='chat-row';row.innerHTML=`<img src="${dpUrl(u)}"><span><b>@${escapeHtml(u.username)}</b><small>${escapeHtml(c.lastMessage||'ᴍᴇꜱꜱᴀɢᴇ')}</small></span><em>${fmtMsgTime(c.lastMessageAt)}${unread?'<i>1</i>':''}</em>`;row.onclick=()=>openChat(u);host.appendChild(row)}if(!host.children.length)host.innerHTML='<div class="empty-state">💬 ɴᴏ ᴄʜᴀᴛꜱ ʏᴇᴛ<br><small>ꜱᴇᴀʀᴄʜ ᴀ ᴜꜱᴇʀ ᴛᴏ ꜱᴛᴀʀᴛ.</small></div>';
@@ -493,5 +505,5 @@
   // Make sure current authenticated session activates the backend even if app.js restored first.
   setTimeout(async()=>{try{if(auth().currentUser){const p=await firebaseProfileByUid(auth().currentUser.uid);if(p){p.uid=auth().currentUser.uid;if(currentLocalUser?.uid===p.uid)startOnlineSession(currentLocalUser);invalidateUsers();updateMessageBadge();updateActivityBadge()}}}catch(ex){console.warn('backend bootstrap',ex)}},700);
 
-  console.info('School Memories V8.3 Firebase backend loaded');
+  console.info('School Memories V8.5 final backend loaded');
 })();
