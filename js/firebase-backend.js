@@ -1,20 +1,19 @@
 /*
-  School Memories V8.3 — Firebase full social backend layer
+  School Memories V8.4 — Firebase + Supabase full social/media backend layer
   ---------------------------------------------------------
-  Uses Firebase Authentication + Cloud Firestore for accounts, profiles,
-  follows, activity, likes/comments/replies, direct messages, groups,
-  channels and seen-reel state. Existing GitHub memory media remains local/static.
-
-  Important free-tier limitation:
-  Firebase Storage is not enabled on the no-billing Spark setup used by this
-  project. Small images/files can be embedded in Firestore documents; large
-  videos remain available on the device that created them until a media-storage
-  provider is connected.
+  Uses Firebase Authentication + Cloud Firestore for accounts/social data and
+  Supabase Storage for user-uploaded photos/videos/files. Existing GitHub memory
+  media remains static and untouched. Firebase ID tokens authenticate Supabase
+  uploads through the configured third-party Firebase integration.
 */
 (function(){
   const ADMIN_UID='U9D7P7hhukauNmUpLL6STrWtuma2';
-  const MAX_FIRESTORE_MEDIA_BYTES=560000; // leave headroom below Firestore 1 MiB doc limit
   const ONLINE_CACHE_MS=15000;
+  const SB=window.SUPABASE_CONFIG||{};
+  const SUPABASE_URL=String(SB.url||'').replace(/\/$/,'');
+  const SUPABASE_KEY=String(SB.publishableKey||'');
+  const SUPABASE_BUCKET=String(SB.bucket||'school-media');
+  const MAX_SUPABASE_FILE_BYTES=50*1024*1024;
   const fbState={
     usersCache:null,usersCacheAt:0,
     activityUnsub:null,chatUnsub:null,chatsUnsub:null,groupUnsub:null,channelUnsub:null,
@@ -35,15 +34,17 @@
   function localStoreHas(name){return !!DB?.objectStoreNames?.contains(name)}
   function localById(rows,id){return rows.find(x=>x.id===id)}
   function localMediaUrl(item,kind){
+    if(item?.mediaUrl)return item.mediaUrl;
     if(item?.mediaData)return item.mediaData;
     const b=kind==='reel'?item?.videoBlob:item?.mediaBlob;
     if(b instanceof Blob)return URL.createObjectURL(b);
-    return item?.mediaUrl||'';
+    return '';
   }
   function localAttachmentUrl(x){
+    if(x?.mediaUrl)return x.mediaUrl;
     if(x?.mediaData)return x.mediaData;
     if(x?.blob instanceof Blob)return URL.createObjectURL(x.blob);
-    return x?.mediaUrl||'';
+    return '';
   }
   function mimeFromDataUrl(s){const m=/^data:([^;,]+)/.exec(s||'');return m?.[1]||''}
   function dataUrlToBlob(data){
@@ -67,22 +68,37 @@
       img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('image decode failed'))};img.src=url;
     })
   }
-  async function smallMediaPayload(file,kind='attachment'){
-    if(!file)return {mediaData:'',mediaLocalOnly:false,mediaType:'',mediaName:'',mediaSize:0};
-    let data='';
-    if(String(file.type||'').startsWith('image/')){
-      data=await compressImage(file,kind==='dp'?420:kind==='post'?1280:960,kind==='dp'?.78:.72);
-    }else if(file.size<=MAX_FIRESTORE_MEDIA_BYTES){
-      data=await readDataURL(file);
-    }
-    if(data&&approxDataBytes(data)<=MAX_FIRESTORE_MEDIA_BYTES){
-      return {mediaData:data,mediaLocalOnly:false,mediaType:file.type||mimeFromDataUrl(data),mediaName:file.name||kind,mediaSize:file.size||approxDataBytes(data)};
-    }
-    return {mediaData:'',mediaLocalOnly:true,mediaType:file.type||'',mediaName:file.name||kind,mediaSize:file.size||0};
+  function storageReady(){return !!(SUPABASE_URL&&SUPABASE_KEY&&SUPABASE_BUCKET&&auth().currentUser)}
+  function safeFilePart(v){return String(v||'file').replace(/[^a-zA-Z0-9._-]+/g,'_').replace(/^_+|_+$/g,'').slice(-90)||'file'}
+  function storageFolder(kind){
+    const k=String(kind||'').toLowerCase();
+    if(k==='reel')return 'reels';
+    if(k==='post')return 'posts';
+    if(k==='dp'||k.includes('profile'))return 'profiles';
+    if(k.includes('group'))return 'groups';
+    if(k.includes('channel'))return 'channels';
+    return 'messages';
   }
-  function showStorageNotice(kind='media'){
-    alert(`⚠️ ${kind.toUpperCase()} IS SAVED ON THIS DEVICE, BUT THE FILE IS TOO LARGE FOR FIRESTORE.\n\nONLINE MEDIA STORAGE IS NOT ENABLED ON THE FREE FIREBASE SETUP YET. TEXT, PROFILE, LIKES, COMMENTS, MESSAGES AND METADATA STILL SYNC ONLINE.`)
+  function publicStorageUrl(path){return `${SUPABASE_URL}/storage/v1/object/public/${encodeURIComponent(SUPABASE_BUCKET)}/${String(path).split('/').map(encodeURIComponent).join('/')}`}
+  async function firebaseBearer(){const u=auth().currentUser;if(!u)throw new Error('LOGIN REQUIRED');return u.getIdToken(true)}
+  async function uploadStorageMedia(file,kind='message'){
+    if(!file)return {mediaUrl:'',mediaPath:'',mediaData:'',mediaLocalOnly:false,mediaType:'',mediaName:'',mediaSize:0};
+    if(!storageReady())throw new Error('SUPABASE STORAGE NOT CONFIGURED');
+    if(file.size>MAX_SUPABASE_FILE_BYTES)throw new Error('FILE TOO LARGE • MAX 50 MB');
+    const folder=storageFolder(kind),ext=(safeFilePart(file.name).split('.').pop()||'bin').slice(0,10),name=`${Date.now()}-${Math.random().toString(36).slice(2,10)}.${ext}`,path=`${folder}/${currentUid()}/${name}`,token=await firebaseBearer();
+    const res=await fetch(`${SUPABASE_URL}/storage/v1/object/${encodeURIComponent(SUPABASE_BUCKET)}/${path.split('/').map(encodeURIComponent).join('/')}`,{method:'POST',headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${token}`,'Content-Type':file.type||'application/octet-stream','x-upsert':'false'},body:file});
+    if(!res.ok){let msg='';try{msg=(await res.json()).message||''}catch{}throw new Error(`MEDIA UPLOAD FAILED${msg?' • '+msg:''}`)}
+    return {mediaUrl:publicStorageUrl(path),mediaPath:path,mediaData:'',mediaLocalOnly:false,mediaType:file.type||'application/octet-stream',mediaName:file.name||name,mediaSize:file.size||0};
   }
+  async function deleteStoragePath(path){
+    if(!path||!storageReady())return true;try{const token=await firebaseBearer(),res=await fetch(`${SUPABASE_URL}/storage/v1/object/${encodeURIComponent(SUPABASE_BUCKET)}/${String(path).split('/').map(encodeURIComponent).join('/')}`,{method:'DELETE',headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${token}`}});if(!res.ok&&res.status!==404){console.warn('Supabase delete failed',res.status,await res.text());return false}return true}catch(ex){console.warn('Supabase delete failed',ex);return false}
+  }
+  async function smallMediaPayload(file,kind='message'){return uploadStorageMedia(file,kind)}
+  async function imageUploadPayload(file,kind='dp',maxSide=420,quality=.78){
+    if(!file)return {dpUrl:'',dpPath:''};
+    const data=await compressImage(file,maxSide,quality),blob=dataUrlToBlob(data),named=new File([blob],safeFilePart(file.name||'image.jpg').replace(/\.[^.]+$/,'.jpg'),{type:'image/jpeg'}),m=await uploadStorageMedia(named,kind);return {dpUrl:m.mediaUrl,dpPath:m.mediaPath};
+  }
+  function showStorageNotice(){/* V8.4 uses Supabase Storage; no local-only warning. */}
   async function onlineUsers(force=false){
     if(!online())return getAll('users');
     if(!force&&fbState.usersCache&&now()-fbState.usersCacheAt<ONLINE_CACHE_MS)return fbState.usersCache;
@@ -111,6 +127,7 @@
 
   // Admin identity is backend UID only. Username/role cannot grant backend admin power.
   try{isAdminUser=function(u=currentLocalUser){return !!u&&u.uid===ADMIN_UID}}catch{}
+  try{dpUrl=function(u){return u?.dpUrl||u?.dpData||(u?.dpBlob?URL.createObjectURL(u.dpBlob):'assets/common.jpg')}}catch{}
 
   const oldSyncFirebaseUserToLocal=syncFirebaseUserToLocal;
   syncFirebaseUserToLocal=async function(profile){
@@ -127,6 +144,7 @@
     listenActivityBadge();
     // Migrate local metadata once. Large files stay local but are represented online.
     migrateLocalSocialMetadata().catch(ex=>console.warn('migration',ex));
+    migrateLocalMediaToSupabase().catch(ex=>console.warn('media migration',ex));
   }
   if(!firebaseReady()){console.error('School Memories Firebase backend: Firebase SDK unavailable');return;}
 
@@ -141,8 +159,8 @@
       const username=normUser($('registerUsername').value),pw=$('registerPassword').value,name=$('registerName').value.trim();
       if(!name)return err.textContent='❌ ᴅɪꜱᴘʟᴀʏ ɴᴀᴍᴇ ʀᴇQᴜɪʀᴇᴅ';if(username.length<3)return err.textContent='❌ ᴜꜱᴇʀɴᴀᴍᴇ ᴛᴏᴏ ꜱʜᴏʀᴛ';if(pw.length<6)return err.textContent='❌ ᴘᴀꜱꜱᴡᴏʀᴅ ᴍɪɴɪᴍᴜᴍ 6 ᴄʜᴀʀᴀᴄᴛᴇʀꜱ';if(pw!==$('registerConfirm').value)return err.textContent='❌ ᴘᴀꜱꜱᴡᴏʀᴅꜱ ᴅᴏ ɴᴏᴛ ᴍᴀᴛᴄʜ';
       cred=await auth().createUserWithEmailAndPassword(firebaseEmailForUsername(username),pw);
-      const dpFile=$('registerDp').files[0]||null,dpData=dpFile?await compressImage(dpFile,420,.78):'';
-      const profile={uid:cred.user.uid,username,userId:'OG'+Date.now().toString(36).toUpperCase(),name,dpData,bio:'',role:cred.user.uid===ADMIN_UID?'admin':'user',created:now(),updated:now()};
+      const dpFile=$('registerDp').files[0]||null,dp=dpFile?await imageUploadPayload(dpFile,'dp',420,.78):{dpUrl:'',dpPath:''};
+      const profile={uid:cred.user.uid,username,userId:'OG'+Date.now().toString(36).toUpperCase(),name,dpData:'',dpUrl:dp.dpUrl,dpPath:dp.dpPath,bio:'',role:cred.user.uid===ADMIN_UID?'admin':'user',created:now(),updated:now()};
       const batch=db().batch(),uRef=db().collection('users').doc(cred.user.uid),nRef=db().collection('usernames').doc(username);batch.set(uRef,profile);batch.set(nRef,{uid:cred.user.uid,username,created:now()});await batch.commit();
       await syncFirebaseUserToLocal(profile);updateAccountUI();gate(false);e.target.reset();showPage(0);
     }catch(ex){
@@ -174,12 +192,12 @@
           await fbUser.updateEmail(firebaseEmailForUsername(newUsername));
         }
         if(np)await fbUser.updatePassword(np);
-        const f=$('editDpInput').files[0]||null,dpData=f?await compressImage(f,420,.78):(currentLocalUser.dpData||'');
-        const updated={...currentLocalUser,uid:fbUser.uid,username:newUsername,name,bio,dpData,role:fbUser.uid===ADMIN_UID?'admin':'user',updated:now()};delete updated.passwordHash;delete updated.dpBlob;
+        const f=$('editDpInput').files[0]||null,oldDpPath=currentLocalUser.dpPath||'',dp=f?await imageUploadPayload(f,'dp',420,.78):{dpUrl:currentLocalUser.dpUrl||'',dpPath:oldDpPath};
+        const updated={...currentLocalUser,uid:fbUser.uid,username:newUsername,name,bio,dpData:f?'':(currentLocalUser.dpData||''),dpUrl:dp.dpUrl,dpPath:dp.dpPath,role:fbUser.uid===ADMIN_UID?'admin':'user',updated:now()};delete updated.passwordHash;delete updated.dpBlob;
         const batch=db().batch();batch.set(db().collection('users').doc(fbUser.uid),updated,{merge:true});batch.set(db().collection('usernames').doc(newUsername),{uid:fbUser.uid,username:newUsername,updated:now()},{merge:true});if(newUsername!==oldUsername)batch.delete(db().collection('usernames').doc(oldUsername));await batch.commit();
         // keep local media ownership display in sync
         for(const s of ['reels','posts','messages','comments','postComments','activity','follows'])if(localStoreHas(s))try{for(const x of await getAll(s)){let c=false;for(const k of ['username','from','to','actor','target','follower','following'])if(x[k]===oldUsername){x[k]=newUsername;c=true}if(c)await put(s,x)}}catch{}
-        try{await del('users',oldUsername)}catch{}await put('users',updated);currentLocalUser=updated;invalidateUsers();updateAccountUI();$('editUserDialog').close();if($('userProfileDialog').open)$('userProfileDialog').close();openSocialProfile(newUsername);updateMessageBadge();
+        if(f&&oldDpPath&&oldDpPath!==dp.dpPath)deleteStoragePath(oldDpPath).catch(()=>{});try{await del('users',oldUsername)}catch{}await put('users',updated);currentLocalUser=updated;invalidateUsers();updateAccountUI();$('editUserDialog').close();if($('userProfileDialog').open)$('userProfileDialog').close();openSocialProfile(newUsername);updateMessageBadge();
       }catch(ex){console.error('online edit profile',ex);err.textContent=ex.code==='auth/wrong-password'||ex.code==='auth/invalid-credential'?'❌ ᴄᴜʀʀᴇɴᴛ ᴘᴀꜱꜱᴡᴏʀᴅ ɪꜱ ᴡʀᴏɴɢ':'❌ ᴄᴏᴜʟᴅ ɴᴏᴛ ꜱᴀᴠᴇ • '+(ex.message||'ERROR')}
     };
   }
@@ -230,7 +248,7 @@
   async function localReelMap(){return new Map((localStoreHas('reels')?await getAll('reels'):[]).map(x=>[x.id,x]))}
   async function localPostMap(){return new Map((localStoreHas('posts')?await getAll('posts'):[]).map(x=>[x.id,x]))}
   async function mergeOnlineMediaDoc(d,localMap,kind){
-    const l=localMap.get(d.id)||{};return {...l,...d,id:d.id,username:d.ownerUsername||d.username||l.username,ownerId:d.ownerId||l.ownerId,videoBlob:l.videoBlob,mediaBlob:l.mediaBlob,mediaData:d.mediaData||l.mediaData||'',mediaLocalOnly:!!d.mediaLocalOnly,mediaType:d.mediaType||l.mediaType||'',mediaName:d.mediaName||l.mediaName||''}
+    const l=localMap.get(d.id)||{};return {...l,...d,id:d.id,username:d.ownerUsername||d.username||l.username,ownerId:d.ownerId||l.ownerId,videoBlob:l.videoBlob,mediaBlob:l.mediaBlob,mediaUrl:d.mediaUrl||l.mediaUrl||'',mediaPath:d.mediaPath||l.mediaPath||'',mediaData:d.mediaData||l.mediaData||'',mediaLocalOnly:!!d.mediaLocalOnly,mediaType:d.mediaType||l.mediaType||'',mediaName:d.mediaName||l.mediaName||''}
   }
   async function allOnlineReels(){
     const [snap,lm]=await Promise.all([db().collection('reels').get(),localReelMap()]);const out=[];for(const doc of snap.docs)out.push(await mergeOnlineMediaDoc(docData(doc),lm,'reel'));
@@ -252,10 +270,10 @@
   resetSeenReels=function(){if(currentLocalUser)localStorage.removeItem(seenKey());if(currentUid())db().collection('seenReels').doc(currentUid()).collection('items').get().then(s=>{const b=db().batch();s.docs.forEach(d=>b.delete(d.ref));return b.commit()}).catch(()=>{})};
 
   async function mediaBlobForItem(item,kind){
-    const b=kind==='reel'?item?.videoBlob:item?.mediaBlob;if(b instanceof Blob)return b;if(item?.mediaData)return dataUrlToBlob(item.mediaData);return null
+    const b=kind==='reel'?item?.videoBlob:item?.mediaBlob;if(b instanceof Blob)return b;if(item?.mediaData)return dataUrlToBlob(item.mediaData);if(item?.mediaUrl)try{const r=await fetch(item.mediaUrl);if(r.ok)return r.blob()}catch{}return null
   }
   function mediaPreviewMarkup(item,kind){
-    const src=localMediaUrl(item,kind);if(!src)return `<div class="online-media-missing"><b>${kind==='reel'?'🎬':'🖼️'} ᴍᴇᴅɪᴀ ɴᴏᴛ ᴏɴ ᴛʜɪꜱ ᴅᴇᴠɪᴄᴇ</b><small>ᴛʜᴇ ꜱᴏᴄɪᴀʟ ᴅᴀᴛᴀ ɪꜱ ᴏɴʟɪɴᴇ, ʙᴜᴛ ʟᴀʀɢᴇ ᴜᴘʟᴏᴀᴅꜱ ɴᴇᴇᴅ ᴍᴇᴅɪᴀ ꜱᴛᴏʀᴀɢᴇ.</small></div>`;
+    const src=localMediaUrl(item,kind);if(!src)return `<div class="online-media-missing"><b>${kind==='reel'?'🎬':'🖼️'} ᴍᴇᴅɪᴀ ᴜɴᴀᴠᴀɪʟᴀʙʟᴇ</b><small>ᴛʜɪꜱ ᴏʟᴅ ɪᴛᴇᴍ ᴅᴏᴇꜱ ɴᴏᴛ ʜᴀᴠᴇ ᴀɴ ᴏɴʟɪɴᴇ ᴍᴇᴅɪᴀ ꜰɪʟᴇ.</small></div>`;
     return kind==='reel'?`<video src="${src}" playsinline loop preload="metadata"></video>`:((item.mediaType||item.mediaBlob?.type||mimeFromDataUrl(item.mediaData)).startsWith('video/')?`<video src="${src}" controls playsinline preload="metadata"></video>`:`<img src="${src}" alt="${escapeHtml(item.caption||'post')}">`)
   }
   async function reelLikeState(reelId){const s=await db().collection('reels').doc(reelId).collection('likes').get();return {count:s.size,liked:!!currentUid()&&s.docs.some(d=>d.id===currentUid())}}
@@ -270,15 +288,15 @@
   $('publishCreate').onclick=async()=>{
     if(!createFile||!currentLocalUser||!online())return;const btn=$('publishCreate');btn.disabled=true;
     try{
-      const kind=createKind==='reel'?'reel':'post',id=(kind==='reel'?'reel-':'post-')+Date.now()+'-'+Math.random().toString(36).slice(2),caption=$('createCaption').value.trim(),media=await smallMediaPayload(createFile,kind),doc={id,ownerId:currentUid(),ownerUsername:currentLocalUser.username,username:currentLocalUser.username,caption,created:now(),mediaData:media.mediaData,mediaLocalOnly:media.mediaLocalOnly,mediaType:createFile.type||'',mediaName:createFile.name||'',mediaSize:createFile.size||0};
+      const kind=createKind==='reel'?'reel':'post',id=(kind==='reel'?'reel-':'post-')+Date.now()+'-'+Math.random().toString(36).slice(2),caption=$('createCaption').value.trim(),media=await smallMediaPayload(createFile,kind),doc={id,ownerId:currentUid(),ownerUsername:currentLocalUser.username,username:currentLocalUser.username,caption,created:now(),...media};
       if(kind==='reel'){const local={...doc,videoBlob:createFile};await put('reels',local);await db().collection('reels').doc(id).set(doc)}else{const local={...doc,mediaBlob:createFile};await put('posts',local);await db().collection('posts').doc(id).set(doc)}
-      if(media.mediaLocalOnly)showStorageNotice(kind);$('createReelDialog').close();resetCreate();if(kind==='reel')openReelsPage(id);else openSocialProfile(currentLocalUser.username);
+      $('createReelDialog').close();resetCreate();if(kind==='reel')openReelsPage(id);else openSocialProfile(currentLocalUser.username);
     }catch(ex){console.error('publish online',ex);alert('❌ ᴄᴏᴜʟᴅ ɴᴏᴛ ᴘᴏꜱᴛ • '+(ex.message||'FIREBASE ERROR'))}finally{btn.disabled=false}
   };
 
   async function deleteReelOnline(r){
     const ref=db().collection('reels').doc(r.id);try{
-      const comments=await ref.collection('comments').get();for(const c of comments.docs){const [likes,replies]=await Promise.all([c.ref.collection('likes').get(),c.ref.collection('replies').get()]);for(const d of likes.docs)await d.ref.delete();for(const rp of replies.docs){const ls=await rp.ref.collection('likes').get();for(const x of ls.docs)await x.ref.delete();await rp.ref.delete()}await c.ref.delete()}const likes=await ref.collection('likes').get();for(const l of likes.docs)await l.ref.delete();await ref.delete();try{await del('reels',r.id)}catch{}return true
+      const comments=await ref.collection('comments').get();for(const c of comments.docs){const [likes,replies]=await Promise.all([c.ref.collection('likes').get(),c.ref.collection('replies').get()]);for(const d of likes.docs)await d.ref.delete();for(const rp of replies.docs){const ls=await rp.ref.collection('likes').get();for(const x of ls.docs)await x.ref.delete();await rp.ref.delete()}await c.ref.delete()}const likes=await ref.collection('likes').get();for(const l of likes.docs)await l.ref.delete();await ref.delete();if(r.mediaPath)await deleteStoragePath(r.mediaPath);try{await del('reels',r.id)}catch{}return true
     }catch(ex){console.error('delete reel',ex);alert('❌ ᴄᴏᴜʟᴅ ɴᴏᴛ ᴅᴇʟᴇᴛᴇ');return false}
   }
   renderSocialReels=async function(focus){
@@ -344,7 +362,7 @@
   renderPostViewer=async function(){
     const p=activePost;if(!p)return;const u=await onlineUserByUid(p.ownerId)||await onlineUserByUsername(p.username)||{username:p.username||'user'},cnt=await postCounts(p),own=p.ownerId?currentUid()===p.ownerId:currentLocalUser?.username===p.username,canDelete=own||isAdminUid();$('postViewerUserDp').src=dpUrl(u);$('postViewerUsername').textContent='@'+u.username;$('postViewerIndex').textContent=`${activePostIndex+1} / ${activePostList.length}`;$('postViewerCaption').textContent=p.caption||'';$('postViewerTime').textContent=new Date(p.created||now()).toLocaleString();$('postLikeCount').textContent=cnt.likes;$('postCommentCount').textContent=cnt.comments;$('postLikeBtn').textContent=cnt.liked?'♥':'♡';$('postDeleteBtn').hidden=!canDelete;const stage=$('postViewerStage');stage.innerHTML='';const src=localMediaUrl(p,'post');if(!src)stage.innerHTML='<div class="online-media-missing"><b>🖼️ ᴍᴇᴅɪᴀ ɴᴏᴛ ᴏɴ ᴛʜɪꜱ ᴅᴇᴠɪᴄᴇ</b><small>ᴘᴏꜱᴛ ᴍᴇᴛᴀᴅᴀᴛᴀ, ʟɪᴋᴇꜱ ᴀɴᴅ ᴄᴏᴍᴍᴇɴᴛꜱ ᴀʀᴇ ᴏɴʟɪɴᴇ.</small></div>';else if((p.mediaType||p.mediaBlob?.type||mimeFromDataUrl(p.mediaData)).startsWith('video/')){const v=document.createElement('video');v.src=src;v.controls=true;v.playsInline=true;v.autoplay=true;stage.appendChild(v)}else{const im=document.createElement('img');im.src=src;im.alt=p.caption||'post';stage.appendChild(im)}$('postPrevBtn').disabled=activePostIndex<=0;$('postNextBtn').disabled=activePostIndex>=activePostList.length-1
   };
-  async function deletePostOnline(p){const ref=db().collection('posts').doc(p.id);try{const comments=await ref.collection('comments').get();for(const c of comments.docs){const [likes,reps]=await Promise.all([c.ref.collection('likes').get(),c.ref.collection('replies').get()]);for(const x of likes.docs)await x.ref.delete();for(const rp of reps.docs){const l=await rp.ref.collection('likes').get();for(const x of l.docs)await x.ref.delete();await rp.ref.delete()}await c.ref.delete()}const likes=await ref.collection('likes').get();for(const x of likes.docs)await x.ref.delete();await ref.delete();try{await del('posts',p.id)}catch{}return true}catch(ex){console.error(ex);alert('❌ ᴄᴏᴜʟᴅ ɴᴏᴛ ᴅᴇʟᴇᴛᴇ ᴘᴏꜱᴛ');return false}}
+  async function deletePostOnline(p){const ref=db().collection('posts').doc(p.id);try{const comments=await ref.collection('comments').get();for(const c of comments.docs){const [likes,reps]=await Promise.all([c.ref.collection('likes').get(),c.ref.collection('replies').get()]);for(const x of likes.docs)await x.ref.delete();for(const rp of reps.docs){const l=await rp.ref.collection('likes').get();for(const x of l.docs)await x.ref.delete();await rp.ref.delete()}await c.ref.delete()}const likes=await ref.collection('likes').get();for(const x of likes.docs)await x.ref.delete();await ref.delete();if(p.mediaPath)await deleteStoragePath(p.mediaPath);try{await del('posts',p.id)}catch{}return true}catch(ex){console.error(ex);alert('❌ ᴄᴏᴜʟᴅ ɴᴏᴛ ᴅᴇʟᴇᴛᴇ ᴘᴏꜱᴛ');return false}}
   function rebindPostViewerButtons(){
     for(const id of ['postLikeBtn','postCommentBtn','postShareBtn','postDownloadBtn','postDeleteBtn','postCommentsCountBtn','postCommentSend','postCommentText'])replaceNode(id);
     $('postLikeBtn').onclick=async()=>{if(!activePost)return;const owner=await onlineUserByUid(activePost.ownerId)||await onlineUserByUsername(activePost.username);await toggleNestedLike('posts',activePost.id,activePost.ownerId,owner?.username||activePost.username,'post-like',{postId:activePost.id});renderPostViewer()};
@@ -379,11 +397,11 @@
   };
   function listenChat(chatId){stopSnapshot('chatUnsub');fbState.chatUnsub=db().collection('chats').doc(chatId).collection('messages').orderBy('created').onSnapshot(()=>{if(activeChatUser&&chatId===chatIdFor(currentUid(),activeChatUser.uid))renderChat()},ex=>console.warn('chat listener',ex))}
   renderChat=async function(){
-    const host=$('chatMessages');host.innerHTML='';if(!currentUid()||!activeChatUser)return;const id=chatIdFor(currentUid(),activeChatUser.uid),chat=await db().collection('chats').doc(id).get(),cut=Number(chat.data()?.clearedAt?.[currentUid()]||0),s=await db().collection('chats').doc(id).collection('messages').orderBy('created').get();for(const d of s.docs){const m=docData(d);if(m.created<=cut)continue;const mine=m.senderId===currentUid(),row=document.createElement('div');row.className='message-line '+(mine?'mine':'theirs');let media='';const src=m.mediaData||'';if(src){if((m.mediaType||mimeFromDataUrl(src)).startsWith('image/'))media=`<img class="chat-media" src="${src}">`;else if((m.mediaType||mimeFromDataUrl(src)).startsWith('video/'))media=`<video class="chat-media" src="${src}" controls playsinline data-chat-video></video>`;media+=`<a class="chat-download" href="${src}" download="${escapeHtml(m.mediaName||'attachment')}">⬇</a>`}else if(m.mediaLocalOnly)media='<div class="chat-media-unavailable">📎 ʟᴀʀɢᴇ ᴍᴇᴅɪᴀ • ᴏʀɪɢɪɴᴀʟ ᴅᴇᴠɪᴄᴇ ᴏɴʟʏ</div>';row.innerHTML=`<div class="message-bubble">${media}${m.text?`<p>${escapeHtml(m.text)}</p>`:''}<small>${fmtMsgTime(m.created)}</small>${mine?'<button class="delete-message" type="button">🗑</button>':''}</div>`;row.querySelector('.delete-message')?.addEventListener('click',async()=>{await d.ref.delete();await refreshChatPreview(id);renderChat()});host.appendChild(row)}host.scrollTop=host.scrollHeight;await db().collection('chats').doc(id).set({lastRead:{...(chat.data()?.lastRead||{}),[currentUid()]:now()}},{merge:true});updateMessageBadge()
+    const host=$('chatMessages');host.innerHTML='';if(!currentUid()||!activeChatUser)return;const id=chatIdFor(currentUid(),activeChatUser.uid),chat=await db().collection('chats').doc(id).get(),cut=Number(chat.data()?.clearedAt?.[currentUid()]||0),s=await db().collection('chats').doc(id).collection('messages').orderBy('created').get();for(const d of s.docs){const m=docData(d);if(m.created<=cut)continue;const mine=m.senderId===currentUid(),row=document.createElement('div');row.className='message-line '+(mine?'mine':'theirs');let media='';const src=m.mediaUrl||m.mediaData||'';if(src){if((m.mediaType||mimeFromDataUrl(src)).startsWith('image/'))media=`<img class="chat-media" src="${src}">`;else if((m.mediaType||mimeFromDataUrl(src)).startsWith('video/'))media=`<video class="chat-media" src="${src}" controls playsinline data-chat-video></video>`;media+=`<a class="chat-download" href="${src}" download="${escapeHtml(m.mediaName||'attachment')}">⬇</a>`}else if(m.mediaLocalOnly)media='<div class="chat-media-unavailable">📎 ʟᴀʀɢᴇ ᴍᴇᴅɪᴀ • ᴏʀɪɢɪɴᴀʟ ᴅᴇᴠɪᴄᴇ ᴏɴʟʏ</div>';row.innerHTML=`<div class="message-bubble">${media}${m.text?`<p>${escapeHtml(m.text)}</p>`:''}<small>${fmtMsgTime(m.created)}</small>${mine?'<button class="delete-message" type="button">🗑</button>':''}</div>`;row.querySelector('.delete-message')?.addEventListener('click',async()=>{if(m.mediaPath)await deleteStoragePath(m.mediaPath);await d.ref.delete();await refreshChatPreview(id);renderChat()});host.appendChild(row)}host.scrollTop=host.scrollHeight;await db().collection('chats').doc(id).set({lastRead:{...(chat.data()?.lastRead||{}),[currentUid()]:now()}},{merge:true});updateMessageBadge()
   };
-  async function refreshChatPreview(id){const ref=db().collection('chats').doc(id),s=await ref.collection('messages').orderBy('created','desc').limit(1).get();if(s.empty)await ref.set({lastMessage:'',lastMessageAt:0,lastMessageSenderId:'',updated:now()},{merge:true});else{const m=docData(s.docs[0]);await ref.set({lastMessage:m.text||(m.mediaData||m.mediaLocalOnly?'📎 ᴍᴇᴅɪᴀ':'ᴍᴇꜱꜱᴀɢᴇ'),lastMessageAt:m.created,lastMessageSenderId:m.senderId,updated:now()},{merge:true})}}
+  async function refreshChatPreview(id){const ref=db().collection('chats').doc(id),s=await ref.collection('messages').orderBy('created','desc').limit(1).get();if(s.empty)await ref.set({lastMessage:'',lastMessageAt:0,lastMessageSenderId:'',updated:now()},{merge:true});else{const m=docData(s.docs[0]);await ref.set({lastMessage:m.text||(m.mediaUrl||m.mediaData||m.mediaLocalOnly?'📎 ᴍᴇᴅɪᴀ':'ᴍᴇꜱꜱᴀɢᴇ'),lastMessageAt:m.created,lastMessageSenderId:m.senderId,updated:now()},{merge:true})}}
   sendMessage=async function(blob=null){
-    if(!currentUid()||!activeChatUser)return;const text=$('chatText').value.trim();if(!text&&!blob)return;const chatRef=await ensureChat(activeChatUser),media=blob?await smallMediaPayload(blob,'message'):{mediaData:'',mediaLocalOnly:false,mediaType:'',mediaName:'',mediaSize:0},ref=chatRef.collection('messages').doc(),m={id:ref.id,senderId:currentUid(),senderUsername:currentLocalUser.username,recipientId:activeChatUser.uid,recipientUsername:activeChatUser.username,text,created:now(),...media};await ref.set(m);await chatRef.set({lastMessage:text||(blob?'📎 ᴍᴇᴅɪᴀ':'ᴍᴇꜱꜱᴀɢᴇ'),lastMessageAt:m.created,lastMessageSenderId:currentUid(),updated:now(),members:[currentUid(),activeChatUser.uid],memberUsernames:[currentLocalUser.username,activeChatUser.username]},{merge:true});$('chatText').value='';if(blob&&media.mediaLocalOnly)showStorageNotice('message video');await renderChat();await renderRecentChats()
+    if(!currentUid()||!activeChatUser)return;const text=$('chatText').value.trim();if(!text&&!blob)return;const chatRef=await ensureChat(activeChatUser),media=blob?await smallMediaPayload(blob,'message'):{mediaData:'',mediaLocalOnly:false,mediaType:'',mediaName:'',mediaSize:0},ref=chatRef.collection('messages').doc(),m={id:ref.id,senderId:currentUid(),senderUsername:currentLocalUser.username,recipientId:activeChatUser.uid,recipientUsername:activeChatUser.username,text,created:now(),...media};await ref.set(m);await chatRef.set({lastMessage:text||(blob?'📎 ᴍᴇᴅɪᴀ':'ᴍᴇꜱꜱᴀɢᴇ'),lastMessageAt:m.created,lastMessageSenderId:currentUid(),updated:now(),members:[currentUid(),activeChatUser.uid],memberUsernames:[currentLocalUser.username,activeChatUser.username]},{merge:true});$('chatText').value='';await renderChat();await renderRecentChats()
   };
   const clearChat=replaceNode('clearChatBtn');if(clearChat)clearChat.onclick=async()=>{if(!activeChatUser||!confirm('Clear this chat for you?'))return;const id=chatIdFor(currentUid(),activeChatUser.uid),ref=db().collection('chats').doc(id),s=await ref.get(),cleared={...(s.data()?.clearedAt||{}),[currentUid()]:now()};await ref.set({clearedAt:cleared},{merge:true});renderChat()};
   $('chatBackBtn').onclick=async()=>{stopSnapshot('chatUnsub');activeChatUser=null;$('chatView').hidden=true;$('messagesListView').hidden=false;await renderRecentChats();updateMessageBadge()};
@@ -395,20 +413,20 @@
   groupCanManage=function(g){return !!currentUid()&&(isAdminUid()||g.creatorId===currentUid()||safeArray(g.admins).includes(currentUid()))};
   async function groupRows(){if(!currentUid())return [];const q=isAdminUid()?db().collection('groups').get():db().collection('groups').where('members','array-contains',currentUid()).get(),s=await q;return s.docs.map(docData).sort((a,b)=>b.created-a.created)}
   renderGroupsList=async function(){
-    const host=$('groupsList');if(!host||!currentUid())return;host.innerHTML='';const groups=await groupRows();for(const g of groups){const row=document.createElement('button');row.className='chat-row social-row';row.innerHTML=`<img src="${g.dpData||'assets/common.jpg'}"><span><b>${escapeHtml(g.name)}</b><small>${safeArray(g.members).length} ᴍᴇᴍʙᴇʀꜱ • @${escapeHtml(g.creatorUsername||'')}</small></span><em>›</em>`;row.onclick=()=>openGroupChat(g);host.appendChild(row)}if(!host.children.length)host.innerHTML='<div class="empty-state">👥 ɴᴏ ɢʀᴏᴜᴘꜱ ʏᴇᴛ</div>'
+    const host=$('groupsList');if(!host||!currentUid())return;host.innerHTML='';const groups=await groupRows();for(const g of groups){const row=document.createElement('button');row.className='chat-row social-row';row.innerHTML=`<img src="${dpUrl(g)}"><span><b>${escapeHtml(g.name)}</b><small>${safeArray(g.members).length} ᴍᴇᴍʙᴇʀꜱ • @${escapeHtml(g.creatorUsername||'')}</small></span><em>›</em>`;row.onclick=()=>openGroupChat(g);host.appendChild(row)}if(!host.children.length)host.innerHTML='<div class="empty-state">👥 ɴᴏ ɢʀᴏᴜᴘꜱ ʏᴇᴛ</div>'
   };
   const groupForm=replaceNode('createGroupForm');if(groupForm)groupForm.onsubmit=async e=>{
-    e.preventDefault();if(!currentUid())return;try{const users=await onlineUsers(),byName=new Map(users.map(u=>[u.username,u])),names=parseMemberNames($('groupMembersInput').value),members=[],memberUsernames=[];for(const n of names){const u=byName.get(n);if(u&&!members.includes(u.uid)){members.push(u.uid);memberUsernames.push(u.username)}}if(!members.includes(currentUid())){members.unshift(currentUid());memberUsernames.unshift(currentLocalUser.username)}const dpFile=$('groupDpInput').files[0]||null,ref=db().collection('groups').doc(),g={id:ref.id,name:$('groupNameInput').value.trim()||'ɢʀᴏᴜᴘ',dpData:dpFile?await compressImage(dpFile,420,.78):'',creatorId:currentUid(),creatorUsername:currentLocalUser.username,admins:[currentUid()],adminUsernames:[currentLocalUser.username],members,memberUsernames,created:now(),updated:now()};await ref.set(g);e.target.reset();$('createGroupDialog').close();switchMessageTab('groups');renderGroupsList()}catch(ex){console.error(ex);alert('❌ ᴄᴏᴜʟᴅ ɴᴏᴛ ᴄʀᴇᴀᴛᴇ ɢʀᴏᴜᴘ')}
+    e.preventDefault();if(!currentUid())return;try{const users=await onlineUsers(),byName=new Map(users.map(u=>[u.username,u])),names=parseMemberNames($('groupMembersInput').value),members=[],memberUsernames=[];for(const n of names){const u=byName.get(n);if(u&&!members.includes(u.uid)){members.push(u.uid);memberUsernames.push(u.username)}}if(!members.includes(currentUid())){members.unshift(currentUid());memberUsernames.unshift(currentLocalUser.username)}const dpFile=$('groupDpInput').files[0]||null,ref=db().collection('groups').doc(),gdp=dpFile?await imageUploadPayload(dpFile,'group dp',420,.78):{dpUrl:'',dpPath:''},g={id:ref.id,name:$('groupNameInput').value.trim()||'ɢʀᴏᴜᴘ',dpData:'',dpUrl:gdp.dpUrl,dpPath:gdp.dpPath,creatorId:currentUid(),creatorUsername:currentLocalUser.username,admins:[currentUid()],adminUsernames:[currentLocalUser.username],members,memberUsernames,created:now(),updated:now()};await ref.set(g);e.target.reset();$('createGroupDialog').close();switchMessageTab('groups');renderGroupsList()}catch(ex){console.error(ex);alert('❌ ᴄᴏᴜʟᴅ ɴᴏᴛ ᴄʀᴇᴀᴛᴇ ɢʀᴏᴜᴘ')}
   };
-  openGroupChat=async function(g){const s=await db().collection('groups').doc(g.id).get();activeGroup=s.exists?docData(s):g;$('messagesListView').hidden=true;$('chatView').hidden=true;$('channelView').hidden=true;$('groupChatView').hidden=false;$('groupChatDp').src=activeGroup.dpData||'assets/common.jpg';$('groupChatName').textContent=activeGroup.name;$('groupChatMeta').textContent=`${safeArray(activeGroup.members).length} ᴍᴇᴍʙᴇʀꜱ`;$('groupText').value='';listenGroup(activeGroup.id);await renderGroupMessages()};
+  openGroupChat=async function(g){const s=await db().collection('groups').doc(g.id).get();activeGroup=s.exists?docData(s):g;$('messagesListView').hidden=true;$('chatView').hidden=true;$('channelView').hidden=true;$('groupChatView').hidden=false;$('groupChatDp').src=dpUrl(activeGroup);$('groupChatName').textContent=activeGroup.name;$('groupChatMeta').textContent=`${safeArray(activeGroup.members).length} ᴍᴇᴍʙᴇʀꜱ`;$('groupText').value='';listenGroup(activeGroup.id);await renderGroupMessages()};
   function listenGroup(groupId){stopSnapshot('groupUnsub');fbState.groupUnsub=db().collection('groups').doc(groupId).collection('messages').orderBy('created').onSnapshot(()=>{if(activeGroup?.id===groupId)renderGroupMessages()},ex=>console.warn('group listener',ex))}
   renderGroupMessages=async function(){
-    const host=$('groupMessages');if(!host||!activeGroup)return;host.innerHTML='';const users=await onlineUsers(),byUid=new Map(users.map(u=>[u.uid,u])),s=await db().collection('groups').doc(activeGroup.id).collection('messages').orderBy('created').get();for(const d of s.docs){const m=docData(d),u=byUid.get(m.senderId)||{username:m.senderUsername||'user'},mine=m.senderId===currentUid(),row=document.createElement('div');row.className='message-line '+(mine?'mine':'theirs');let media='';if(m.mediaData){const t=m.mediaType||mimeFromDataUrl(m.mediaData);if(t.startsWith('image/'))media=`<img class="chat-media" src="${m.mediaData}">`;else if(t.startsWith('video/'))media=`<video class="chat-media" src="${m.mediaData}" controls playsinline></video>`;media+=`<a class="chat-download" href="${m.mediaData}" download="${escapeHtml(m.mediaName||'attachment')}">⬇</a>`}else if(m.mediaLocalOnly)media='<div class="chat-media-unavailable">📎 ʟᴀʀɢᴇ ᴍᴇᴅɪᴀ • ᴏʀɪɢɪɴᴀʟ ᴅᴇᴠɪᴄᴇ</div>';const canDelete=mine||groupCanManage(activeGroup);row.innerHTML=`<div class="message-bubble">${!mine?`<b class="bubble-user">@${escapeHtml(u.username)}${u.uid===ADMIN_UID?' 🛡️':''}</b>`:''}${media}${m.text?`<p>${escapeHtml(m.text)}</p>`:''}<small>${fmtMsgTime(m.created)}</small>${canDelete?'<button class="delete-message" type="button">🗑</button>':''}</div>`;row.querySelector('.delete-message')?.addEventListener('click',async()=>{await d.ref.delete();renderGroupMessages()});host.appendChild(row)}host.scrollTop=host.scrollHeight
+    const host=$('groupMessages');if(!host||!activeGroup)return;host.innerHTML='';const users=await onlineUsers(),byUid=new Map(users.map(u=>[u.uid,u])),s=await db().collection('groups').doc(activeGroup.id).collection('messages').orderBy('created').get();for(const d of s.docs){const m=docData(d),u=byUid.get(m.senderId)||{username:m.senderUsername||'user'},mine=m.senderId===currentUid(),row=document.createElement('div');row.className='message-line '+(mine?'mine':'theirs');let media='';if(m.mediaUrl||m.mediaData){const src=m.mediaUrl||m.mediaData,t=m.mediaType||mimeFromDataUrl(src);if(t.startsWith('image/'))media=`<img class="chat-media" src="${src}">`;else if(t.startsWith('video/'))media=`<video class="chat-media" src="${src}" controls playsinline></video>`;media+=`<a class="chat-download" href="${src}" download="${escapeHtml(m.mediaName||'attachment')}">⬇</a>`}else if(m.mediaLocalOnly)media='<div class="chat-media-unavailable">📎 ʟᴀʀɢᴇ ᴍᴇᴅɪᴀ • ᴏʀɪɢɪɴᴀʟ ᴅᴇᴠɪᴄᴇ</div>';const canDelete=mine||groupCanManage(activeGroup);row.innerHTML=`<div class="message-bubble">${!mine?`<b class="bubble-user">@${escapeHtml(u.username)}${u.uid===ADMIN_UID?' 🛡️':''}</b>`:''}${media}${m.text?`<p>${escapeHtml(m.text)}</p>`:''}<small>${fmtMsgTime(m.created)}</small>${canDelete?'<button class="delete-message" type="button">🗑</button>':''}</div>`;row.querySelector('.delete-message')?.addEventListener('click',async()=>{if(m.mediaPath)await deleteStoragePath(m.mediaPath);await d.ref.delete();renderGroupMessages()});host.appendChild(row)}host.scrollTop=host.scrollHeight
   };
-  sendGroupMessage=async function(blob=null){if(!currentUid()||!activeGroup)return;const text=$('groupText').value.trim();if(!text&&!blob)return;const media=blob?await smallMediaPayload(blob,'group message'):{mediaData:'',mediaLocalOnly:false,mediaType:'',mediaName:'',mediaSize:0},ref=db().collection('groups').doc(activeGroup.id).collection('messages').doc();await ref.set({id:ref.id,senderId:currentUid(),senderUsername:currentLocalUser.username,text,created:now(),...media});$('groupText').value='';if(blob&&media.mediaLocalOnly)showStorageNotice('group video');renderGroupMessages()};
+  sendGroupMessage=async function(blob=null){if(!currentUid()||!activeGroup)return;const text=$('groupText').value.trim();if(!text&&!blob)return;const media=blob?await smallMediaPayload(blob,'group message'):{mediaData:'',mediaLocalOnly:false,mediaType:'',mediaName:'',mediaSize:0},ref=db().collection('groups').doc(activeGroup.id).collection('messages').doc();await ref.set({id:ref.id,senderId:currentUid(),senderUsername:currentLocalUser.username,text,created:now(),...media});$('groupText').value='';renderGroupMessages()};
   $('groupBackBtn').onclick=()=>{stopSnapshot('groupUnsub');activeGroup=null;$('groupChatView').hidden=true;$('messagesListView').hidden=false;switchMessageTab('groups')};
   const groupMore=replaceNode('groupMoreBtn');if(groupMore)groupMore.onclick=async()=>{
-    if(!activeGroup||!currentUid())return;const ref=db().collection('groups').doc(activeGroup.id),manage=groupCanManage(activeGroup);if(manage&&confirm('Delete this group?\nCancel = keep group')){const s=await ref.collection('messages').get();for(const d of s.docs)await d.ref.delete();await ref.delete();stopSnapshot('groupUnsub');activeGroup=null;$('groupChatView').hidden=true;$('messagesListView').hidden=false;switchMessageTab('groups');return}
+    if(!activeGroup||!currentUid())return;const ref=db().collection('groups').doc(activeGroup.id),manage=groupCanManage(activeGroup);if(manage&&confirm('Delete this group?\nCancel = keep group')){const s=await ref.collection('messages').get();for(const d of s.docs){const m=d.data();if(m.mediaPath)await deleteStoragePath(m.mediaPath);await d.ref.delete()}if(activeGroup.dpPath)await deleteStoragePath(activeGroup.dpPath);await ref.delete();stopSnapshot('groupUnsub');activeGroup=null;$('groupChatView').hidden=true;$('messagesListView').hidden=false;switchMessageTab('groups');return}
     if(activeGroup.creatorId===currentUid()){alert('👑 ɢʀᴏᴜᴘ ᴄʀᴇᴀᴛᴏʀ • ᴅᴇʟᴇᴛᴇ ɢʀᴏᴜᴘ ᴛᴏ ʟᴇᴀᴠᴇ');return}if(confirm('Leave this group?')){const members=safeArray(activeGroup.members).filter(x=>x!==currentUid()),names=safeArray(activeGroup.memberUsernames).filter(x=>x!==currentLocalUser.username),admins=safeArray(activeGroup.admins).filter(x=>x!==currentUid()),adminNames=safeArray(activeGroup.adminUsernames).filter(x=>x!==currentLocalUser.username);await ref.update({members,memberUsernames:names,admins,adminUsernames:adminNames,updated:now()});stopSnapshot('groupUnsub');activeGroup=null;$('groupChatView').hidden=true;$('messagesListView').hidden=false;switchMessageTab('groups')}
   };
 
@@ -416,25 +434,25 @@
   async function channelsOnline(){const s=await db().collection('channels').get();return s.docs.map(docData).sort((a,b)=>b.created-a.created)}
   async function channelFollowerState(channelId){const s=await db().collection('channels').doc(channelId).collection('followers').get();return {count:s.size,following:!!currentUid()&&s.docs.some(d=>d.id===currentUid())}}
   renderChannelsList=async function(){
-    const host=$('channelsList');if(!host||!currentUid())return;host.innerHTML='';const channels=await channelsOnline();$('createChannelBtn').hidden=!isAdminUid();for(const c of channels){const fs=await channelFollowerState(c.id),row=document.createElement('button');row.className='chat-row social-row';row.innerHTML=`<img src="${c.dpData||'assets/common.jpg'}"><span><b>📢 ${escapeHtml(c.name)}</b><small>${escapeHtml(c.description||'')} • ${fs.count} ꜰᴏʟʟᴏᴡᴇʀꜱ</small></span><em>${fs.following?'✓':'›'}</em>`;row.onclick=()=>openChannel(c);host.appendChild(row)}if(!host.children.length)host.innerHTML='<div class="empty-state">📢 ɴᴏ ᴄʜᴀɴɴᴇʟꜱ ʏᴇᴛ</div>'
+    const host=$('channelsList');if(!host||!currentUid())return;host.innerHTML='';const channels=await channelsOnline();$('createChannelBtn').hidden=!isAdminUid();for(const c of channels){const fs=await channelFollowerState(c.id),row=document.createElement('button');row.className='chat-row social-row';row.innerHTML=`<img src="${dpUrl(c)}"><span><b>📢 ${escapeHtml(c.name)}</b><small>${escapeHtml(c.description||'')} • ${fs.count} ꜰᴏʟʟᴏᴡᴇʀꜱ</small></span><em>${fs.following?'✓':'›'}</em>`;row.onclick=()=>openChannel(c);host.appendChild(row)}if(!host.children.length)host.innerHTML='<div class="empty-state">📢 ɴᴏ ᴄʜᴀɴɴᴇʟꜱ ʏᴇᴛ</div>'
   };
-  const channelForm=replaceNode('createChannelForm');if(channelForm)channelForm.onsubmit=async e=>{e.preventDefault();if(!isAdminUid())return adminOnly();try{const dpFile=$('channelDpInput').files[0]||null,ref=db().collection('channels').doc(),c={id:ref.id,name:$('channelNameInput').value.trim()||'ᴄʜᴀɴɴᴇʟ',description:$('channelDescInput').value.trim(),dpData:dpFile?await compressImage(dpFile,420,.78):'',createdBy:currentUid(),creatorUsername:currentLocalUser.username,created:now(),updated:now()};await ref.set(c);await ref.collection('followers').doc(currentUid()).set({uid:currentUid(),username:currentLocalUser.username,created:now()});e.target.reset();$('createChannelDialog').close();switchMessageTab('channels');renderChannelsList()}catch(ex){console.error(ex);alert('❌ ᴄᴏᴜʟᴅ ɴᴏᴛ ᴄʀᴇᴀᴛᴇ ᴄʜᴀɴɴᴇʟ')}};
-  openChannel=async function(c){const s=await db().collection('channels').doc(c.id).get();activeChannel=s.exists?docData(s):c;$('messagesListView').hidden=true;$('chatView').hidden=true;$('groupChatView').hidden=true;$('channelView').hidden=false;$('channelDp').src=activeChannel.dpData||'assets/common.jpg';$('channelName').textContent=activeChannel.name;await updateChannelHeader();listenChannel(activeChannel.id);await renderChannelPosts()};
+  const channelForm=replaceNode('createChannelForm');if(channelForm)channelForm.onsubmit=async e=>{e.preventDefault();if(!isAdminUid())return adminOnly();try{const dpFile=$('channelDpInput').files[0]||null,ref=db().collection('channels').doc(),cdp=dpFile?await imageUploadPayload(dpFile,'channel dp',420,.78):{dpUrl:'',dpPath:''},c={id:ref.id,name:$('channelNameInput').value.trim()||'ᴄʜᴀɴɴᴇʟ',description:$('channelDescInput').value.trim(),dpData:'',dpUrl:cdp.dpUrl,dpPath:cdp.dpPath,createdBy:currentUid(),creatorUsername:currentLocalUser.username,created:now(),updated:now()};await ref.set(c);await ref.collection('followers').doc(currentUid()).set({uid:currentUid(),username:currentLocalUser.username,created:now()});e.target.reset();$('createChannelDialog').close();switchMessageTab('channels');renderChannelsList()}catch(ex){console.error(ex);alert('❌ ᴄᴏᴜʟᴅ ɴᴏᴛ ᴄʀᴇᴀᴛᴇ ᴄʜᴀɴɴᴇʟ')}};
+  openChannel=async function(c){const s=await db().collection('channels').doc(c.id).get();activeChannel=s.exists?docData(s):c;$('messagesListView').hidden=true;$('chatView').hidden=true;$('groupChatView').hidden=true;$('channelView').hidden=false;$('channelDp').src=dpUrl(activeChannel);$('channelName').textContent=activeChannel.name;await updateChannelHeader();listenChannel(activeChannel.id);await renderChannelPosts()};
   updateChannelHeader=async function(){if(!activeChannel||!currentUid())return;const fs=await channelFollowerState(activeChannel.id);$('channelMeta').textContent=`${fs.count} ꜰᴏʟʟᴏᴡᴇʀꜱ${activeChannel.description?' • '+activeChannel.description:''}`;$('channelFollowBtn').textContent=isAdminUid()?'⋮':(fs.following?'✓':'＋');$('channelCompose').hidden=!isAdminUid()};
   function listenChannel(id){stopSnapshot('channelUnsub');fbState.channelUnsub=db().collection('channels').doc(id).collection('posts').orderBy('created','desc').onSnapshot(()=>{if(activeChannel?.id===id)renderChannelPosts()},ex=>console.warn('channel listener',ex))}
   $('channelBackBtn').onclick=()=>{stopSnapshot('channelUnsub');activeChannel=null;$('channelView').hidden=true;$('messagesListView').hidden=false;switchMessageTab('channels')};
-  const channelFollow=replaceNode('channelFollowBtn');if(channelFollow)channelFollow.onclick=async()=>{if(!activeChannel||!currentUid())return;const ref=db().collection('channels').doc(activeChannel.id);if(isAdminUid()){if(confirm('Admin: delete this channel?')){const p=await ref.collection('posts').get();for(const d of p.docs){const l=await d.ref.collection('likes').get();for(const x of l.docs)await x.ref.delete();await d.ref.delete()}const f=await ref.collection('followers').get();for(const d of f.docs)await d.ref.delete();await ref.delete();activeChannel=null;$('channelView').hidden=true;$('messagesListView').hidden=false;switchMessageTab('channels')}return}const fref=ref.collection('followers').doc(currentUid()),s=await fref.get();if(s.exists)await fref.delete();else await fref.set({uid:currentUid(),username:currentLocalUser.username,created:now()});updateChannelHeader();renderChannelsList()};
+  const channelFollow=replaceNode('channelFollowBtn');if(channelFollow)channelFollow.onclick=async()=>{if(!activeChannel||!currentUid())return;const ref=db().collection('channels').doc(activeChannel.id);if(isAdminUid()){if(confirm('Admin: delete this channel?')){const p=await ref.collection('posts').get();for(const d of p.docs){const pd=d.data(),l=await d.ref.collection('likes').get();for(const x of l.docs)await x.ref.delete();if(pd.mediaPath)await deleteStoragePath(pd.mediaPath);await d.ref.delete()}if(activeChannel.dpPath)await deleteStoragePath(activeChannel.dpPath);const f=await ref.collection('followers').get();for(const d of f.docs)await d.ref.delete();await ref.delete();activeChannel=null;$('channelView').hidden=true;$('messagesListView').hidden=false;switchMessageTab('channels')}return}const fref=ref.collection('followers').doc(currentUid()),s=await fref.get();if(s.exists)await fref.delete();else await fref.set({uid:currentUid(),username:currentLocalUser.username,created:now()});updateChannelHeader();renderChannelsList()};
   renderChannelPosts=async function(){
-    const host=$('channelPosts');if(!host||!activeChannel)return;host.innerHTML='';const s=await db().collection('channels').doc(activeChannel.id).collection('posts').orderBy('created','desc').get();for(const d of s.docs){const p=docData(d),likes=await d.ref.collection('likes').get(),liked=!!currentUid()&&likes.docs.some(x=>x.id===currentUid()),card=document.createElement('article');card.className='channel-post';let media='';if(p.mediaData){const t=p.mediaType||mimeFromDataUrl(p.mediaData);if(t.startsWith('image/'))media=`<img src="${p.mediaData}">`;else if(t.startsWith('video/'))media=`<video src="${p.mediaData}" controls playsinline></video>`;media+=`<a class="channel-download" href="${p.mediaData}" download="${escapeHtml(p.mediaName||'channel-media')}">⬇</a>`}else if(p.mediaLocalOnly)media='<div class="chat-media-unavailable">📎 ʟᴀʀɢᴇ ᴍᴇᴅɪᴀ • ᴏʀɪɢɪɴᴀʟ ᴅᴇᴠɪᴄᴇ</div>';card.innerHTML=`<div class="channel-post-head"><img src="${activeChannel.dpData||'assets/common.jpg'}"><span><b>${escapeHtml(activeChannel.name)}</b><small>${fmtMsgTime(p.created)}</small></span>${isAdminUid()?'<button class="channel-delete">🗑</button>':''}</div>${media}${p.text?`<p>${escapeHtml(p.text)}</p>`:''}<button class="channel-like" type="button">${liked?'♥':'♡'} <small>${likes.size||''}</small></button>`;card.querySelector('.channel-like').onclick=async()=>{const lr=d.ref.collection('likes').doc(currentUid()),ls=await lr.get();if(ls.exists)await lr.delete();else await lr.set({uid:currentUid(),username:currentLocalUser.username,created:now()});renderChannelPosts()};card.querySelector('.channel-delete')?.addEventListener('click',async()=>{if(!confirm('Delete channel post?'))return;const l=await d.ref.collection('likes').get();for(const x of l.docs)await x.ref.delete();await d.ref.delete();renderChannelPosts()});host.appendChild(card)}if(!host.children.length)host.innerHTML='<div class="empty-state">📢 ɴᴏ ᴘᴏꜱᴛꜱ ʏᴇᴛ</div>'
+    const host=$('channelPosts');if(!host||!activeChannel)return;host.innerHTML='';const s=await db().collection('channels').doc(activeChannel.id).collection('posts').orderBy('created','desc').get();for(const d of s.docs){const p=docData(d),likes=await d.ref.collection('likes').get(),liked=!!currentUid()&&likes.docs.some(x=>x.id===currentUid()),card=document.createElement('article');card.className='channel-post';let media='';if(p.mediaUrl||p.mediaData){const src=p.mediaUrl||p.mediaData,t=p.mediaType||mimeFromDataUrl(src);if(t.startsWith('image/'))media=`<img src="${src}">`;else if(t.startsWith('video/'))media=`<video src="${src}" controls playsinline></video>`;media+=`<a class="channel-download" href="${src}" download="${escapeHtml(p.mediaName||'channel-media')}">⬇</a>`}else if(p.mediaLocalOnly)media='<div class="chat-media-unavailable">📎 ʟᴀʀɢᴇ ᴍᴇᴅɪᴀ • ᴏʀɪɢɪɴᴀʟ ᴅᴇᴠɪᴄᴇ</div>';card.innerHTML=`<div class="channel-post-head"><img src="${dpUrl(activeChannel)}"><span><b>${escapeHtml(activeChannel.name)}</b><small>${fmtMsgTime(p.created)}</small></span>${isAdminUid()?'<button class="channel-delete">🗑</button>':''}</div>${media}${p.text?`<p>${escapeHtml(p.text)}</p>`:''}<button class="channel-like" type="button">${liked?'♥':'♡'} <small>${likes.size||''}</small></button>`;card.querySelector('.channel-like').onclick=async()=>{const lr=d.ref.collection('likes').doc(currentUid()),ls=await lr.get();if(ls.exists)await lr.delete();else await lr.set({uid:currentUid(),username:currentLocalUser.username,created:now()});renderChannelPosts()};card.querySelector('.channel-delete')?.addEventListener('click',async()=>{if(!confirm('Delete channel post?'))return;const l=await d.ref.collection('likes').get();for(const x of l.docs)await x.ref.delete();if(p.mediaPath)await deleteStoragePath(p.mediaPath);await d.ref.delete();renderChannelPosts()});host.appendChild(card)}if(!host.children.length)host.innerHTML='<div class="empty-state">📢 ɴᴏ ᴘᴏꜱᴛꜱ ʏᴇᴛ</div>'
   };
-  sendChannelPost=async function(blob=null){if(!activeChannel||!isAdminUid())return adminOnly();const text=$('channelText').value.trim();if(!text&&!blob)return;const media=blob?await smallMediaPayload(blob,'channel post'):{mediaData:'',mediaLocalOnly:false,mediaType:'',mediaName:'',mediaSize:0},ref=db().collection('channels').doc(activeChannel.id).collection('posts').doc();await ref.set({id:ref.id,authorId:currentUid(),authorUsername:currentLocalUser.username,text,created:now(),...media});$('channelText').value='';if(blob&&media.mediaLocalOnly)showStorageNotice('channel video');renderChannelPosts()};
+  sendChannelPost=async function(blob=null){if(!activeChannel||!isAdminUid())return adminOnly();const text=$('channelText').value.trim();if(!text&&!blob)return;const media=blob?await smallMediaPayload(blob,'channel post'):{mediaData:'',mediaLocalOnly:false,mediaType:'',mediaName:'',mediaSize:0},ref=db().collection('channels').doc(activeChannel.id).collection('posts').doc();await ref.set({id:ref.id,authorId:currentUid(),authorUsername:currentLocalUser.username,text,created:now(),...media});$('channelText').value='';renderChannelPosts()};
 
   // ---------- One-time migration of pre-backend local social metadata ----------
   async function migrateLocalSocialMetadata(){
     if(!currentUid()||!currentLocalUser)return;const key='og_fb_full_migrated_'+currentUid();if(localStorage.getItem(key)==='1')return;
     try{
       // Ensure current user profile/admin display and username mapping.
-      await db().collection('users').doc(currentUid()).set({uid:currentUid(),username:currentLocalUser.username,name:currentLocalUser.name||currentLocalUser.username,bio:currentLocalUser.bio||'',dpData:currentLocalUser.dpData||'',userId:currentLocalUser.userId||('OG'+Date.now().toString(36).toUpperCase()),role:isAdminUid()?'admin':'user',updated:now()},{merge:true});await ensureUsernameMap(currentLocalUser);
+      await db().collection('users').doc(currentUid()).set({uid:currentUid(),username:currentLocalUser.username,name:currentLocalUser.name||currentLocalUser.username,bio:currentLocalUser.bio||'',dpData:currentLocalUser.dpData||'',dpUrl:currentLocalUser.dpUrl||'',dpPath:currentLocalUser.dpPath||'',userId:currentLocalUser.userId||('OG'+Date.now().toString(36).toUpperCase()),role:isAdminUid()?'admin':'user',updated:now()},{merge:true});await ensureUsernameMap(currentLocalUser);
       // Reels/posts created before Firebase: publish metadata. Small files are embedded when possible.
       if(localStoreHas('reels'))for(const r of await getAll('reels'))if(r.username===currentLocalUser.username){const ref=db().collection('reels').doc(r.id),s=await ref.get();if(!s.exists){const media=r.videoBlob instanceof Blob?await smallMediaPayload(r.videoBlob,'reel'):{mediaData:r.mediaData||'',mediaLocalOnly:!r.mediaData,mediaType:r.mediaType||'',mediaName:r.mediaName||'',mediaSize:r.mediaSize||0};await ref.set({id:r.id,ownerId:currentUid(),ownerUsername:currentLocalUser.username,username:currentLocalUser.username,caption:r.caption||'',created:r.created||now(),...media})}}
       if(localStoreHas('posts'))for(const p of await getAll('posts'))if(p.username===currentLocalUser.username){const ref=db().collection('posts').doc(p.id),s=await ref.get();if(!s.exists){const media=p.mediaBlob instanceof Blob?await smallMediaPayload(p.mediaBlob,'post'):{mediaData:p.mediaData||'',mediaLocalOnly:!p.mediaData,mediaType:p.mediaType||'',mediaName:p.mediaName||'',mediaSize:p.mediaSize||0};await ref.set({id:p.id,ownerId:currentUid(),ownerUsername:currentLocalUser.username,username:currentLocalUser.username,caption:p.caption||'',created:p.created||now(),...media})}}
@@ -444,15 +462,27 @@
     }catch(ex){console.warn('local migration incomplete',ex)}
   }
 
+  async function migrateLocalMediaToSupabase(){
+    if(!currentUid()||!currentLocalUser||!storageReady())return;
+    const key='og_supabase_media_migrated_v84_'+currentUid();if(localStorage.getItem(key)==='1')return;
+    try{
+      const [reelSnap,postSnap]=await Promise.all([db().collection('reels').where('ownerId','==',currentUid()).get(),db().collection('posts').where('ownerId','==',currentUid()).get()]);
+      const rlocal=localStoreHas('reels')?new Map((await getAll('reels')).map(x=>[x.id,x])):new Map(),plocal=localStoreHas('posts')?new Map((await getAll('posts')).map(x=>[x.id,x])):new Map();
+      for(const d of reelSnap.docs){const x=d.data(),l=rlocal.get(d.id);if(!x.mediaUrl&&l?.videoBlob instanceof Blob){const m=await uploadStorageMedia(l.videoBlob,'reel');await d.ref.set({...m,mediaData:'',mediaLocalOnly:false},{merge:true})}}
+      for(const d of postSnap.docs){const x=d.data(),l=plocal.get(d.id);if(!x.mediaUrl&&l?.mediaBlob instanceof Blob){const m=await uploadStorageMedia(l.mediaBlob,'post');await d.ref.set({...m,mediaData:'',mediaLocalOnly:false},{merge:true})}}
+      localStorage.setItem(key,'1');
+    }catch(ex){console.warn('Supabase migration incomplete',ex)}
+  }
+
   // ---------- UI/backend polish ----------
-  const msgSub=document.querySelector('#messagesListView .messages-topbar small');if(msgSub)msgSub.textContent='ᴏɴʟɪɴᴇ • ꜰɪʀᴇʙᴀꜱᴇ';
+  const msgSub=document.querySelector('#messagesListView .messages-topbar small');if(msgSub)msgSub.textContent='ᴏɴʟɪɴᴇ • ꜰɪʀᴇʙᴀꜱᴇ + ꜱᴜᴘᴀʙᴀꜱᴇ';
   const toolsHeading=$('toolsDialog')?.querySelector('h3');if(toolsHeading)toolsHeading.textContent='ʙᴀᴄᴋᴜᴘ • ʀᴇꜱᴛᴏʀᴇ • ᴏɴʟɪɴᴇ';
-  document.documentElement.dataset.backend='firebase';
+  document.documentElement.dataset.backend='firebase-supabase';
 
   // Keep online listeners tidy when dialogs close / user leaves.
   $('messagesDialog')?.addEventListener('close',()=>{stopSnapshot('chatUnsub');stopSnapshot('groupUnsub');stopSnapshot('channelUnsub');stopSnapshot('chatsUnsub')});
   window.addEventListener('online',()=>{if(currentLocalUser){invalidateUsers();startOnlineSession(currentLocalUser);updateMessageBadge();updateActivityBadge()}});
-  window.addEventListener('offline',()=>console.warn('School Memories: offline; local media remains available'));
+  window.addEventListener('offline',()=>console.warn('School Memories: offline; online media upload requires connection'));
 
   // Fix openChat initial read marker (merge map rather than dotted literal field).
   const onlineOpenChat=openChat;openChat=async function(u){
