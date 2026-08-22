@@ -655,3 +655,78 @@ body.reels-mode .reels-head h2::after{content:'ʀᴇᴇʟꜱ';font-size:.92rem}
 
 /* V8.3 — Firebase backend states */
 .online-media-missing,.social-media-placeholder,.chat-media-unavailable{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;background:#080d17;color:var(--muted);border:1px dashed var(--line);min-height:140px;padding:18px;line-height:1.55}.online-media-missing b{color:var(--text);font-size:.8rem}.online-media-missing small,.social-media-placeholder small{font-size:.62rem}.social-media-placeholder{min-height:100%;width:100%;border:0}.chat-media-unavailable{min-height:64px;border-radius:12px;font-size:.68rem}.channel-like{border:0;background:transparent;color:var(--text);padding:8px 2px;cursor:pointer;font-weight:800}.channel-like small{color:var(--muted)}
+
+/* V8.4.1 — Reel viewer: preserve original aspect ratio, never crop, clean owner label */
+body.reels-mode .reel-full .reel-video-wrap{
+  width:100%!important;
+  height:100%!important;
+  min-height:0!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  overflow:hidden!important;
+  background:#000!important;
+}
+body.reels-mode .reel-full .reel-video-wrap>video,
+.reel-card.reel-full .reel-video-wrap>video{
+  width:100%!important;
+  height:100%!important;
+  min-width:0!important;
+  min-height:0!important;
+  max-width:100%!important;
+  max-height:100%!important;
+  object-fit:contain!important;
+  object-position:center center!important;
+  background:#000!important;
+  transform:none!important;
+  rotate:0deg!important;
+}
+/* Username/caption stays directly on the video — no blur/gradient plate. */
+body.reels-mode .reel-owner,
+.reel-card.reel-full .reel-owner{
+  background:transparent!important;
+  background-image:none!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+  box-shadow:none!important;
+}
+.reel-owner>div{
+  background:transparent!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+  box-shadow:none!important;
+}
+.reel-owner b,.reel-owner p{
+  text-shadow:0 2px 5px rgba(0,0,0,.95),0 0 10px rgba(0,0,0,.72)!important;
+}
+/* Profile reel thumbnails must never launch the browser's native video viewer.
+   The whole tile opens our Instagram-style Reel viewer instead. */
+.profile-reel-grid button,
+.profile-reel-cell{
+  position:relative!important;
+  overflow:hidden!important;
+  padding:0!important;
+  background:#000!important;
+}
+.profile-reel-grid video,
+.profile-reel-cell video{
+  width:100%!important;
+  height:100%!important;
+  max-width:100%!important;
+  max-height:100%!important;
+  object-fit:contain!important;
+  object-position:center!important;
+  background:#000!important;
+  pointer-events:none!important;
+  transform:none!important;
+  rotate:0deg!important;
+}
+.profile-reel-grid button>span,
+.profile-reel-cell>span{
+  position:absolute!important;
+  left:50%!important;
+  top:50%!important;
+  transform:translate(-50%,-50%)!important;
+  pointer-events:none!important;
+  text-shadow:0 2px 8px #000!important;
+}
