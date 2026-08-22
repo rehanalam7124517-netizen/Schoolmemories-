@@ -130,7 +130,7 @@ $('pinInput').addEventListener('input',()=>{$('pinError').textContent=''});
 $('togglePin').onclick=()=>{const i=$('pinInput');i.type=i.type==='password'?'text':'password'};
 $('pinInput').type='password';
 $('lockBtn').onclick=lockSite;
-if(sessionStorage.getItem(PIN_TAB_KEY)==='1') openSite();
+// Firebase-aware auto-open is installed after the auth gate setup below.
 
 // People profiles are persisted in IndexedDB. Built-in profiles remain editable on this device.
 let activeProfiles=[];
@@ -548,8 +548,16 @@ function escapeHtml(v){return String(v??'').replace(/&/g,'&amp;').replace(/</g,'
 
 async function hashPw(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
 function waitDB(){return new Promise(r=>{let t=setInterval(()=>{if(DB){clearInterval(t);r()}},50)})}
-function gate(show=true){const g=$('userGate');if(!g)return;g.hidden=!show;g.style.display=show?'grid':'none';$('siteShell').classList.toggle('auth-blur',show);if(show)pauseMusicForExit();else tryPlayMusic()}
+function gate(show=true){
+  const g=$('userGate');if(!g)return;
+  g.hidden=!show;g.style.display=show?'grid':'none';
+  $('siteShell')?.classList.toggle('auth-blur',show);
+  if(show)pauseMusicForExit();else tryPlayMusic();
+}
 const SESSION_USER_KEY='og_current_user';
+function firebaseReady(){
+  return typeof window.firebase!=='undefined' && !!firebase.apps?.length && typeof firebase.auth==='function' && typeof firebase.firestore==='function';
+}
 async function restoreLastView(){
   const view=localStorage.getItem('og_last_view')||'page';
   if(view==='messages'){setTimeout(()=>openMessages(),80);return}
@@ -557,24 +565,106 @@ async function restoreLastView(){
   if(view.startsWith('profile:')){const u=view.slice(8);setTimeout(()=>openSocialProfile(u),80);return}
   const p=parseInt(localStorage.getItem('og_last_page')||'0',10);showPage(Number.isFinite(p)?p:0);
 }
+function getFirebaseAuthUser(){
+  return new Promise(resolve=>{
+    if(!firebaseReady())return resolve(null);
+    let done=false,unsub=()=>{};
+    const finish=user=>{if(done)return;done=true;try{unsub()}catch{}resolve(user||null)};
+    try{
+      unsub=firebase.auth().onAuthStateChanged(user=>finish(user),()=>finish(null));
+      setTimeout(()=>finish(firebase.auth().currentUser||null),5000);
+    }catch(ex){console.error('Firebase auth init failed:',ex);finish(null)}
+  });
+}
 async function askUser(){
   await waitDB();
-  const saved=localStorage.getItem(SESSION_USER_KEY);
-  if(saved){
-    const u=(await getAll('users')).find(x=>x.username===saved);
-    if(u){currentLocalUser=u;updateAccountUI();gate(false);await restoreLastView();return}
-    localStorage.removeItem(SESSION_USER_KEY);
+  // Never expose the social UI before Firebase auth state is known.
+  currentLocalUser=null;localStorage.removeItem(SESSION_USER_KEY);updateAccountUI();gate(true);
+  const err=$('userGateError');if(err)err.textContent='';
+  if(!firebaseReady()){
+    if(err)err.textContent='❌ ꜰɪʀᴇʙᴀꜱᴇ ᴄᴏᴜʟᴅ ɴᴏᴛ ʟᴏᴀᴅ • ᴄʜᴇᴄᴋ ɪɴᴛᴇʀɴᴇᴛ / ʀᴇʟᴏᴀᴅ';
+    return;
   }
-  currentLocalUser=null;updateAccountUI();gate(true)
+  try{await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)}catch(ex){console.warn('Auth persistence:',ex)}
+  const fbUser=await getFirebaseAuthUser();
+  if(fbUser){
+    try{
+      const profile=await firebaseProfileByUid(fbUser.uid);
+      if(profile){
+        await syncFirebaseUserToLocal(profile);
+        updateAccountUI();gate(false);await restoreLastView();return;
+      }
+      try{await firebase.auth().signOut()}catch{}
+      if(err)err.textContent='❌ ᴘʀᴏꜰɪʟᴇ ᴅᴀᴛᴀ ɴᴏᴛ ꜰᴏᴜɴᴅ • ᴄʀᴇᴀᴛᴇ / ʟᴏɢɪɴ ᴀɢᴀɪɴ';
+    }catch(ex){
+      console.warn('Firebase session restore failed:',ex);
+      if(err)err.textContent='❌ ꜰɪʀᴇʙᴀꜱᴇ ᴘʀᴏꜰɪʟᴇ ʀᴇᴀᴅ ꜰᴀɪʟᴇᴅ';
+    }
+  }
+  gate(true);
 }
-const openSiteBeforeUser=openSite;openSite=function(){openSiteBeforeUser();setTimeout(askUser,120)};
-if(sessionStorage.getItem(PIN_TAB_KEY)==='1')setTimeout(askUser,200);
+const openSiteBeforeUser=openSite;
+openSite=function(){
+  openSiteBeforeUser();
+  currentLocalUser=null;updateAccountUI();gate(true);
+  setTimeout(()=>Promise.resolve(askUser()).catch(ex=>{console.error('User gate failed:',ex);const e=$('userGateError');if(e)e.textContent='❌ ᴜꜱᴇʀ ᴀᴄᴄᴇꜱꜱ ᴇʀʀᴏʀ • ʀᴇʟᴏᴀᴅ';gate(true)}),120);
+};
+if(sessionStorage.getItem(PIN_TAB_KEY)==='1')setTimeout(()=>openSite(),0);
 $('showLogin').onclick=()=>{$('localLoginForm').hidden=false;$('localRegisterForm').hidden=true;$('userGateError').textContent=''};
 $('showRegister').onclick=()=>{$('localLoginForm').hidden=true;$('localRegisterForm').hidden=false;$('userGateError').textContent=''};
-$('localRegisterForm').onsubmit=async e=>{e.preventDefault();const err=$('userGateError');err.textContent='';try{await waitDB();if(!DB.objectStoreNames.contains('users'))throw new Error('users store missing');let username=normUser($('registerUsername').value),pw=$('registerPassword').value,name=$('registerName').value.trim();if(!name)return err.textContent='❌ ᴅɪꜱᴘʟᴀʏ ɴᴀᴍᴇ ʀᴇQᴜɪʀᴇᴅ';if(username.length<3)return err.textContent='❌ ᴜꜱᴇʀɴᴀᴍᴇ ᴛᴏᴏ ꜱʜᴏʀᴛ';if(pw.length<4)return err.textContent='❌ ᴘᴀꜱꜱᴡᴏʀᴅ ᴍɪɴɪᴍᴜᴍ 4 ᴄʜᴀʀᴀᴄᴛᴇʀꜱ';if(pw!==$('registerConfirm').value)return err.textContent='❌ ᴘᴀꜱꜱᴡᴏʀᴅꜱ ᴅᴏ ɴᴏᴛ ᴍᴀᴛᴄʜ';const existingUsers=await getAll('users');if(existingUsers.some(u=>u.username===username))return err.textContent='❌ @ᴜꜱᴇʀɴᴀᴍᴇ ᴀʟʀᴇᴀᴅʏ ᴇxɪꜱᴛꜱ';if(username==='valorrehan')return err.textContent='🛡️ @ᴠᴀʟᴏʀʀᴇʜᴀɴ ɪꜱ ʀᴇꜱᴇʀᴠᴇᴅ ꜰᴏʀ ᴛʜᴇ ᴀᴅᴍɪɴ';const dpFile=$('registerDp').files[0]||null;currentLocalUser={username,userId:'OG'+Date.now().toString(36).toUpperCase(),name,passwordHash:await hashPw(pw),dpData:await fileToDataURL(dpFile),created:Date.now()};await put('users',currentLocalUser);localStorage.setItem(SESSION_USER_KEY,currentLocalUser.username);updateAccountUI();gate(false);e.target.reset();showPage(0)}catch(ex){console.error('Create user failed:',ex);err.textContent='❌ ᴄᴏᴜʟᴅ ɴᴏᴛ ᴄʀᴇᴀᴛᴇ ᴜꜱᴇʀ • ʀᴇʟᴏᴀᴅ ᴀɴᴅ ᴛʀʏ ᴀɢᴀɪɴ'}};
-$('localLoginForm').onsubmit=async e=>{e.preventDefault();const err=$('userGateError');err.textContent='';try{await waitDB();if(!DB.objectStoreNames.contains('users'))throw new Error('users store missing');let username=normUser($('loginUsername').value),u=(await getAll('users')).find(x=>x.username===username);if(!u||u.passwordHash!==await hashPw($('loginPassword').value))return err.textContent='❌ ᴡʀᴏɴɢ ᴜꜱᴇʀɴᴀᴍᴇ ᴏʀ ᴘᴀꜱꜱᴡᴏʀᴅ';currentLocalUser=u;localStorage.setItem(SESSION_USER_KEY,u.username);updateAccountUI();gate(false);e.target.reset();showPage(0)}catch(ex){console.error('Login failed:',ex);err.textContent='❌ ʟᴏɢɪɴ ꜱʏꜱᴛᴇᴍ ᴇʀʀᴏʀ • ʀᴇʟᴏᴀᴅ ᴀɴᴅ ᴛʀʏ ᴀɢᴀɪɴ'}};
 function fileToDataURL(file){return new Promise((resolve,reject)=>{if(!file)return resolve('');const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file)})}
 function dpUrl(u){return u?.dpData||(u?.dpBlob?URL.createObjectURL(u.dpBlob):'assets/common.jpg')}
+function firebaseEmailForUsername(username){return `${normUser(username)}@schoolmemories.app`}
+async function firebaseProfileByUid(uid){
+  const snap=await firebase.firestore().collection('users').doc(uid).get();
+  return snap.exists?snap.data():null;
+}
+async function syncFirebaseUserToLocal(profile){
+  if(!profile)return null;
+  const local={...profile,username:normUser(profile.username),firebase:true};
+  await put('users',local);
+  currentLocalUser=local;
+  localStorage.setItem(SESSION_USER_KEY,local.username);
+  return local;
+}
+$('localRegisterForm').onsubmit=async e=>{
+  e.preventDefault();const err=$('userGateError');err.textContent='';
+  try{
+    await waitDB();
+    if(!firebaseReady())return err.textContent='❌ ꜰɪʀᴇʙᴀꜱᴇ ɴᴏᴛ ᴄᴏɴɴᴇᴄᴛᴇᴅ';
+    const username=normUser($('registerUsername').value), pw=$('registerPassword').value, name=$('registerName').value.trim();
+    if(!name)return err.textContent='❌ ᴅɪꜱᴘʟᴀʏ ɴᴀᴍᴇ ʀᴇQᴜɪʀᴇᴅ';
+    if(username.length<3)return err.textContent='❌ ᴜꜱᴇʀɴᴀᴍᴇ ᴛᴏᴏ ꜱʜᴏʀᴛ';
+    if(pw.length<6)return err.textContent='❌ ᴘᴀꜱꜱᴡᴏʀᴅ ᴍɪɴɪᴍᴜᴍ 6 ᴄʜᴀʀᴀᴄᴛᴇʀꜱ';
+    if(pw!==$('registerConfirm').value)return err.textContent='❌ ᴘᴀꜱꜱᴡᴏʀᴅꜱ ᴅᴏ ɴᴏᴛ ᴍᴀᴛᴄʜ';
+    const cred=await firebase.auth().createUserWithEmailAndPassword(firebaseEmailForUsername(username),pw);
+    const dpFile=$('registerDp').files[0]||null;
+    const profile={uid:cred.user.uid,username,userId:'OG'+Date.now().toString(36).toUpperCase(),name,dpData:await fileToDataURL(dpFile),bio:'',created:Date.now()};
+    try{
+      await firebase.firestore().collection('users').doc(cred.user.uid).set(profile);
+    }catch(dbErr){
+      try{await cred.user.delete()}catch{}
+      throw dbErr;
+    }
+    await syncFirebaseUserToLocal(profile);updateAccountUI();gate(false);e.target.reset();showPage(0);
+  }catch(ex){
+    console.error('Firebase create user failed:',ex);
+    if(ex.code==='auth/email-already-in-use')err.textContent='❌ @ᴜꜱᴇʀɴᴀᴍᴇ ᴀʟʀᴇᴀᴅʏ ᴇxɪꜱᴛꜱ';
+    else if(ex.code==='auth/weak-password')err.textContent='❌ ᴘᴀꜱꜱᴡᴏʀᴅ ᴍɪɴɪᴍᴜᴍ 6 ᴄʜᴀʀᴀᴄᴛᴇʀꜱ';
+    else err.textContent='❌ ᴄᴏᴜʟᴅ ɴᴏᴛ ᴄʀᴇᴀᴛᴇ ᴜꜱᴇʀ • '+(ex.message||'FIREBASE ERROR');
+  }
+};
+$('localLoginForm').onsubmit=async e=>{
+  e.preventDefault();const err=$('userGateError');err.textContent='';
+  try{
+    await waitDB();if(!firebaseReady())return err.textContent='❌ ꜰɪʀᴇʙᴀꜱᴇ ɴᴏᴛ ᴄᴏɴɴᴇᴄᴛᴇᴅ';const username=normUser($('loginUsername').value),pw=$('loginPassword').value;
+    const cred=await firebase.auth().signInWithEmailAndPassword(firebaseEmailForUsername(username),pw);
+    const profile=await firebaseProfileByUid(cred.user.uid);
+    if(!profile){await firebase.auth().signOut();return err.textContent='❌ ᴘʀᴏꜰɪʟᴇ ᴅᴀᴛᴀ ɴᴏᴛ ꜰᴏᴜɴᴅ'}
+    await syncFirebaseUserToLocal(profile);updateAccountUI();gate(false);e.target.reset();await restoreLastView();
+  }catch(ex){console.error('Firebase login failed:',ex);err.textContent='❌ ᴡʀᴏɴɢ ᴜꜱᴇʀɴᴀᴍᴇ ᴏʀ ᴘᴀꜱꜱᴡᴏʀᴅ'}
+};
+
 function updateAccountUI(){
   const b=$('profileNavBtn'); if(!b)return;
   if(currentLocalUser){b.innerHTML=`<img class="nav-profile-dp" src="${dpUrl(currentLocalUser)}" alt="DP"><span>ᴘʀᴏꜰɪʟᴇ</span>`; b.title='@'+currentLocalUser.username;}
@@ -639,7 +729,7 @@ $('toolsBtn')?.addEventListener('click',()=>{if(document.body.classList.contains
 
 // favourites in settings; profile takes bottom slot
 $('toolsBtn').onclick=()=>{$('toolsDialog').showModal();};
-$('logoutUserBtn')?.addEventListener('click',()=>{if(!currentLocalUser)return gate(true);if(!confirm('Logout @'+currentLocalUser.username+'?'))return;localStorage.removeItem(SESSION_USER_KEY);localStorage.setItem('og_last_view','page');localStorage.setItem('og_last_page','0');currentLocalUser=null;stopAllReels();pauseAllForegroundVideo();$('toolsDialog').close();updateAccountUI();gate(true)});
+$('logoutUserBtn')?.addEventListener('click',async()=>{if(!currentLocalUser)return gate(true);if(!confirm('Logout @'+currentLocalUser.username+'?'))return;try{await firebase.auth().signOut()}catch{}localStorage.removeItem(SESSION_USER_KEY);localStorage.setItem('og_last_view','page');localStorage.setItem('og_last_page','0');currentLocalUser=null;stopAllReels();pauseAllForegroundVideo();$('toolsDialog').close();updateAccountUI();gate(true)});
 // Create: choose media first -> preview -> optional caption -> post
 function resetCreate(){createFile=null;$('createStep1').hidden=false;$('createStep2').hidden=true;$('createStep3').hidden=true;$('createPreview').innerHTML='';$('createCaption').value=''}
 $('createReelBtn')?.addEventListener('click',()=>{if(!currentLocalUser)return gate(true);resetCreate();$('createReelDialog').showModal()});

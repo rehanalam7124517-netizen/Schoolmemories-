@@ -269,7 +269,7 @@
       <section id="messagesListView" class="messages-view">
         <header class="messages-topbar">
           <button id="messagesClose" class="message-icon-btn" type="button">←</button>
-          <div><b>💬 ᴍᴇꜱꜱᴀɢᴇꜱ</b><small>ᴛʜɪꜱ ᴅᴇᴠɪᴄᴇ ᴏɴʟʏ</small></div>
+          <div><b>💬 ᴍᴇꜱꜱᴀɢᴇꜱ</b><small>ᴏɴʟɪɴᴇ • ꜰɪʀᴇʙᴀꜱᴇ</small></div>
           <span></span>
         </header>
         <div class="messages-tabs" role="tablist">
@@ -383,7 +383,12 @@
   <dialog id="postCommentsDialog" class="comments-dialog"><div class="comments-shell"><div class="comments-topbar"><button id="postCommentsClose" class="message-icon-btn" type="button">←</button><div><b>💬 ᴄᴏᴍᴍᴇɴᴛꜱ</b><small>ᴘᴏꜱᴛ ᴄᴏɴᴠᴇʀꜱᴀᴛɪᴏɴ</small></div><span></span></div><div id="postCommentsList" class="comments-list"></div><div class="comment-compose"><textarea id="postCommentText" rows="1" maxlength="800" placeholder="ᴀᴅᴅ ᴀ ᴄᴏᴍᴍᴇɴᴛ..."></textarea><button id="postCommentSend" class="chat-send-btn" type="button">➤</button></div></div></dialog>
 
   <dialog id="toolsDialog" class="modal glass v7-modal"><button class="close-modal" data-close>✕</button><div class="eyebrow">⚙️ ᴍᴇᴍᴏʀʏ ᴛᴏᴏʟꜱ</div><h3>ʙᴀᴄᴋᴜᴘ • ʀᴇꜱᴛᴏʀᴇ</h3><div id="adminStatus" class="admin-status" hidden>🛡️ ᴀᴅᴍɪɴ • @ᴠᴀʟᴏʀʀᴇʜᴀɴ</div><div class="tool-grid"><button id="activityOpenBtn" class="tool-card" type="button">🔔<b>ᴀᴄᴛɪᴠɪᴛʏ</b><small>ʟɪᴋᴇꜱ • ᴄᴏᴍᴍᴇɴᴛꜱ • ʀᴇᴘʟɪᴇꜱ</small></button><button id="exportBtn" class="tool-card">💾<b>ᴇxᴘᴏʀᴛ ʙᴀᴄᴋᴜᴘ</b><small>ꜱᴀᴠᴇ ʙʀᴏᴡꜱᴇʀ ᴅᴀᴛᴀ</small></button><label class="tool-card">📥<b>ɪᴍᴘᴏʀᴛ ʙᴀᴄᴋᴜᴘ</b><small>ʀᴇꜱᴛᴏʀᴇ ᴀ ᴊꜱᴏɴ ꜰɪʟᴇ</small><input id="importInput" type="file" accept="application/json" hidden></label><button id="restoreBtn" class="tool-card">♻️<b>ʀᴇꜱᴛᴏʀᴇ ᴄᴇɴᴛᴇʀ</b><small>ʙʀɪɴɢ ʜɪᴅᴅᴇɴ ɪᴛᴇᴍꜱ ʙᴀᴄᴋ</small></button><button id="logoutUserBtn" class="tool-card logout-tool" type="button">🚪<b>ʟᴏɢᴏᴜᴛ</b><small>ꜱᴡɪᴛᴄʜ ᴜꜱᴇʀ</small></button></div><div id="restoreList" class="restore-list" hidden></div></dialog>
-  <script src="js/media-manifest.js?v=8.2.0"></script>
-  <script src="js/app.js?v=8.2.0"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js?v=8.3-full"></script>
+  <script src="js/media-manifest.js?v=8.3-full"></script>
+  <script src="js/app.js?v=8.3-full"></script>
+  <script src="js/firebase-backend.js?v=8.3-full"></script>
 </body>
 </html>

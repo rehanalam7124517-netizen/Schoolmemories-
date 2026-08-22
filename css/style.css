@@ -652,3 +652,6 @@ body.reels-mode .reels-head h2::after{content:'ʀᴇᴇʟꜱ';font-size:.92rem}
   box-sizing:border-box !important;
   line-height:1 !important;
 }
+
+/* V8.3 — Firebase backend states */
+.online-media-missing,.social-media-placeholder,.chat-media-unavailable{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;background:#080d17;color:var(--muted);border:1px dashed var(--line);min-height:140px;padding:18px;line-height:1.55}.online-media-missing b{color:var(--text);font-size:.8rem}.online-media-missing small,.social-media-placeholder small{font-size:.62rem}.social-media-placeholder{min-height:100%;width:100%;border:0}.chat-media-unavailable{min-height:64px;border-radius:12px;font-size:.68rem}.channel-like{border:0;background:transparent;color:var(--text);padding:8px 2px;cursor:pointer;font-weight:800}.channel-like small{color:var(--muted)}
