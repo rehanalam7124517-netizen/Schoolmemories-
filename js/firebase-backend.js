@@ -401,9 +401,7 @@
   renderRecentChats=async function(){
     const host=$('recentChats');host.innerHTML='';if(!currentUid())return;const [chats,users]=await Promise.all([chatDocsForMe(),onlineUsers()]),byUid=new Map(users.map(u=>[u.uid,u]));for(const c of chats){const oid=safeArray(c.members).find(x=>x!==currentUid()),u=byUid.get(oid);if(!u)continue;const lastRead=Number(c.lastRead?.[currentUid()]||0),unread=c.lastMessageSenderId&&c.lastMessageSenderId!==currentUid()&&Number(c.lastMessageAt||0)>lastRead,row=document.createElement('button');row.className='chat-row';row.innerHTML=`<img src="${dpUrl(u)}"><span><b>@${escapeHtml(u.username)}</b><small>${escapeHtml(c.lastMessage||'ᴍᴇꜱꜱᴀɢᴇ')}</small></span><em>${fmtMsgTime(c.lastMessageAt)}${unread?'<i>1</i>':''}</em>`;row.onclick=()=>openChat(u);host.appendChild(row)}if(!host.children.length)host.innerHTML='<div class="empty-state">💬 ɴᴏ ᴄʜᴀᴛꜱ ʏᴇᴛ<br><small>ꜱᴇᴀʀᴄʜ ᴀ ᴜꜱᴇʀ ᴛᴏ ꜱᴛᴀʀᴛ.</small></div>';
   };
-  updateMessageBadge=async function(){
-    if(!currentUid())return;try{const rows=await chatDocsForMe();let n=0;for(const c of rows){if(c.lastMessageSenderId&&c.lastMessageSenderId!==currentUid()&&Number(c.lastMessageAt||0)>Number(c.lastRead?.[currentUid()]||0))n++}const b=$('messageBtn');if(!b)return;b.dataset.unread=n?String(n):'';b.classList.toggle('has-unread',n>0)}catch{}
-  };
+  updateMessageBadge=async function(){ return; } // V9.2 NO-CHAT;
   const messageSearch=replaceNode('messageUserSearch');if(messageSearch)messageSearch.oninput=async()=>{const raw=messageSearch.value.trim().toLowerCase(),q=normUser(raw),host=$('messageSearchResults');host.innerHTML='';if(!raw)return;const users=await onlineUsers();users.filter(u=>u.uid!==currentUid()&&(u.username.includes(q)||(u.userId||'').toLowerCase().includes(raw))).slice(0,40).forEach(u=>{const b=document.createElement('button');b.className='chat-row';b.innerHTML=`<img src="${dpUrl(u)}"><span><b>@${escapeHtml(u.username)}</b><small>${escapeHtml(u.name||'')} • ${escapeHtml(u.userId||'')}</small></span><em>›</em>`;b.onclick=()=>openChat(u);host.appendChild(b)});if(!host.children.length)host.innerHTML='<div class="empty-state">ɴᴏ ᴜꜱᴇʀ ꜰᴏᴜɴᴅ</div>'};
   openChat=async function(u){
     activeChatUser=u;$('messagesListView').hidden=true;$('chatView').hidden=false;$('chatUserDp').src=dpUrl(u);$('chatUsername').textContent='@'+u.username;$('chatUserId').textContent=(u.name||'')+' • '+(u.userId||'');$('chatText').value='';const chatRef=await ensureChat(u);await chatRef.set({[`lastRead.${currentUid()}`]:now()},{merge:true});listenChat(chatRef.id);await renderChat();updateMessageBadge()
@@ -420,7 +418,7 @@
   $('chatBackBtn').onclick=async()=>{stopSnapshot('chatUnsub');activeChatUser=null;$('chatView').hidden=true;$('messagesListView').hidden=false;await renderRecentChats();updateMessageBadge()};
 
   const oldOpenMessages=openMessages;openMessages=async function(){await oldOpenMessages();listenRecentChats()};
-  function listenRecentChats(){stopSnapshot('chatsUnsub');if(!currentUid())return;fbState.chatsUnsub=db().collection('chats').where('members','array-contains',currentUid()).onSnapshot(()=>{if($('messagesDialog')?.open&&!$ ('messagesListView')?.hidden)renderRecentChats();updateMessageBadge()},ex=>console.warn('chats listener',ex))}
+  function listenRecentChats(){ stopSnapshot('chatsUnsub'); return; } // V9.2 NO-CHAT
 
   // ---------- Groups ----------
   groupCanManage=function(g){return !!currentUid()&&(isAdminUid()||g.creatorId===currentUid()||safeArray(g.admins).includes(currentUid()))};

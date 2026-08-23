@@ -1,0 +1,15 @@
+SCHOOL MEMORIES V8.0 — LOCAL ADMIN + SOCIAL ACTIVITY
+
+ADMIN USERNAME: @valorrehan
+- Existing local @valorrehan account is promoted to admin on upgrade.
+- New local registration cannot claim @valorrehan.
+- Admin can manage memory profiles, journeys, photo/video folders, Memories of the Day, restore/backup tools, and can moderate any reel/comment.
+
+SOCIAL
+- Reels feed shows unseen reels only per local user; seen reels remain accessible from Search/Profile/activity links.
+- Reel likes are per-user and show counts.
+- Comments support replies, likes, counts, and owner/admin delete.
+- Activity center shows reel likes, comments, replies and comment likes.
+
+IMPORTANT
+This is still a browser-local build. Admin identity and accounts are not server-verified until backend authentication is connected.

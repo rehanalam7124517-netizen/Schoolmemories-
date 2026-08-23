@@ -765,3 +765,6 @@ body.reels-mode .reel-owner,
   .chat-compose{padding-left:8px!important;padding-right:8px!important}
   .message-bubble{max-width:86%!important}
 }
+
+/* V9.2 NO-CHAT: messaging UI intentionally disabled; stored Firestore data is untouched. */
+#messageBtn,#messagesDialog,#createGroupDialog,#groupManageDialog,#createChannelDialog{display:none!important;}
