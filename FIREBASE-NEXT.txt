@@ -1,7 +1,0 @@
-FIREBASE PHASE 1
-1. Firebase Authentication Email/Password must be enabled.
-2. Publish firestore.rules in Firestore > Rules before creating an account.
-3. Open site and create @valorrehan from the website. Password must be 6+ characters.
-4. Firebase Authentication > Users will show the new account and UID.
-5. This build syncs account authentication + profile identity to Firebase. Existing reels/posts/messages remain local until the next migration phase.
-IMPORTANT: @valorrehan is NOT granted admin merely by username. Bind admin privileges to its Firebase UID in the next rules update.

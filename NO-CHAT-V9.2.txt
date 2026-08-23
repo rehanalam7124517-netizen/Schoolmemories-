@@ -1,2 +1,0 @@
-School Memories V9.2 NO-CHAT
-Messaging, groups and channels UI disabled. Existing Firestore chat data is not deleted. Home, profiles, reels, posts, comments, memories, Firebase auth and Supabase media remain.
