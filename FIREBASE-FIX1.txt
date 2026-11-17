@@ -1,0 +1,8 @@
+Firebase Phase 1.1 fixes:
+- Restored fileToDataURL() and dpUrl() helpers removed by Phase 1 patch.
+- Profile, Messages, Comments and DP rendering work again.
+- Old local session no longer bypasses Firebase login.
+- Same-tab refresh restores Firebase-authenticated user after PIN.
+- Registration no longer performs an unauthenticated Firestore username query.
+- If Firestore profile creation fails, newly created Auth user is rolled back so registration can be retried.
+- Cache version bumped to firebase-fix1.

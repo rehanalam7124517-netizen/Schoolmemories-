@@ -1,0 +1,11 @@
+SCHOOL MEMORIES V7.9 FINAL LOCAL BUILD
+
+- PIN 14022026 is tab-session based: refresh in the same tab stays unlocked; a new tab asks again.
+- Local user login/create/edit profile/logout retained.
+- Full-screen reels retained with single-active-reel playback.
+- Reel audio and background music are mutually exclusive.
+- Leaving Reels stops and resets reel playback/audio.
+- App/tab background pauses all audio; returning restores only the correct source.
+- Reel comments added: add, count, profile link, delete own comment.
+- Messages, attachments, recent chats, search, profile, create, delete, share and download retained.
+- This build is still browser-local. Real cross-device accounts/messages/comments require the planned backend.

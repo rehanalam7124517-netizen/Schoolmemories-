@@ -1,0 +1,7 @@
+V8.2.1 Firebase Phase 1.2
+- fixes auth gate startup ordering
+- login/register is always shown when Firebase has no signed-in user
+- same-tab PIN refresh still works
+- Firebase loading/auth errors are shown instead of silently opening the site
+- keeps profile/messages/comments local UI working after authenticated user sync
+- does NOT overwrite existing media files when only code files are copied

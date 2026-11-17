@@ -1,0 +1,6 @@
+V7.8.7
+- Recent chats now start directly under RECENT CHATS (top aligned).
+- Added Logout in Settings.
+- Current local user session survives refresh.
+- Last normal page / Reels / Messages / Profile is restored after refresh when possible.
+- Cache bumped to 7.8.7.

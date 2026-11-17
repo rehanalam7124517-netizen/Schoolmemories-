@@ -1,0 +1,6 @@
+V9.8.3 FINAL PROFILE LAYOUT FIX
+- Full-screen profile shell
+- Shared OG Legends header
+- Bottom 5-tab dock fixed to profile shell
+- Removed malformed escaped CSS patch
+- Reels containment preserved

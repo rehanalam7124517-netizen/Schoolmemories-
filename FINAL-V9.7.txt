@@ -1,0 +1,8 @@
+V9.7 — STORY CREATOR + UNIFIED SHARE UI
+- Home title removed under THE OG LEGENDS
+- Story creator polished for 9:16 photo/video preview
+- Story upload progress + real error details
+- Send-style share sheet with users, WhatsApp, Copy Link, device Share
+- Reel/Post/Home feed/Story/Profile share entry points
+- Profile includes the same 5-button navigation
+- Existing Firebase/Supabase/media architecture preserved

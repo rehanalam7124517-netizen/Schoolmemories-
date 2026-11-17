@@ -1,0 +1,6 @@
+V7.8.6 Messages Fix
+- Fixed Messages button crash caused by undefined pauseAllMediaAndRemember().
+- Messages now pause background/reel/viewer audio using existing audio-state functions.
+- Removed obsolete no-op Messages click listener.
+- Added robust dialog open/error handling.
+- Bumped cache version to 7.8.6 when version query exists.
