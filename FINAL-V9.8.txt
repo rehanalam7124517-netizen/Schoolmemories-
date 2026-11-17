@@ -1,6 +1,0 @@
-V9.8 FINAL CONSISTENCY PATCH
-- Profile back button removed
-- Profile bottom navigation matches main 5-button navigation
-- Profile dialog full-screen with no extra close control
-- Reel viewport blank/extra spacing constrained
-- No feature removals; media folder remains external/safe

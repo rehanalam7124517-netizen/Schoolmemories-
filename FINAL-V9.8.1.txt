@@ -1,2 +1,0 @@
-School Memories V9.8.1
-Cache-bust fix: CSS/JS resource versions updated to v=9.8.1-final so V9.8 profile/nav/reel fixes load immediately.

@@ -1,9 +1,0 @@
-SCHOOL MEMORIES V9.3 FINAL
-- Firebase direct chat restored as the single online message source
-- Persistent PIN unlock across refresh until explicit lock
-- Firebase LOCAL auth persistence keeps user logged in across refresh
-- Last page/reels/profile/messages/direct chat restored after refresh
-- Separate Memories button in bottom navigation
-- Explore button retained for user discovery/search
-- Existing media folder is not included in this package; keep current media folder when installing
-- Firestore rules included for full replacement/deploy

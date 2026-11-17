@@ -1,9 +1,0 @@
-SCHOOL MEMORIES V9.1 — CHAT ARCHITECTURE CLEANUP
-- Firebase/Firestore is the single source of truth for live direct/group chat data.
-- Supabase is used only for uploaded media files.
-- Legacy local chat UI event handlers are detached before Firebase handlers bind.
-- One active Firestore listener per direct chat; old listener is stopped on navigation.
-- Direct message snapshots render their own documents (no snapshot -> extra GET -> render loop).
-- Sending a direct/group message no longer manually duplicates the realtime render path.
-- Chat controls are rebound exactly once after legacy handlers are removed.
-- Existing users, Firestore chats, groups, channels and media are preserved.
