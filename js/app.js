@@ -21,8 +21,8 @@ const PAGE_TITLES = [
   'The OG Legends',
   'The Legends',
   'Our Journey',
-  'Photos & Albums',
-  'Videos & Clips',
+  'Photos',
+  'Videos',
   'Memories of the Day',
   'Memory Wall',
   '5-Memory Vault',
@@ -99,12 +99,10 @@ $('bottomChatsBtn')?.addEventListener('click', () => { closeNavDrawer(); openMes
 $('homeOpenMsgCard')?.addEventListener('click', () => openMessagesDialog());
 $('homeFavBtn')?.addEventListener('click', () => openFavouritesDialog());
 $('homeAddPhotoBtn')?.addEventListener('click', async () => {
-  const folderId = await resolveUploadFolderId('photo');
-  if (await addMedia(folderId, 'photo', false)) showPage(3);
+  if (await addMedia('photo')) showPage(3);
 });
 $('homeAddVideoBtn')?.addEventListener('click', async () => {
-  const folderId = await resolveUploadFolderId('video');
-  if (await addMedia(folderId, 'video', false)) showPage(4);
+  if (await addMedia('video')) showPage(4);
 });
 
 [...drawerNavItems, ...bottomNavItems].forEach((btn) => {
@@ -118,41 +116,8 @@ document.querySelectorAll('.jump-btn').forEach((b) => {
   });
 });
 
-async function resolveUploadFolderId(type, preferredVal = '') {
-  if (!DB) return type === 'photo' ? 'builtin-photos' : 'builtin-videos';
-  const folders = await getAll('folders');
-  const matching = folders.filter((f) => f.type === type);
-  if (preferredVal && preferredVal.startsWith(type + ':')) {
-    const chosenId = preferredVal.slice(type.length + 1);
-    if (matching.some((f) => f.id === chosenId)) return chosenId;
-  }
-  const builtinId = type === 'photo' ? 'builtin-photos' : 'builtin-videos';
-  if (matching.some((f) => f.id === builtinId)) return builtinId;
-  if (matching.length) return matching[0].id;
-  const fallback = {
-    id: 'folder-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
-    type,
-    name: type === 'photo' ? 'Uploaded Photos' : 'Uploaded Videos',
-    builtin: false,
-    created: Date.now()
-  };
-  await put('folders', fallback);
-  return fallback.id;
-}
-
-// Android Add Media & Chapters Bottom Sheets
-async function openAddSheet() {
-  const sel = $('uploadTargetFolder');
-  if (sel && DB) {
-    const folders = await getAll('folders');
-    sel.innerHTML = '';
-    folders.forEach((f) => {
-      const opt = document.createElement('option');
-      opt.value = `${f.type}:${f.id}`;
-      opt.textContent = `${f.type === 'photo' ? '📸' : '🎬'} ${f.name}`;
-      sel.appendChild(opt);
-    });
-  }
+// Android Add Media & Chapters Bottom Sheet
+function openAddSheet() {
   $('addSheetDialog')?.showModal();
 }
 
@@ -167,31 +132,13 @@ $('drawerThemeBtn')?.addEventListener('click', () => {
 });
 
 $('sheetAddPhotoBtn')?.addEventListener('click', async () => {
-  const val = $('uploadTargetFolder')?.value || '';
   $('addSheetDialog')?.close();
-  const targetId = await resolveUploadFolderId('photo', val);
-  if (await addMedia(targetId, 'photo', false)) showPage(3);
+  if (await addMedia('photo')) showPage(3);
 });
 
 $('sheetAddVideoBtn')?.addEventListener('click', async () => {
-  const val = $('uploadTargetFolder')?.value || '';
   $('addSheetDialog')?.close();
-  const targetId = await resolveUploadFolderId('video', val);
-  if (await addMedia(targetId, 'video', false)) showPage(4);
-});
-
-$('sheetNewPhotoFolderBtn')?.addEventListener('click', () => {
-  $('addSheetDialog')?.close();
-  newFolderType = 'photo';
-  $('newFolderTitle').textContent = 'Create Photo Folder';
-  $('newFolderDialog').showModal();
-});
-
-$('sheetNewVideoFolderBtn')?.addEventListener('click', () => {
-  $('addSheetDialog')?.close();
-  newFolderType = 'video';
-  $('newFolderTitle').textContent = 'Create Video Folder';
-  $('newFolderDialog').showModal();
+  if (await addMedia('video')) showPage(4);
 });
 
 $('sheetAddJourneyBtn')?.addEventListener('click', () => {
@@ -378,7 +325,7 @@ function openProfile(i) {
           <p><strong>Nature:</strong> ${escapeHtml(p.nature)}</p>
           <p><strong>Special:</strong> ${escapeHtml(p.special)}</p>
         </div>
-        <div class="folder-actions">
+        <div class="profile-actions">
           <button class="mini-btn" id="openProfileChatBtn" type="button">💬 Message ${escapeHtml(p.n)}</button>
           <button class="mini-btn" id="openLetterBtn" type="button">💌 Open Letter</button>
           <button class="mini-btn" id="changeProfileImageBtn" type="button">🖼️ Change Photo</button>
@@ -508,12 +455,10 @@ req.onupgradeneeded = (e) => {
 req.onsuccess = async (e) => {
   DB = e.target.result;
   await hydrateBuiltins();
-  await seedBuiltins();
   await seedProfiles();
   await seedJourneys();
   await seedSocialMessages();
   await renderPeople();
-  await renderFolders();
   await renderQuickGalleries();
   await renderJourney();
   await updateV7Home();
@@ -543,48 +488,6 @@ function del(name, id) {
     r.onerror = () => rej(r.error);
   });
 }
-async function mediaForFolder(id) {
-  return new Promise((res, rej) => {
-    const idx = store('media').index('folderId');
-    const r = idx.getAll(id);
-    r.onsuccess = () => res(r.result);
-    r.onerror = () => rej(r.error);
-  });
-}
-
-async function seedBuiltins() {
-  const folders = await getAll('folders');
-  const bp = folders.find((f) => f.id === 'builtin-photos');
-  if (!localStorage.getItem('deleted_builtin-photos')) {
-    if (!bp) {
-      await put('folders', {
-        id: 'builtin-photos',
-        name: 'All Photos',
-        type: 'photo',
-        note: 'Built-in & Device Photos',
-        builtin: true,
-        cover: 'media/photos/03_Kushinagar_Trip_Vista.jpg'
-      });
-    } else if (HAS_SMALLCAPS.test(bp.name || '')) {
-      await put('folders', { ...bp, name: 'All Photos', note: 'Built-in & Device Photos' });
-    }
-  }
-  const bv = folders.find((f) => f.id === 'builtin-videos');
-  if (!localStorage.getItem('deleted_builtin-videos')) {
-    if (!bv) {
-      await put('folders', {
-        id: 'builtin-videos',
-        name: 'All Videos',
-        type: 'video',
-        note: 'Built-in & Device Videos',
-        builtin: true,
-        cover: 'media/photos/04_Classroom_Afternoon_Light.jpg'
-      });
-    } else if (HAS_SMALLCAPS.test(bv.name || '')) {
-      await put('folders', { ...bv, name: 'All Videos', note: 'Built-in & Device Videos' });
-    }
-  }
-}
 
 async function getAllCombinedMedia(type) {
   const hidden = new Set((await getAll('hiddenMedia')).map((x) => x.id));
@@ -604,12 +507,26 @@ async function getAllCombinedMedia(type) {
   return [...built, ...local];
 }
 
-// Inline Quick Photo & Video Galleries directly on Photos and Videos pages
+async function removeGalleryMediaItem(item, type) {
+  if (!confirm(`Remove this ${type} from your gallery?`)) return;
+  if (item.builtin) {
+    await recycleItem('hiddenMedia', item.id, item);
+    await put('hiddenMedia', { id: item.id });
+  } else {
+    await recycleItem('media', item.id, item);
+    await del('media', item.id);
+  }
+  await renderQuickGalleries();
+  await updateV7Home();
+  showToast(`${type === 'photo' ? 'Photo' : 'Video'} removed (recoverable in Restore Center)`);
+}
+
+// Direct Photo & Video Galleries
 async function renderQuickGalleries() {
   if (!DB) return;
   const favs = new Set((await getAll('favorites')).map((x) => x.id));
 
-  // Photos quick masonry
+  // Photos masonry
   const photosHost = $('allPhotosQuickGrid');
   if (photosHost) {
     const photos = await getAllCombinedMedia('photo');
@@ -618,7 +535,7 @@ async function renderQuickGalleries() {
     }
     photosHost.innerHTML = '';
     if (!photos.length) {
-      photosHost.innerHTML = '<div class="empty-state">No photos yet — upload photos from your device using Upload Photos.</div>';
+      photosHost.innerHTML = '<div class="empty-state">No photos yet — upload photos from your device using ＋ Add Photos.</div>';
     } else {
       photos.forEach((item, index) => {
         const src = getViewerSrc(item);
@@ -629,7 +546,10 @@ async function renderQuickGalleries() {
           <img src="${src}" alt="${escapeHtml(item.name || 'Memory photo')}" loading="lazy" referrerpolicy="no-referrer" onerror="this.src='assets/common.jpg'">
           <div class="quick-media-caption">
             <span>${escapeHtml(item.name || 'Batch Photo')}</span>
-            <button class="quick-fav-btn ${isFav ? 'active' : ''}" type="button" title="Toggle Favourite">${isFav ? '♥' : '♡'}</button>
+            <div class="quick-card-actions">
+              <button class="quick-fav-btn ${isFav ? 'active' : ''}" type="button" title="Toggle Favourite">${isFav ? '♥' : '♡'}</button>
+              <button class="quick-del-btn" type="button" title="Remove photo" aria-label="Remove photo">✕</button>
+            </div>
           </div>`;
         card.querySelector('img').onclick = () => openViewer(photos, index, 'photo');
         card.querySelector('.quick-fav-btn').onclick = async (e) => {
@@ -638,12 +558,16 @@ async function renderQuickGalleries() {
           await renderQuickGalleries();
           await updateV7Home();
         };
+        card.querySelector('.quick-del-btn').onclick = async (e) => {
+          e.stopPropagation();
+          await removeGalleryMediaItem(item, 'photo');
+        };
         photosHost.appendChild(card);
       });
     }
   }
 
-  // Videos quick showcase grid
+  // Videos showcase grid
   const videosHost = $('allVideosQuickGrid');
   if (videosHost) {
     const videos = await getAllCombinedMedia('video');
@@ -652,7 +576,7 @@ async function renderQuickGalleries() {
     }
     videosHost.innerHTML = '';
     if (!videos.length) {
-      videosHost.innerHTML = '<div class="empty-state">No videos yet — upload videos from your device using Upload Videos.</div>';
+      videosHost.innerHTML = '<div class="empty-state">No videos yet — upload videos from your device using ＋ Add Videos.</div>';
     } else {
       videos.forEach((item, index) => {
         const src = getViewerSrc(item);
@@ -669,7 +593,10 @@ async function renderQuickGalleries() {
               <strong>${escapeHtml(item.name || 'Batch Video')}</strong>
               <small>${item.builtin ? 'Archive Montage' : 'Device Upload'}</small>
             </div>
-            <button class="quick-fav-btn ${isFav ? 'active' : ''}" type="button" title="Toggle Favourite">${isFav ? '♥' : '♡'}</button>
+            <div class="quick-card-actions">
+              <button class="quick-fav-btn ${isFav ? 'active' : ''}" type="button" title="Toggle Favourite">${isFav ? '♥' : '♡'}</button>
+              <button class="quick-del-btn" type="button" title="Remove video" aria-label="Remove video">✕</button>
+            </div>
           </div>`;
         card.querySelector('.quick-video-thumb').onclick = () => openViewer(videos, index, 'video');
         card.querySelector('.quick-fav-btn').onclick = async (e) => {
@@ -678,108 +605,23 @@ async function renderQuickGalleries() {
           await renderQuickGalleries();
           await updateV7Home();
         };
+        card.querySelector('.quick-del-btn').onclick = async (e) => {
+          e.stopPropagation();
+          await removeGalleryMediaItem(item, 'video');
+        };
         videosHost.appendChild(card);
       });
     }
   }
 }
 
-$('quickUploadPhotoBtn')?.addEventListener('click', async () => addMedia(await resolveUploadFolderId('photo'), 'photo', false));
-$('quickUploadVideoBtn')?.addEventListener('click', async () => addMedia(await resolveUploadFolderId('video'), 'video', false));
+$('quickUploadPhotoBtn')?.addEventListener('click', () => addMedia('photo'));
+$('quickUploadVideoBtn')?.addEventListener('click', () => addMedia('video'));
 $('playAllPhotosSlideshow')?.addEventListener('click', async () => {
   const photos = await getAllCombinedMedia('photo');
   if (!photos.length) return showToast('No photos available for slideshow');
   startSlideshow(photos);
 });
-
-async function renderFolders() {
-  if (!DB) return;
-  const folders = await getAll('folders');
-  const hidden = new Set((await getAll('hiddenMedia')).map((x) => x.id));
-  for (const type of ['photo', 'video']) {
-    const host = $(type === 'photo' ? 'photoFolders' : 'videoFolders');
-    host.innerHTML = '';
-    const matching = folders.filter((x) => x.type === type);
-    if (!matching.length) {
-      host.innerHTML = `<div class="empty-state">No ${type} folders yet. Create one using ＋ New Folder.</div>`;
-      continue;
-    }
-    for (const f of matching) {
-      const builtCount = f.builtin
-        ? (window.BUILTIN_MEDIA[type === 'photo' ? 'photos' : 'videos'] || [])
-            .filter((_, i) => !hidden.has(`${f.id}-b${i}`)).length
-        : 0;
-      const count = builtCount + (await mediaForFolder(f.id)).length;
-      const cover = f.coverBlob ? URL.createObjectURL(f.coverBlob) : (f.cover || 'assets/common.jpg');
-      const c = document.createElement('div');
-      c.className = 'folder-card';
-      c.innerHTML = `
-        <div class="folder-cover-wrap">
-          <img class="folder-cover" src="${cover}" alt="${escapeHtml(f.name)}" referrerpolicy="no-referrer" onerror="this.src='assets/common.jpg'">
-        </div>
-        <div class="folder-body">
-          <div class="folder-meta-row">${type === 'photo' ? 'PHOTO FOLDER' : 'VIDEO FOLDER'} · ${count} ${type === 'photo' ? 'Photos' : 'Videos'}</div>
-          <h3>${escapeHtml(f.name)}</h3>
-          <p>${escapeHtml(f.note || 'Shared Folder')}</p>
-          <div class="folder-actions">
-            <button class="mini-btn open-folder" type="button">Open</button>
-            ${f.builtin ? '' : '<button class="mini-btn change-cover" type="button">Change Cover</button>'}
-            <button class="mini-btn danger delete-folder-card" type="button">Delete</button>
-          </div>
-        </div>`;
-      c.querySelector('.open-folder').onclick = (e) => { e.stopPropagation(); openFolder(f.id); };
-      if (!f.builtin) c.querySelector('.change-cover').onclick = (e) => { e.stopPropagation(); chooseCover(f.id); };
-      c.querySelector('.delete-folder-card').onclick = async (e) => { e.stopPropagation(); await deleteFolder(f); };
-      c.onclick = () => openFolder(f.id);
-      host.appendChild(c);
-    }
-  }
-}
-
-async function deleteFolder(f) {
-  const msg = f.builtin
-    ? 'Hide this built-in folder from this browser? Original archive files will NOT be deleted.'
-    : 'Delete this folder and all media added to it on this browser?';
-  if (!confirm(msg)) return;
-  for (const m of await mediaForFolder(f.id)) {
-    await recycleItem('media', m.id, m);
-    await del('media', m.id);
-  }
-  await recycleItem('folder', f.id, f);
-  await del('folders', f.id);
-  if (f.builtin) localStorage.setItem('deleted_' + f.id, '1');
-  const d = $('folderDialog');
-  if (d?.open) d.close();
-  await renderFolders();
-  await renderQuickGalleries();
-  await updateV7Home();
-}
-
-let newFolderType = 'photo';
-document.querySelectorAll('[data-new-folder]').forEach((b) => {
-  b.onclick = () => {
-    newFolderType = b.dataset.newFolder;
-    $('newFolderTitle').textContent = newFolderType === 'photo' ? 'Create Photo Folder' : 'Create Video Folder';
-    $('newFolderDialog').showModal();
-  };
-});
-$('newFolderForm').onsubmit = async (e) => {
-  e.preventDefault();
-  const name = $('folderName').value.trim();
-  const note = $('folderNote').value.trim();
-  await put('folders', {
-    id: 'f-' + Date.now() + '-' + Math.random().toString(36).slice(2),
-    name,
-    type: newFolderType,
-    note,
-    builtin: false,
-    cover: 'assets/common.jpg'
-  });
-  e.target.reset();
-  $('newFolderDialog').close();
-  renderFolders();
-  showToast(`Folder "${name}" created`);
-};
 
 // Media viewer
 let currentViewerItems = [];
@@ -877,93 +719,6 @@ $('mediaViewerDialog').addEventListener('close', () => {
   viewerScale = 1;
 });
 
-async function openFolder(id) {
-  const folders = await getAll('folders');
-  const f = folders.find((x) => x.id === id);
-  if (!f) return;
-  const dialog = $('folderDialog');
-  const body = $('folderDialogBody');
-  let items = [];
-  if (f.builtin) {
-    const list = window.BUILTIN_MEDIA[f.type === 'photo' ? 'photos' : 'videos'] || [];
-    const hidden = await getAll('hiddenMedia');
-    const hiddenIds = new Set(hidden.map((x) => x.id));
-    const built = list
-      .map((src, i) => ({
-        id: f.id + '-b' + i,
-        src,
-        builtin: true,
-        type: f.type,
-        name: formatMediaTitle(src.split('/').pop()),
-        rawName: decodeURIComponent(src.split('/').pop())
-      }))
-      .filter((x) => !hiddenIds.has(x.id));
-    const local = await mediaForFolder(id);
-    items = [...built, ...local];
-  } else {
-    items = await mediaForFolder(id);
-  }
-  const cover = f.coverBlob ? URL.createObjectURL(f.coverBlob) : (f.cover || 'assets/common.jpg');
-  body.innerHTML = `
-    <div class="folder-view-head">
-      <img src="${cover}" alt="${escapeHtml(f.name)}" referrerpolicy="no-referrer" onerror="this.src='assets/common.jpg'">
-      <div>
-        <div class="eyebrow">${f.type === 'photo' ? 'Photo Folder' : 'Video Folder'}</div>
-        <h3>${escapeHtml(f.name)}</h3>
-        <small>${items.length} ${items.length === 1 ? 'item' : 'items'}</small>
-      </div>
-    </div>
-    <div class="folder-view-actions">
-      <button class="mini-btn" id="addMediaBtn" type="button">＋ Add ${f.type === 'photo' ? 'Photos' : 'Videos'}</button>
-      ${f.type === 'photo' ? '<button class="mini-btn" id="startSlideshowBtn" type="button">▶ Slideshow</button>' : ''}
-      ${f.builtin ? '' : '<button class="mini-btn" id="changeCoverInside" type="button">🖼️ Change Cover</button>'}
-      <button class="mini-btn danger" id="deleteFolderBtn" type="button">🗑️ Delete Folder</button>
-    </div>
-    <div id="folderMediaGrid" class="media-grid"></div>`;
-  const grid = body.querySelector('#folderMediaGrid');
-  if (items.length === 0) {
-    grid.innerHTML = '<div class="empty-state">No media in this folder yet.<br><small>Use Add to upload files from your device.</small></div>';
-  } else {
-    items.forEach((item, index) => {
-      const tile = document.createElement('div');
-      tile.className = 'media-tile';
-      const src = item.builtin ? item.src : URL.createObjectURL(item.blob);
-      if (f.type === 'photo') {
-        tile.innerHTML = `<img src="${src}" alt="${escapeHtml(item.name || 'photo')}" loading="lazy" referrerpolicy="no-referrer" onerror="this.src='assets/common.jpg'"><button class="remove-media" type="button" aria-label="Remove item">✕</button>`;
-      } else {
-        tile.innerHTML = `<video src="${src}" muted playsinline preload="metadata"></video><span class="play-badge" aria-hidden="true">▶</span><button class="remove-media" type="button" aria-label="Remove item">✕</button>`;
-      }
-      tile.querySelector(f.type === 'photo' ? 'img' : 'video').onclick = () => openViewer(items, index, f.type);
-      tile.querySelector('.remove-media').onclick = async (e) => {
-        e.stopPropagation();
-        if (!confirm('Remove this ' + f.type + ' from this gallery?')) return;
-        if (item.builtin) {
-          await recycleItem('hiddenMedia', item.id, item);
-          await put('hiddenMedia', { id: item.id });
-        } else {
-          await recycleItem('media', item.id, item);
-          await del('media', item.id);
-        }
-        dialog.close();
-        await openFolder(id);
-        await renderFolders();
-        await renderQuickGalleries();
-        await updateV7Home();
-      };
-      grid.appendChild(tile);
-    });
-  }
-  body.querySelector('#addMediaBtn').onclick = () => addMedia(id, f.type, true);
-  if (f.type === 'photo' && body.querySelector('#startSlideshowBtn')) {
-    body.querySelector('#startSlideshowBtn').onclick = () => { dialog.close(); startSlideshow(items); };
-  }
-  if (!f.builtin) {
-    body.querySelector('#changeCoverInside').onclick = () => chooseCover(id, () => { dialog.close(); openFolder(id); });
-  }
-  body.querySelector('#deleteFolderBtn').onclick = () => deleteFolder(f);
-  dialog.showModal();
-}
-
 function filePicker(accept, multiple = false) {
   return new Promise((res) => {
     const i = document.createElement('input');
@@ -975,9 +730,10 @@ function filePicker(accept, multiple = false) {
   });
 }
 
-async function addMedia(folderId, type, reopenFolder = true) {
+async function addMedia(type) {
   const files = await filePicker(type === 'photo' ? 'image/*' : 'video/*', true);
   if (!files.length) return 0;
+  const folderId = type === 'photo' ? 'builtin-photos' : 'builtin-videos';
   for (const file of files) {
     await put('media', {
       id: 'm-' + Date.now() + '-' + Math.random().toString(36).slice(2),
@@ -988,24 +744,10 @@ async function addMedia(folderId, type, reopenFolder = true) {
       created: Date.now()
     });
   }
-  if ($('folderDialog')?.open) $('folderDialog').close();
-  if (reopenFolder) await openFolder(folderId);
-  await renderFolders();
   await renderQuickGalleries();
   await updateV7Home();
   showToast(`Added ${files.length} ${type}${files.length > 1 ? 's' : ''}`);
   return files.length;
-}
-
-async function chooseCover(folderId, after) {
-  const [file] = await filePicker('image/*', false);
-  if (!file) return;
-  const folders = await getAll('folders');
-  const f = folders.find((x) => x.id === folderId);
-  f.coverBlob = file;
-  await put('folders', f);
-  renderFolders();
-  if (after) after();
 }
 
 // Journey timeline
@@ -2216,14 +1958,13 @@ async function renderRestoreCenter() {
     row.innerHTML = `<span>${escapeHtml(r.kind)} · ${escapeHtml(r.data?.name || r.data?.n || r.data?.title || r.originalId)}</span><button class="mini-btn" type="button">Restore</button>`;
     row.querySelector('button').onclick = async () => {
       if (r.kind === 'profile') await put('profiles', r.data);
-      else if (r.kind === 'folder') await put('folders', r.data);
       else if (r.kind === 'journey') await put('journeys', r.data);
       else if (r.kind === 'media') await put('media', r.data);
       else if (r.kind === 'hiddenMedia') await del('hiddenMedia', r.originalId);
       localStorage.removeItem('deleted_' + r.originalId);
       await del('recycle', r.id);
-      await seedProfiles(); await seedBuiltins(); await seedJourneys();
-      await renderPeople(); await renderFolders(); await renderQuickGalleries(); await renderJourney();
+      await seedProfiles(); await seedJourneys();
+      await renderPeople(); await renderQuickGalleries(); await renderJourney();
       await renderRestoreCenter(); await updateV7Home();
       showToast('Item restored');
     };
@@ -2237,7 +1978,6 @@ async function renderRestoreCenter() {
     row.querySelector('button').onclick = async () => {
       await del('hiddenMedia', h.id);
       await renderRestoreCenter();
-      await renderFolders();
       await renderQuickGalleries();
       await updateV7Home();
     };
@@ -2249,8 +1989,8 @@ async function renderRestoreCenter() {
     row.innerHTML = `<span>${deletedKeys.length} hidden built-in items</span><button class="mini-btn" type="button">Restore All</button>`;
     row.querySelector('button').onclick = async () => {
       deletedKeys.forEach((k) => localStorage.removeItem(k));
-      await seedProfiles(); await seedBuiltins(); await seedJourneys();
-      await renderPeople(); await renderFolders(); await renderQuickGalleries(); await renderJourney();
+      await seedProfiles(); await seedJourneys();
+      await renderPeople(); await renderQuickGalleries(); await renderJourney();
       await renderRestoreCenter(); await updateV7Home();
       showToast('All built-in items restored');
     };
@@ -2329,8 +2069,8 @@ $('importInput').onchange = async (e) => {
       await new Promise((r) => { tx.oncomplete = r; tx.onerror = r; tx.onabort = r; });
     }
     Object.entries(data.localStorage || {}).forEach(([k, v]) => localStorage.setItem(k, v));
-    await seedProfiles(); await seedBuiltins(); await seedJourneys(); await seedSocialMessages();
-    await renderPeople(); await renderFolders(); await renderQuickGalleries(); await renderJourney();
+    await seedProfiles(); await seedJourneys(); await seedSocialMessages();
+    await renderPeople(); await renderQuickGalleries(); await renderJourney();
     await updateV7Home(); updateUnreadBadge();
     showToast('Backup imported successfully');
   } catch {

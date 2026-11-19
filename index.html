@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,500&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=14.0.0" />
+  <link rel="stylesheet" href="css/style.css?v=14.2.0" />
 </head>
 <body>
   <div id="app">
@@ -73,11 +73,11 @@
             </button>
             <button class="drawer-item" type="button" data-nav-page="3">
               <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-              <span>Photos & Albums</span>
+              <span>Photos</span>
             </button>
             <button class="drawer-item" type="button" data-nav-page="4">
               <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
-              <span>Videos & Clips</span>
+              <span>Videos</span>
             </button>
             <button class="drawer-item" type="button" data-nav-page="1">
               <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -209,8 +209,8 @@
                 <div class="chapters-grid">
                   <button class="chapter-card jump-btn" type="button" data-target="3">
                     <span class="chapter-num">01 · GALLERY</span>
-                    <strong>Photo Albums</strong>
-                    <small>All photos, folders & slideshow</small>
+                    <strong>Photo Gallery</strong>
+                    <small>All batch photos & slideshow</small>
                   </button>
                   <button class="chapter-card jump-btn" type="button" data-target="4">
                     <span class="chapter-num">02 · CINEMA</span>
@@ -271,28 +271,17 @@
             <div id="journeyTimeline" class="timeline"></div>
           </article>
 
-          <!-- PAGE 3: PHOTOS (Android Gallery: Albums Shelf First + Photo Masonry) -->
+          <!-- PAGE 3: PHOTOS (Direct Photo Gallery) -->
           <article class="page" data-page="3" id="photosPage">
             <div class="section-head">
               <div>
                 <div class="eyebrow">Chapter 03 · Photo Archive</div>
-                <h2>Photos & Albums</h2>
+                <h2>Photos</h2>
               </div>
               <div class="section-actions">
                 <button id="quickUploadPhotoBtn" class="primary-btn small" type="button">＋ Add Photos</button>
-                <button class="tonal-btn small" type="button" data-new-folder="photo">＋ New Album</button>
                 <button id="playAllPhotosSlideshow" class="mini-btn" type="button">▶ Slideshow</button>
               </div>
-            </div>
-
-            <div class="gallery-block">
-              <div class="gallery-subhead">
-                <div>
-                  <h3>Albums & Folders</h3>
-                  <small>Create albums, upload photos from device, or customize folder covers.</small>
-                </div>
-              </div>
-              <div id="photoFolders" class="folders-grid"></div>
             </div>
 
             <div class="gallery-block">
@@ -306,27 +295,16 @@
             </div>
           </article>
 
-          <!-- PAGE 4: VIDEOS (Android Cinema Gallery: Video Albums + All Clips) -->
+          <!-- PAGE 4: VIDEOS (Direct Video Gallery) -->
           <article class="page" data-page="4" id="videosPage">
             <div class="section-head">
               <div>
                 <div class="eyebrow">Chapter 04 · Video Archive</div>
-                <h2>Videos & Albums</h2>
+                <h2>Videos</h2>
               </div>
               <div class="section-actions">
                 <button id="quickUploadVideoBtn" class="primary-btn small" type="button">＋ Add Videos</button>
-                <button class="tonal-btn small" type="button" data-new-folder="video">＋ New Album</button>
               </div>
-            </div>
-
-            <div class="gallery-block">
-              <div class="gallery-subhead">
-                <div>
-                  <h3>Video Albums</h3>
-                  <small>Organize event clips, upload videos from your device, and set custom covers.</small>
-                </div>
-              </div>
-              <div id="videoFolders" class="folders-grid"></div>
             </div>
 
             <div class="gallery-block">
@@ -454,10 +432,6 @@
     <button class="close-modal" type="button" data-close aria-label="Close">✕</button>
     <div class="eyebrow">Quick Upload & Create</div>
     <h3>Add to Memories</h3>
-    <div class="sheet-folder-row">
-      <label for="uploadTargetFolder">Save uploaded media to album</label>
-      <select id="uploadTargetFolder" class="persona-select"></select>
-    </div>
     <div class="sheet-action-grid">
       <button id="sheetAddPhotoBtn" class="sheet-tile accent-photo" type="button">
         <span class="sheet-tile-icon">📸</span>
@@ -468,16 +442,6 @@
         <span class="sheet-tile-icon">🎬</span>
         <strong>Add Videos</strong>
         <small>Upload MP4 or clips from device</small>
-      </button>
-      <button id="sheetNewPhotoFolderBtn" class="sheet-tile" type="button">
-        <span class="sheet-tile-icon">📁</span>
-        <strong>Photo Album</strong>
-        <small>Create an image folder</small>
-      </button>
-      <button id="sheetNewVideoFolderBtn" class="sheet-tile" type="button">
-        <span class="sheet-tile-icon">🎞️</span>
-        <strong>Video Album</strong>
-        <small>Create a video folder</small>
       </button>
       <button id="sheetAddJourneyBtn" class="sheet-tile" type="button">
         <span class="sheet-tile-icon">📖</span>
@@ -495,9 +459,6 @@
   <!-- PROFILE DETAIL -->
   <dialog id="profileDialog" class="modal"><button class="close-modal" type="button" data-close aria-label="Close">✕</button><div id="profileDialogBody"></div></dialog>
 
-  <!-- FOLDER VIEW -->
-  <dialog id="folderDialog" class="modal"><button class="close-modal" type="button" data-close aria-label="Close">✕</button><div id="folderDialogBody"></div></dialog>
-
   <!-- ADD PROFILE -->
   <dialog id="newProfileDialog" class="modal">
     <button class="close-modal" type="button" data-close aria-label="Close">✕</button>
@@ -512,18 +473,6 @@
       <textarea id="profileMemory" maxlength="600" placeholder="Memory note" required></textarea>
       <label class="file-label">Profile Photo <input id="profileImageInput" type="file" accept="image/*" /></label>
       <button class="primary-btn" type="submit">Add Profile</button>
-    </form>
-  </dialog>
-
-  <!-- NEW FOLDER -->
-  <dialog id="newFolderDialog" class="modal">
-    <button class="close-modal" type="button" data-close aria-label="Close">✕</button>
-    <form id="newFolderForm" class="modal-form">
-      <div class="eyebrow">New Album</div>
-      <h3 id="newFolderTitle">Create Album</h3>
-      <input id="folderName" maxlength="40" placeholder="Album Name" required />
-      <textarea id="folderNote" maxlength="120" placeholder="Short note (optional)"></textarea>
-      <button class="primary-btn" type="submit">Create Album</button>
     </form>
   </dialog>
 
@@ -756,7 +705,7 @@
     <div id="restoreList" class="restore-list" hidden></div>
   </dialog>
 
-  <script src="js/media-manifest.js?v=14.0.0"></script>
-  <script src="js/app.js?v=14.0.0"></script>
+  <script src="js/media-manifest.js?v=14.2.0"></script>
+  <script src="js/app.js?v=14.2.0"></script>
 </body>
 </html>
