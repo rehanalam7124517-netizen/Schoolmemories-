@@ -10,7 +10,8 @@ const PEOPLE = [
   { n: 'Aniket', nick: 'Kallu', title: 'The Kallu', nature: 'Energetic', special: 'Troublemaker', memory: 'Kallu was always full of energy. Wherever mischief was happening, there was a good chance Aniket was right in the middle of it.' },
   { n: 'Krishna', nick: 'Maharaj', title: 'The Maharaj', nature: 'Cool', special: 'Royal Presence', memory: 'Maharaj — the name itself said everything. That calm presence and those shared classroom moments made him unforgettable.' },
   { n: 'Hemant', nick: 'Sustmal', title: 'The Sustmal', nature: 'Laid-back', special: 'Sleepyhead', memory: 'Sustmal — the unhurried vibe and quiet humour are what set Hemant apart. Some memories do not need noise to be remembered.' },
-  { n: 'Depanshu', nick: 'Nautanki', title: 'The Nautanki', nature: 'Dramatic', special: 'Drama King', memory: 'Nautanki — the theatrics and humour never failed to keep the whole group entertained. Those scenes are ones we will always smile back on.' }
+  { n: 'Depanshu', nick: 'Nautanki', title: 'The Nautanki', nature: 'Dramatic', special: 'Drama King', memory: 'Nautanki — the theatrics and humour never failed to keep the whole group entertained. Those scenes are ones we will always smile back on.' },
+  { n: 'Sahin Praveen', nick: 'Sahin', title: 'The Graceful One', nature: 'Warm & Cheerful', special: 'Pure Positivity', memory: 'A bright presence in the batch who always brought warmth, kindness, and genuine smiles to ordinary school days. Whether it was classroom laughter or group moments together, Sahin Praveen made every memory feel special.' }
 ];
 
 const $ = (id) => document.getElementById(id);

@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,500&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=14.2.0" />
+  <link rel="stylesheet" href="css/style.css?v=14.6.0" />
 </head>
 <body>
   <div id="app">
@@ -119,8 +119,11 @@
           <!-- PAGE 0: HOME FEED (Android App Home Screen) -->
           <article class="page active" data-page="0" id="homePage">
             <div class="home-stack">
-              <!-- Featured Batch Banner -->
+              <!-- Featured Batch Banner (Photo on top, intro below) -->
               <section class="hero-card">
+                <div class="hero-photo-wrap">
+                  <img src="assets/common.jpg" class="hero-photo" alt="The OG Legends cohort portrait" referrerpolicy="no-referrer" />
+                </div>
                 <div class="hero-copy">
                   <div class="eyebrow">Mother Teresa Public School · Batch 2025–26</div>
                   <h1>The OG Legends</h1>
@@ -130,9 +133,6 @@
                     <button id="enterMemoriesBtn" class="primary-btn" type="button">Explore Legends</button>
                     <button id="heroMessagesBtn" class="tonal-btn" type="button">💬 Open Batch Chats</button>
                   </div>
-                </div>
-                <div class="hero-photo-wrap">
-                  <img src="assets/common.jpg" class="hero-photo" alt="The OG Legends cohort portrait" referrerpolicy="no-referrer" />
                 </div>
               </section>
 
@@ -248,7 +248,7 @@
               </div>
               <div class="section-actions">
                 <input id="peopleFilterInput" class="inline-search" type="search" placeholder="Filter by name or nickname..." aria-label="Filter profiles" />
-                <div id="peopleCounter" class="counter">11 Profiles</div>
+                <div id="peopleCounter" class="counter">12 Profiles</div>
                 <button id="addProfileBtn" class="primary-btn small" type="button">＋ Add Legend</button>
               </div>
             </div>
@@ -712,7 +712,7 @@
     <div id="restoreList" class="restore-list" hidden></div>
   </dialog>
 
-  <script src="js/media-manifest.js?v=14.4.0"></script>
-  <script src="js/app.js?v=14.4.0"></script>
+  <script src="js/media-manifest.js?v=14.6.0"></script>
+  <script src="js/app.js?v=14.6.0"></script>
 </body>
 </html>

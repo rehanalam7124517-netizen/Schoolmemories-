@@ -614,7 +614,7 @@ h1, h2, h3 {
 
 .hero-card {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: stretch;
   gap: 0;
   min-width: 0;
@@ -627,7 +627,7 @@ h1, h2, h3 {
 }
 
 .hero-copy {
-  padding: clamp(24px, 3.8vw, 44px);
+  padding: clamp(22px, 3.2vw, 38px);
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -635,7 +635,7 @@ h1, h2, h3 {
 }
 .hero-copy h1 {
   margin: 2px 0 12px;
-  font-size: clamp(2.25rem, 4.3vw, 3.45rem);
+  font-size: clamp(2.15rem, 4.1vw, 3.25rem);
   line-height: 1.04;
   letter-spacing: -0.03em;
   font-weight: 700;
@@ -645,10 +645,10 @@ h1, h2, h3 {
   color: var(--muted);
   font-size: 0.98rem;
   line-height: 1.66;
-  max-width: 52ch;
+  max-width: 64ch;
 }
 .hero-quote {
-  margin: 20px 0 24px;
+  margin: 18px 0 22px;
   padding: 15px 18px;
   border: 1px solid var(--line);
   background: var(--surface-subtle);
@@ -668,18 +668,18 @@ h1, h2, h3 {
 
 .hero-photo-wrap {
   background: var(--surface-media);
-  border-left: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
   display: grid;
   place-items: stretch;
   min-width: 0;
-  min-height: 300px;
+  min-height: 0;
 }
 .hero-photo {
   width: 100%;
-  height: 100%;
-  min-height: 100%;
-  max-height: 440px;
+  aspect-ratio: 16 / 9;
+  max-height: 460px;
   object-fit: cover;
+  object-position: center 28%;
   display: block;
 }
 
@@ -891,13 +891,18 @@ h1, h2, h3 {
 .chapter-card strong { font-family: var(--font-display); font-size: 1.05rem; font-weight: 700; }
 .chapter-card small { font-size: 0.78rem; color: var(--muted); line-height: 1.45; }
 
-/* ==================== PEOPLE (3-COLUMN COHORT GRID) ==================== */
+/* ==================== PEOPLE (ONE LEGEND PER ROW) ==================== */
 .people-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
+  max-width: 860px;
+  margin: 0 auto;
 }
 .person-card {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  align-items: stretch;
   border: 1px solid var(--line);
   background: var(--surface);
   border-radius: 18px;
@@ -906,23 +911,35 @@ h1, h2, h3 {
   transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.18s ease;
 }
 .person-card:hover { transform: translateY(-2px); border-color: var(--accent); }
-.person-img-wrap { background: var(--surface-media); border-bottom: 1px solid var(--line); }
+.person-img-wrap {
+  background: var(--surface-media);
+  border-right: 1px solid var(--line);
+  min-width: 0;
+}
 .person-card img {
   width: 100%;
-  aspect-ratio: 16 / 10;
+  height: 100%;
+  min-height: 175px;
+  aspect-ratio: 4 / 3;
   object-fit: cover;
   display: block;
 }
-.person-body { padding: 15px 17px; }
+.person-body {
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
 .person-meta-line {
   font-family: var(--font-mono);
-  font-size: 0.71rem;
+  font-size: 0.72rem;
   color: var(--accent);
   letter-spacing: 0.03em;
-  margin-bottom: 5px;
+  margin-bottom: 6px;
 }
-.person-body h3 { margin: 0 0 8px; font-size: 1.18rem; font-weight: 700; }
-.person-body p { margin: 3px 0; color: var(--muted); font-size: 0.83rem; }
+.person-body h3 { margin: 0 0 8px; font-size: 1.24rem; font-weight: 700; }
+.person-body p { margin: 3px 0; color: var(--muted); font-size: 0.86rem; }
 .person-body strong { color: var(--text); font-weight: 600; }
 
 /* ==================== JOURNEY TIMELINE ==================== */
@@ -1000,15 +1017,17 @@ h1, h2, h3 {
 .gallery-subhead small { display: block; color: var(--muted); font-size: 0.82rem; margin-top: 2px; }
 
 .quick-media-masonry {
-  column-count: 3;
-  column-gap: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  max-width: 760px;
+  margin: 0 auto;
 }
 .quick-media-card {
-  break-inside: avoid;
-  margin: 0 0 14px;
+  margin: 0;
   border: 1px solid var(--line);
   background: var(--surface);
-  border-radius: 16px;
+  border-radius: 18px;
   overflow: hidden;
   transition: border-color 0.16s ease;
 }
@@ -1017,6 +1036,9 @@ h1, h2, h3 {
   display: block;
   width: 100%;
   height: auto;
+  max-height: 76vh;
+  object-fit: contain;
+  background: var(--surface-media);
   cursor: pointer;
 }
 .quick-media-caption {
@@ -1024,11 +1046,11 @@ h1, h2, h3 {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 10px 13px;
+  padding: 12px 15px;
   border-top: 1px solid var(--line);
 }
 .quick-media-caption span {
-  font-size: 0.8rem;
+  font-size: 0.86rem;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -1091,8 +1113,10 @@ h1, h2, h3 {
 
 .quick-video-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  max-width: 760px;
+  margin: 0 auto;
 }
 .quick-video-card {
   border: 1px solid var(--line);
@@ -1153,29 +1177,31 @@ h1, h2, h3 {
 }
 .memory-day-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  max-width: 720px;
+  margin: 0 auto;
 }
 .memory-day-item { position: relative; min-width: 0; }
 .memory-day-photo {
   appearance: none;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 16px;
   padding: 0;
   background: var(--surface-media);
   overflow: hidden;
   cursor: pointer;
   width: 100%;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 16 / 10;
   display: block;
 }
 .memory-day-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .memory-day-remove {
   position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 28px;
-  height: 28px;
+  top: 8px;
+  right: 8px;
+  width: 30px;
+  height: 30px;
   border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 8px;
   background: var(--surface-scrim);
@@ -1188,8 +1214,8 @@ h1, h2, h3 {
 .memory-day-picker-note { color: var(--muted); font-size: 0.86rem; margin: 4px 0 0; }
 .memory-day-picker-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
   margin-top: 14px;
 }
 .memory-day-pick {
@@ -2033,7 +2059,6 @@ dialog::backdrop { background: var(--backdrop-scrim); backdrop-filter: blur(10px
   .stat-item { border-bottom: 1px solid var(--line); }
   .chapters-grid, .theme-picker-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .launcher-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .people-grid, .quick-video-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .home-today-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
@@ -2141,9 +2166,12 @@ dialog::backdrop { background: var(--backdrop-scrim); backdrop-filter: blur(10px
   .page { padding: 14px 14px 92px; }
   .hero-card, .final-card { grid-template-columns: 1fr; border-radius: 22px; }
   .hero-copy { padding: 20px 18px; }
-  .hero-photo-wrap { border-left: 0; border-top: 1px solid var(--line); min-height: 0; }
-  .hero-photo { max-height: 240px; min-height: 0; aspect-ratio: 16 / 10; height: auto; }
+  .hero-photo-wrap { border-left: 0; border-bottom: 1px solid var(--line); min-height: 0; }
+  .hero-photo { max-height: 260px; min-height: 0; aspect-ratio: 16 / 10; height: auto; }
   .home-band { padding: 16px; border-radius: 18px; }
+  .person-card { grid-template-columns: 1fr; }
+  .person-img-wrap { border-right: 0; border-bottom: 1px solid var(--line); }
+  .person-card img { aspect-ratio: 16 / 10; min-height: 0; height: auto; }
 
   .launcher-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .launcher-tile { padding: 12px; min-height: 62px; }
@@ -2169,10 +2197,7 @@ dialog::backdrop { background: var(--backdrop-scrim); backdrop-filter: blur(10px
   .stats-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .stat-item:nth-child(even) { border-right: 0; }
   .stat-item:last-child:nth-child(odd) { grid-column: 1 / -1; border-right: 0; border-bottom: 0; }
-  .chapters-grid, .wall-grid, .quick-video-grid, .tool-grid { grid-template-columns: 1fr; }
-  .quick-media-masonry { column-count: 2; }
-  .memory-day-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .memory-day-picker-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .chapters-grid, .wall-grid, .tool-grid { grid-template-columns: 1fr; }
   .profile-top { grid-template-columns: 1fr; }
   .timeline-card { grid-template-columns: 36px minmax(0, 1fr); gap: 12px; padding: 14px; }
   .journey-step { width: 36px; height: 36px; font-size: 0.78rem; }
