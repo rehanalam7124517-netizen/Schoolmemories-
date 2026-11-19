@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,500&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=14.6.0" />
+  <link rel="stylesheet" href="css/style.css?v=14.7.0" />
 </head>
 <body>
   <div id="app">
@@ -52,7 +52,6 @@
               <strong>The OG Legends</strong>
               <span>MTPS · Batch 2025–26</span>
             </div>
-            <button id="closeDrawerBtn" class="nav-icon drawer-close-btn" type="button" aria-label="Close navigation drawer">✕</button>
           </div>
 
           <div class="drawer-fab-wrap">
@@ -80,7 +79,7 @@
               <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
               <span>The Legends</span>
             </button>
-            <button id="messageBtn" class="drawer-item" type="button">
+            <button id="messageBtn" class="drawer-item" type="button" data-nav-page="9">
               <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
               <span>Batch Chats</span>
               <span id="msgUnreadBadge" class="drawer-badge" hidden>0</span>
@@ -402,6 +401,311 @@
               </div>
             </div>
           </article>
+          <!-- PAGE 9: BATCH MESSAGES (Full-Screen App Screen) -->
+          <article class="page messages-page" data-page="9" id="messagesPage">
+            <div class="msg-shell">
+              <header class="msg-topbar">
+                <div class="msg-title-group">
+                  <div class="eyebrow">Batch Messaging · Open Access</div>
+                  <h3>💬 OG Legends Messages</h3>
+                </div>
+                <div class="msg-persona-bar">
+                  <label for="chatSenderSelect" class="persona-label">Chatting as</label>
+                  <select id="chatSenderSelect" class="persona-select" aria-label="Select sender persona"></select>
+                  <form id="customSenderWrap" class="custom-sender-wrap" hidden>
+                    <input id="customSenderInput" type="text" maxlength="28" placeholder="Your name..." aria-label="Enter display name" />
+                    <button class="mini-btn" type="submit">Set</button>
+                  </form>
+                </div>
+              </header>
+
+              <div class="msg-tabs" role="tablist">
+                <button class="msg-tab active" type="button" data-msg-tab="chats" role="tab">Direct Chats</button>
+                <button class="msg-tab" type="button" data-msg-tab="groups" role="tab">Groups</button>
+                <button class="msg-tab" type="button" data-msg-tab="channels" role="tab">Noticeboard</button>
+              </div>
+
+              <div class="msg-workspace">
+                <aside id="msgListPane" class="msg-list-pane">
+                  <div class="msg-list-tools">
+                    <input id="msgSearchInput" class="msg-search" type="search" placeholder="Search legends, groups, or boards..." autocomplete="off" />
+                    <button id="msgCreateActionBtn" class="primary-btn small" type="button" hidden>＋ New</button>
+                  </div>
+                  <div id="msgListHost" class="msg-list-host"></div>
+                </aside>
+
+                <section id="msgThreadPane" class="msg-thread-pane">
+                  <div id="msgEmptyPlaceholder" class="msg-thread-empty">
+                    <div>
+                      <strong>Select a conversation</strong>
+                      <p>Pick any Legend, batch group, or announcement channel from the list to read or send messages and media — no ID or login required.</p>
+                    </div>
+                  </div>
+
+                  <div id="msgActiveThread" class="msg-active-thread" hidden>
+                    <div class="msg-thread-header">
+                      <button id="msgBackToListBtn" class="mini-btn msg-back-btn" type="button">← Back</button>
+                      <div class="msg-thread-peer">
+                        <img id="msgThreadAvatar" src="assets/common.jpg" alt="" referrerpolicy="no-referrer" />
+                        <div>
+                          <b id="msgThreadTitle">Thread Title</b>
+                          <small id="msgThreadSub">Batch 2025–26</small>
+                        </div>
+                      </div>
+                      <div class="msg-thread-header-actions">
+                        <button id="msgClearThreadBtn" class="mini-btn danger" type="button" title="Clear messages">Clear</button>
+                      </div>
+                    </div>
+
+                    <div id="msgFeedHost" class="msg-feed-host"></div>
+
+                    <div id="msgAttachmentBar" class="msg-attach-preview" hidden>
+                      <span id="msgAttachName"></span>
+                      <button id="msgClearAttachBtn" class="mini-btn" type="button">Remove</button>
+                    </div>
+
+                    <form id="msgComposeForm" class="msg-compose">
+                      <label class="msg-attach-btn" title="Attach photo or video">
+                        📎
+                        <input id="msgMediaInput" type="file" accept="image/*,video/*" hidden />
+                      </label>
+                      <input id="msgTextInput" type="text" placeholder="Write a message..." autocomplete="off" maxlength="1000" />
+                      <button class="primary-btn small" type="submit">Send</button>
+                    </form>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </article>
+
+          <!-- PAGE 10: ADD TO MEMORIES (Full-Screen Android Activity) -->
+          <article class="page subpage" data-page="10" id="addMemoryPage">
+            <div class="subpage-shell">
+              <div class="subpage-card">
+                <div class="eyebrow">Quick Upload & Create</div>
+                <h2>Add to Memories</h2>
+                <p class="subpage-lead">Choose what you want to add to the batch archive from your device.</p>
+                <div class="sheet-action-grid">
+                  <button id="sheetAddPhotoBtn" class="sheet-tile accent-photo" type="button">
+                    <span class="sheet-tile-icon">📸</span>
+                    <strong>Add Photos</strong>
+                    <small>Pick one or multiple images</small>
+                  </button>
+                  <button id="sheetAddVideoBtn" class="sheet-tile accent-video" type="button">
+                    <span class="sheet-tile-icon">🎬</span>
+                    <strong>Add Videos</strong>
+                    <small>Upload MP4 or clips from device</small>
+                  </button>
+                  <button id="sheetAddJourneyBtn" class="sheet-tile" type="button">
+                    <span class="sheet-tile-icon">📖</span>
+                    <strong>Journey Story</strong>
+                    <small>Add date, note & media</small>
+                  </button>
+                  <button id="sheetAddProfileBtn" class="sheet-tile" type="button">
+                    <span class="sheet-tile-icon">👤</span>
+                    <strong>Add Legend</strong>
+                    <small>Add a classmate profile</small>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <!-- PAGE 11: PROFILE DETAIL (Full-Screen Android Activity) -->
+          <article class="page subpage" data-page="11" id="profileDetailPage">
+            <div class="subpage-shell">
+              <div id="profileDialogBody" class="subpage-card"></div>
+            </div>
+          </article>
+
+          <!-- PAGE 12: ADD PROFILE (Full-Screen Android Activity) -->
+          <article class="page subpage" data-page="12" id="newProfilePage">
+            <div class="subpage-shell">
+              <div class="subpage-card">
+                <form id="newProfileForm" class="modal-form">
+                  <div class="eyebrow">Add Legend</div>
+                  <h2>Add New Profile</h2>
+                  <input id="profileName" maxlength="40" placeholder="Name" required />
+                  <input id="profileNick" maxlength="60" placeholder="Nickname" required />
+                  <input id="profileTitle" maxlength="70" placeholder="Title (e.g. The Strategist)" required />
+                  <input id="profileNature" maxlength="70" placeholder="Nature (e.g. Calm, Energetic)" required />
+                  <input id="profileSpecial" maxlength="90" placeholder="What makes them special" required />
+                  <textarea id="profileMemory" maxlength="600" placeholder="Memory note" required></textarea>
+                  <label class="file-label">Profile Photo <input id="profileImageInput" type="file" accept="image/*" /></label>
+                  <button class="primary-btn" type="submit">Add Profile</button>
+                </form>
+              </div>
+            </div>
+          </article>
+
+          <!-- PAGE 13: NEW JOURNEY (Full-Screen Android Activity) -->
+          <article class="page subpage" data-page="13" id="newJourneyPage">
+            <div class="subpage-shell">
+              <div class="subpage-card">
+                <form id="newJourneyForm" class="modal-form">
+                  <div class="eyebrow">Add Journey Memory</div>
+                  <h2>Keep Another Moment</h2>
+                  <input id="journeyDate" placeholder="Date / Year" required />
+                  <input id="journeyTitle" placeholder="Title" required />
+                  <textarea id="journeyMessage" maxlength="1400" placeholder="Story / Memory" required></textarea>
+                  <label class="file-label">Photo or Video <input id="journeyMedia" type="file" accept="image/*,video/*" /></label>
+                  <button class="primary-btn" type="submit">Add to Journey</button>
+                </form>
+              </div>
+            </div>
+          </article>
+
+          <!-- PAGE 14: MEMORIES OF THE DAY PICKER (Full-Screen Android Activity) -->
+          <article class="page subpage" data-page="14" id="memoryDayPickerPage">
+            <div class="subpage-shell">
+              <div class="subpage-card">
+                <div class="eyebrow">Memories of the Day</div>
+                <h2>Choose Photos</h2>
+                <p class="memory-day-picker-note">Tap any photo below to pin it to Today’s Spotlight.</p>
+                <div id="memoryDayPickerGrid" class="memory-day-picker-grid"></div>
+              </div>
+            </div>
+          </article>
+
+          <!-- PAGE 15: SEARCH ARCHIVE (Full-Screen Android Activity) -->
+          <article class="page subpage" data-page="15" id="searchPage">
+            <div class="subpage-shell">
+              <div class="subpage-card">
+                <div class="eyebrow">Search Archive</div>
+                <h2>Find Legends, Journeys, Photos & Messages</h2>
+                <input id="searchInput" class="v7-input" type="search" placeholder="Search names, nicknames, stories, captions, or messages..." autocomplete="off" />
+                <div id="searchResults" class="search-results"></div>
+              </div>
+            </div>
+          </article>
+
+          <!-- PAGE 16: CAPTION / DATE META (Full-Screen Android Activity) -->
+          <article class="page subpage" data-page="16" id="metaPage">
+            <div class="subpage-shell">
+              <div class="subpage-card">
+                <form id="metaForm" class="modal-form">
+                  <div class="eyebrow">Memory Info</div>
+                  <h2>Caption & Date</h2>
+                  <input id="metaDate" placeholder="Date / Year" />
+                  <textarea id="metaCaption" maxlength="500" placeholder="Write a caption or memory..."></textarea>
+                  <button class="primary-btn" type="submit">Save Info</button>
+                </form>
+              </div>
+            </div>
+          </article>
+
+          <!-- PAGE 17: FRIEND LETTER (Full-Screen Android Activity) -->
+          <article class="page subpage" data-page="17" id="letterPage">
+            <div class="subpage-shell">
+              <div class="subpage-card">
+                <div class="eyebrow">Friend Letter</div>
+                <h2 id="letterTitle">A Letter</h2>
+                <textarea id="letterText" class="letter-text" maxlength="3000"></textarea>
+                <div class="dialog-actions"><button id="saveLetterBtn" class="primary-btn small" type="button">Save Letter</button></div>
+              </div>
+            </div>
+          </article>
+
+          <!-- PAGE 18: CREATE GROUP (Full-Screen Android Activity) -->
+          <article class="page subpage" data-page="18" id="createGroupPage">
+            <div class="subpage-shell">
+              <div class="subpage-card">
+                <form id="createGroupForm" class="modal-form">
+                  <div class="eyebrow">New Group Chat</div>
+                  <h2>Create Batch Group</h2>
+                  <input id="groupNameInput" maxlength="50" placeholder="Group name (e.g. Farewell Crew)" required />
+                  <input id="groupDescInput" maxlength="100" placeholder="Short description (optional)" />
+                  <div class="group-member-box">
+                    <div class="group-member-label">Include Legends</div>
+                    <div id="groupMemberChecklist" class="group-member-checklist"></div>
+                  </div>
+                  <button class="primary-btn" type="submit">Create Group</button>
+                </form>
+              </div>
+            </div>
+          </article>
+
+          <!-- PAGE 19: CREATE NOTICEBOARD CHANNEL (Full-Screen Android Activity) -->
+          <article class="page subpage" data-page="19" id="createChannelPage">
+            <div class="subpage-shell">
+              <div class="subpage-card">
+                <form id="createChannelForm" class="modal-form">
+                  <div class="eyebrow">New Noticeboard</div>
+                  <h2>Create Announcement Board</h2>
+                  <input id="channelNameInput" maxlength="50" placeholder="Board name (e.g. Reunion Updates)" required />
+                  <textarea id="channelDescInput" maxlength="200" placeholder="What is this board for?"></textarea>
+                  <button class="primary-btn" type="submit">Create Board</button>
+                </form>
+              </div>
+            </div>
+          </article>
+
+          <!-- PAGE 20: THEME & SETTINGS (Full-Screen Android Activity) -->
+          <article class="page subpage" data-page="20" id="toolsPage">
+            <div class="subpage-shell">
+              <div class="subpage-card">
+                <div class="eyebrow">Archive Controls</div>
+                <h2>Theme & Settings</h2>
+                <div class="theme-picker-section">
+                  <div class="theme-picker-head">
+                    <strong>App Theme Palette</strong>
+                    <small>Fraunces Serif · Outfit Sans</small>
+                  </div>
+                  <div id="themePicker" class="theme-picker-grid" role="radiogroup" aria-label="Choose color theme">
+                    <button class="theme-swatch-btn active" type="button" data-theme-choice="obsidian-gold">
+                      <span class="swatch-dot" style="--sw-bg:#0a0b0f;--sw-ac:#f4c152"></span>
+                      <span>Obsidian Gold</span>
+                    </button>
+                    <button class="theme-swatch-btn" type="button" data-theme-choice="midnight-emerald">
+                      <span class="swatch-dot" style="--sw-bg:#070d0c;--sw-ac:#4ae3b5"></span>
+                      <span>Emerald Night</span>
+                    </button>
+                    <button class="theme-swatch-btn" type="button" data-theme-choice="cobalt-studio">
+                      <span class="swatch-dot" style="--sw-bg:#090c14;--sw-ac:#82b6ff"></span>
+                      <span>Cobalt Studio</span>
+                    </button>
+                    <button class="theme-swatch-btn" type="button" data-theme-choice="warm-parchment">
+                      <span class="swatch-dot" style="--sw-bg:#f6f4ee;--sw-ac:#b4690e"></span>
+                      <span>Warm Parchment</span>
+                    </button>
+                  </div>
+                </div>
+                <div class="tool-grid">
+                  <button id="toolsSearchBtn" class="tool-card" type="button"><b>🔎 Search</b><small>Find memories & chats</small></button>
+                  <button id="toolsAddBtn" class="tool-card" type="button"><b>📸 Upload Media</b><small>Add photos or videos</small></button>
+                  <button id="toolsMsgBtn" class="tool-card" type="button"><b>💬 Messages</b><small>Batch chats & groups</small></button>
+                  <button id="exportBtn" class="tool-card" type="button"><b>⬇ Export Backup</b><small>Save archive JSON</small></button>
+                  <label class="tool-card"><b>⬆ Import Backup</b><small>Restore JSON file</small><input id="importInput" type="file" accept="application/json" hidden /></label>
+                  <button id="restoreBtn" class="tool-card" type="button"><b>♻️ Restore Center</b><small>Recover deleted items</small></button>
+                </div>
+                <div id="restoreList" class="restore-list" hidden></div>
+              </div>
+            </div>
+          </article>
+
+          <!-- PAGE 21: FULLSCREEN MEDIA VIEWER (Edge-to-Edge Android Cinema Screen) -->
+          <article class="page viewer-page" data-page="21" id="mediaViewerPage">
+            <div class="viewer-head">
+              <button id="viewerBackBtn" class="nav-icon viewer-back-btn" type="button" title="Back" aria-label="Go back">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+              </button>
+              <div class="viewer-title-block"><span id="viewerTitle">Memory Viewer</span><small id="viewerMetaLine"></small></div>
+              <b id="viewerCount">1 / 1</b>
+            </div>
+            <div id="viewerStage" class="viewer-stage"></div>
+            <div class="viewer-controls">
+              <button id="viewerPrev" type="button">← Prev</button>
+              <button id="viewerZoomOut" class="viewer-tool" type="button" title="Zoom out">−</button>
+              <button id="viewerReset" class="viewer-tool" type="button" title="Reset zoom">1:1</button>
+              <button id="viewerZoomIn" class="viewer-tool" type="button" title="Zoom in">＋</button>
+              <button id="viewerInfo" class="viewer-tool" type="button" title="Caption & date">📝</button>
+              <button id="viewerShare" class="viewer-tool" type="button" title="Share">📤</button>
+              <button id="viewerSlideshow" class="viewer-tool" type="button" title="Slideshow">▶</button>
+              <button id="viewerDelete" class="viewer-tool viewer-delete" type="button" title="Delete from gallery" aria-label="Delete from gallery">🗑️</button>
+              <button id="viewerDownload" class="viewer-download" type="button">⬇ Download</button>
+              <button id="viewerNext" type="button">Next →</button>
+            </div>
+          </article>
         </section>
       </div>
 
@@ -423,7 +727,7 @@
           <span class="bnav-pill"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
           <span>Legends</span>
         </button>
-        <button id="bottomChatsBtn" class="bnav-item" type="button">
+        <button id="bottomChatsBtn" class="bnav-item" type="button" data-nav-page="9">
           <span class="bnav-pill">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             <span id="bottomChatBadge" class="bnav-badge" hidden>0</span>
@@ -441,278 +745,7 @@
 
   <div id="appToast" class="app-toast" role="status" aria-live="polite" hidden></div>
 
-  <!-- ANDROID ADD MEDIA / CREATE BOTTOM SHEET -->
-  <dialog id="addSheetDialog" class="sheet-modal">
-    <div class="sheet-handle" aria-hidden="true"></div>
-    <button class="close-modal" type="button" data-close aria-label="Close">✕</button>
-    <div class="eyebrow">Quick Upload & Create</div>
-    <h3>Add to Memories</h3>
-    <div class="sheet-action-grid">
-      <button id="sheetAddPhotoBtn" class="sheet-tile accent-photo" type="button">
-        <span class="sheet-tile-icon">📸</span>
-        <strong>Add Photos</strong>
-        <small>Pick one or multiple images</small>
-      </button>
-      <button id="sheetAddVideoBtn" class="sheet-tile accent-video" type="button">
-        <span class="sheet-tile-icon">🎬</span>
-        <strong>Add Videos</strong>
-        <small>Upload MP4 or clips from device</small>
-      </button>
-      <button id="sheetAddJourneyBtn" class="sheet-tile" type="button">
-        <span class="sheet-tile-icon">📖</span>
-        <strong>Journey Story</strong>
-        <small>Add date, note & media</small>
-      </button>
-      <button id="sheetAddProfileBtn" class="sheet-tile" type="button">
-        <span class="sheet-tile-icon">👤</span>
-        <strong>Add Legend</strong>
-        <small>Add a classmate profile</small>
-      </button>
-    </div>
-  </dialog>
-
-  <!-- PROFILE DETAIL -->
-  <dialog id="profileDialog" class="modal"><button class="close-modal" type="button" data-close aria-label="Close">✕</button><div id="profileDialogBody"></div></dialog>
-
-  <!-- ADD PROFILE -->
-  <dialog id="newProfileDialog" class="modal">
-    <button class="close-modal" type="button" data-close aria-label="Close">✕</button>
-    <form id="newProfileForm" class="modal-form">
-      <div class="eyebrow">Add Legend</div>
-      <h3>Add New Profile</h3>
-      <input id="profileName" maxlength="40" placeholder="Name" required />
-      <input id="profileNick" maxlength="60" placeholder="Nickname" required />
-      <input id="profileTitle" maxlength="70" placeholder="Title (e.g. The Strategist)" required />
-      <input id="profileNature" maxlength="70" placeholder="Nature (e.g. Calm, Energetic)" required />
-      <input id="profileSpecial" maxlength="90" placeholder="What makes them special" required />
-      <textarea id="profileMemory" maxlength="600" placeholder="Memory note" required></textarea>
-      <label class="file-label">Profile Photo <input id="profileImageInput" type="file" accept="image/*" /></label>
-      <button class="primary-btn" type="submit">Add Profile</button>
-    </form>
-  </dialog>
-
-  <!-- NEW JOURNEY -->
-  <dialog id="newJourneyDialog" class="modal">
-    <button class="close-modal" type="button" data-close aria-label="Close">✕</button>
-    <form id="newJourneyForm" class="modal-form">
-      <div class="eyebrow">Add Journey Memory</div>
-      <h3>Keep Another Moment</h3>
-      <input id="journeyDate" placeholder="Date / Year" required />
-      <input id="journeyTitle" placeholder="Title" required />
-      <textarea id="journeyMessage" maxlength="1400" placeholder="Story / Memory" required></textarea>
-      <label class="file-label">Photo or Video <input id="journeyMedia" type="file" accept="image/*,video/*" /></label>
-      <button class="primary-btn" type="submit">Add to Journey</button>
-    </form>
-  </dialog>
-
-  <!-- MEMORIES OF THE DAY PICKER -->
-  <dialog id="memoryDayPicker" class="modal v7-modal">
-    <button class="close-modal" type="button" data-close aria-label="Close">✕</button>
-    <div class="eyebrow">Memories of the Day</div>
-    <h3>Choose Photos</h3>
-    <p class="memory-day-picker-note">Tap any photo below to pin it to Today’s Spotlight.</p>
-    <div id="memoryDayPickerGrid" class="memory-day-picker-grid"></div>
-  </dialog>
-
-  <!-- FULLSCREEN MEDIA VIEWER -->
-  <dialog id="mediaViewerDialog" class="viewer-modal">
-    <button class="viewer-close" type="button" data-close aria-label="Close">✕</button>
-    <div class="viewer-head">
-      <div><span id="viewerTitle">Memory Viewer</span><small id="viewerMetaLine"></small></div>
-      <b id="viewerCount">1 / 1</b>
-    </div>
-    <div id="viewerStage" class="viewer-stage"></div>
-    <div class="viewer-controls">
-      <button id="viewerPrev" type="button">← Prev</button>
-      <button id="viewerZoomOut" class="viewer-tool" type="button" title="Zoom out">−</button>
-      <button id="viewerReset" class="viewer-tool" type="button" title="Reset zoom">1:1</button>
-      <button id="viewerZoomIn" class="viewer-tool" type="button" title="Zoom in">＋</button>
-      <button id="viewerInfo" class="viewer-tool" type="button" title="Caption & date">📝</button>
-      <button id="viewerShare" class="viewer-tool" type="button" title="Share">📤</button>
-      <button id="viewerSlideshow" class="viewer-tool" type="button" title="Slideshow">▶</button>
-      <button id="viewerDelete" class="viewer-tool viewer-delete" type="button" title="Delete from gallery" aria-label="Delete from gallery">🗑️</button>
-      <button id="viewerDownload" class="viewer-download" type="button">⬇ Download</button>
-      <button id="viewerNext" type="button">Next →</button>
-    </div>
-  </dialog>
-
-  <!-- SEARCH -->
-  <dialog id="searchDialog" class="modal v7-modal">
-    <button class="close-modal" type="button" data-close aria-label="Close">✕</button>
-    <div class="eyebrow">Search Archive</div>
-    <h3>Find Legends, Journeys, Photos & Messages</h3>
-    <input id="searchInput" class="v7-input" placeholder="Search names, nicknames, stories, captions, or messages..." autocomplete="off" />
-    <div id="searchResults" class="search-results"></div>
-  </dialog>
-
-  <!-- CAPTION / DATE META -->
-  <dialog id="metaDialog" class="modal v7-modal">
-    <button class="close-modal" type="button" data-close aria-label="Close">✕</button>
-    <form id="metaForm" class="modal-form">
-      <div class="eyebrow">Memory Info</div>
-      <h3>Caption & Date</h3>
-      <input id="metaDate" placeholder="Date / Year" />
-      <textarea id="metaCaption" maxlength="500" placeholder="Write a caption or memory..."></textarea>
-      <button class="primary-btn" type="submit">Save Info</button>
-    </form>
-  </dialog>
-
-  <!-- FRIEND LETTER -->
-  <dialog id="letterDialog" class="modal v7-modal">
-    <button class="close-modal" type="button" data-close aria-label="Close">✕</button>
-    <div class="eyebrow">Friend Letter</div>
-    <h3 id="letterTitle">A Letter</h3>
-    <textarea id="letterText" class="letter-text" maxlength="3000"></textarea>
-    <div class="dialog-actions"><button id="saveLetterBtn" class="primary-btn small" type="button">Save Letter</button></div>
-  </dialog>
-
-  <!-- BATCH MESSAGES DIALOG -->
-  <dialog id="messagesDialog" class="modal msg-modal">
-    <div class="msg-shell">
-      <header class="msg-topbar">
-        <div class="msg-title-group">
-          <div class="eyebrow">Batch Messaging · Open Access</div>
-          <h3>💬 OG Legends Messages</h3>
-        </div>
-        <div class="msg-persona-bar">
-          <label for="chatSenderSelect" class="persona-label">Chatting as</label>
-          <select id="chatSenderSelect" class="persona-select" aria-label="Select sender persona"></select>
-          <form id="customSenderWrap" class="custom-sender-wrap" hidden>
-            <input id="customSenderInput" type="text" maxlength="28" placeholder="Your name..." aria-label="Enter display name" />
-            <button class="mini-btn" type="submit">Set</button>
-          </form>
-        </div>
-        <button class="close-modal msg-close-btn" type="button" data-close aria-label="Close messages">✕</button>
-      </header>
-
-      <div class="msg-tabs" role="tablist">
-        <button class="msg-tab active" type="button" data-msg-tab="chats" role="tab">Direct Chats</button>
-        <button class="msg-tab" type="button" data-msg-tab="groups" role="tab">Groups</button>
-        <button class="msg-tab" type="button" data-msg-tab="channels" role="tab">Noticeboard</button>
-      </div>
-
-      <div class="msg-workspace">
-        <aside id="msgListPane" class="msg-list-pane">
-          <div class="msg-list-tools">
-            <input id="msgSearchInput" class="msg-search" type="search" placeholder="Search legends, groups, or boards..." autocomplete="off" />
-            <button id="msgCreateActionBtn" class="primary-btn small" type="button" hidden>＋ New</button>
-          </div>
-          <div id="msgListHost" class="msg-list-host"></div>
-        </aside>
-
-        <section id="msgThreadPane" class="msg-thread-pane">
-          <div id="msgEmptyPlaceholder" class="msg-thread-empty">
-            <div>
-              <strong>Select a conversation</strong>
-              <p>Pick any Legend, batch group, or announcement channel from the list to read or send messages and media — no ID or login required.</p>
-            </div>
-          </div>
-
-          <div id="msgActiveThread" class="msg-active-thread" hidden>
-            <div class="msg-thread-header">
-              <button id="msgBackToListBtn" class="mini-btn msg-back-btn" type="button">← Back</button>
-              <div class="msg-thread-peer">
-                <img id="msgThreadAvatar" src="assets/common.jpg" alt="" referrerpolicy="no-referrer" />
-                <div>
-                  <b id="msgThreadTitle">Thread Title</b>
-                  <small id="msgThreadSub">Batch 2025–26</small>
-                </div>
-              </div>
-              <div class="msg-thread-header-actions">
-                <button id="msgClearThreadBtn" class="mini-btn danger" type="button" title="Clear messages">Clear</button>
-              </div>
-            </div>
-
-            <div id="msgFeedHost" class="msg-feed-host"></div>
-
-            <div id="msgAttachmentBar" class="msg-attach-preview" hidden>
-              <span id="msgAttachName"></span>
-              <button id="msgClearAttachBtn" class="mini-btn" type="button">✕</button>
-            </div>
-
-            <form id="msgComposeForm" class="msg-compose">
-              <label class="msg-attach-btn" title="Attach photo or video">
-                📎
-                <input id="msgMediaInput" type="file" accept="image/*,video/*" hidden />
-              </label>
-              <input id="msgTextInput" type="text" placeholder="Write a message..." autocomplete="off" maxlength="1000" />
-              <button class="primary-btn small" type="submit">Send</button>
-            </form>
-          </div>
-        </section>
-      </div>
-    </div>
-  </dialog>
-
-  <!-- CREATE GROUP DIALOG -->
-  <dialog id="createGroupDialog" class="modal v7-modal">
-    <button class="close-modal" type="button" data-close aria-label="Close">✕</button>
-    <form id="createGroupForm" class="modal-form">
-      <div class="eyebrow">New Group Chat</div>
-      <h3>Create Batch Group</h3>
-      <input id="groupNameInput" maxlength="50" placeholder="Group name (e.g. Farewell Crew)" required />
-      <input id="groupDescInput" maxlength="100" placeholder="Short description (optional)" />
-      <div class="group-member-box">
-        <div class="group-member-label">Include Legends</div>
-        <div id="groupMemberChecklist" class="group-member-checklist"></div>
-      </div>
-      <button class="primary-btn" type="submit">Create Group</button>
-    </form>
-  </dialog>
-
-  <!-- CREATE NOTICEBOARD CHANNEL DIALOG -->
-  <dialog id="createChannelDialog" class="modal v7-modal">
-    <button class="close-modal" type="button" data-close aria-label="Close">✕</button>
-    <form id="createChannelForm" class="modal-form">
-      <div class="eyebrow">New Noticeboard</div>
-      <h3>Create Announcement Board</h3>
-      <input id="channelNameInput" maxlength="50" placeholder="Board name (e.g. Reunion Updates)" required />
-      <textarea id="channelDescInput" maxlength="200" placeholder="What is this board for?"></textarea>
-      <button class="primary-btn" type="submit">Create Board</button>
-    </form>
-  </dialog>
-
-  <!-- SETTINGS & BACKUP -->
-  <dialog id="toolsDialog" class="modal v7-modal">
-    <button class="close-modal" type="button" data-close aria-label="Close">✕</button>
-    <div class="eyebrow">Archive Controls</div>
-    <h3>Theme & Settings</h3>
-    <div class="theme-picker-section">
-      <div class="theme-picker-head">
-        <strong>App Theme Palette</strong>
-        <small>Fraunces Serif · Outfit Sans</small>
-      </div>
-      <div id="themePicker" class="theme-picker-grid" role="radiogroup" aria-label="Choose color theme">
-        <button class="theme-swatch-btn active" type="button" data-theme-choice="obsidian-gold">
-          <span class="swatch-dot" style="--sw-bg:#0a0b0f;--sw-ac:#f4c152"></span>
-          <span>Obsidian Gold</span>
-        </button>
-        <button class="theme-swatch-btn" type="button" data-theme-choice="midnight-emerald">
-          <span class="swatch-dot" style="--sw-bg:#070d0c;--sw-ac:#4ae3b5"></span>
-          <span>Emerald Night</span>
-        </button>
-        <button class="theme-swatch-btn" type="button" data-theme-choice="cobalt-studio">
-          <span class="swatch-dot" style="--sw-bg:#090c14;--sw-ac:#82b6ff"></span>
-          <span>Cobalt Studio</span>
-        </button>
-        <button class="theme-swatch-btn" type="button" data-theme-choice="warm-parchment">
-          <span class="swatch-dot" style="--sw-bg:#f6f4ee;--sw-ac:#b4690e"></span>
-          <span>Warm Parchment</span>
-        </button>
-      </div>
-    </div>
-    <div class="tool-grid">
-      <button id="toolsSearchBtn" class="tool-card" type="button"><b>🔎 Search</b><small>Find memories & chats</small></button>
-      <button id="toolsAddBtn" class="tool-card" type="button"><b>📸 Upload Media</b><small>Add photos or videos</small></button>
-      <button id="toolsMsgBtn" class="tool-card" type="button"><b>💬 Messages</b><small>Batch chats & groups</small></button>
-      <button id="exportBtn" class="tool-card" type="button"><b>⬇ Export Backup</b><small>Save archive JSON</small></button>
-      <label class="tool-card"><b>⬆ Import Backup</b><small>Restore JSON file</small><input id="importInput" type="file" accept="application/json" hidden /></label>
-      <button id="restoreBtn" class="tool-card" type="button"><b>♻️ Restore Center</b><small>Recover deleted items</small></button>
-    </div>
-    <div id="restoreList" class="restore-list" hidden></div>
-  </dialog>
-
-  <script src="js/media-manifest.js?v=14.6.0"></script>
-  <script src="js/app.js?v=14.6.0"></script>
+  <script src="js/media-manifest.js?v=14.7.0"></script>
+  <script src="js/app.js?v=14.7.0"></script>
 </body>
 </html>

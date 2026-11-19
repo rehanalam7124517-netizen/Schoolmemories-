@@ -18,6 +18,32 @@ const $ = (id) => document.getElementById(id);
 const pageEls = [...document.querySelectorAll('.page')];
 const drawerNavItems = [...document.querySelectorAll('.drawer-item[data-nav-page]')];
 const bottomNavItems = [...document.querySelectorAll('.bnav-item[data-nav-page]')];
+const PAGE = {
+  HOME: 0,
+  LEGENDS: 1,
+  JOURNEY: 2,
+  PHOTOS: 3,
+  VIDEOS: 4,
+  MEMORY_DAY: 5,
+  WALL: 6,
+  VAULT: 7,
+  EPILOGUE: 8,
+  MESSAGES: 9,
+  ADD_MEMORY: 10,
+  PROFILE_DETAIL: 11,
+  NEW_PROFILE: 12,
+  NEW_JOURNEY: 13,
+  MEMORY_PICKER: 14,
+  SEARCH: 15,
+  META: 16,
+  LETTER: 17,
+  CREATE_GROUP: 18,
+  CREATE_CHANNEL: 19,
+  TOOLS: 20,
+  VIEWER: 21
+};
+const PERSISTENT_PAGES = new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+const SUBSCREEN_PAGES = new Set([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]);
 const PAGE_TITLES = [
   'The OG Legends',
   'The Legends',
@@ -27,7 +53,20 @@ const PAGE_TITLES = [
   'Memories of the Day',
   'Memory Wall',
   '5-Memory Vault',
-  'Not The End'
+  'Not The End',
+  'Batch Chats',
+  'Add to Memories',
+  'Legend Profile',
+  'Add Legend',
+  'Add Journey Memory',
+  'Choose Photos',
+  'Search Archive',
+  'Memory Info',
+  'Friend Letter',
+  'Create Batch Group',
+  'Create Noticeboard',
+  'Theme & Settings',
+  'Memory Viewer'
 ];
 const THEME_META_COLORS = {
   'obsidian-gold': '#0a0b0f',
@@ -54,8 +93,7 @@ const RANDOM_PAGE_IDX = pageEls.findIndex((p) => p.id === 'randomPage');
 let randomBatchShown = false;
 
 let isApplyingHistory = false;
-let lastModalClosedAt = 0;
-let currentHistState = { ogApp: true, ogDepth: 0, page: 0, drawer: false, modals: [], msgThread: false };
+let currentHistState = { ogApp: true, ogDepth: 0, page: 0, drawer: false, msgThread: false, title: null };
 const histStack = [currentHistState];
 
 function pushHistState(partial) {
@@ -108,27 +146,6 @@ function closeNavDrawer(fromHistory = false) {
   }
 }
 
-function openDialog(dlg) {
-  if (!dlg || dlg.open) return;
-  dlg.showModal();
-  if (isApplyingHistory) return;
-  const openIds = [...document.querySelectorAll('dialog[open]')].map((d) => d.id);
-  const justReplacedModal = Date.now() - lastModalClosedAt < 80 && currentHistState.modals.length >= openIds.length;
-  if (justReplacedModal) {
-    replaceHistState({
-      drawer: false,
-      modals: openIds,
-      msgThread: openIds.includes('messagesDialog') ? currentHistState.msgThread : false
-    });
-  } else {
-    pushHistState({
-      drawer: false,
-      modals: openIds,
-      msgThread: openIds.includes('messagesDialog') ? currentHistState.msgThread : false
-    });
-  }
-}
-
 function resetRandomBatch() {
   randomBatchShown = false;
   const host = $('randomBatch');
@@ -140,76 +157,134 @@ function resetRandomBatch() {
   if ($('randomBack')) $('randomBack').hidden = true;
 }
 
-function syncPageUI(i, persist = true) {
+function cleanupViewerOnLeave() {
+  if (typeof stopSlideshow === 'function') stopSlideshow();
+  const stage = $('viewerStage');
+  if (stage) {
+    stage.querySelector('video')?.pause();
+    stage.innerHTML = '';
+  }
+  if (typeof viewerScale !== 'undefined') viewerScale = 1;
+}
+
+function syncPageUI(i, persist = true, customTitle = null, msgThreadOpen = false) {
   const was = currentPage;
   currentPage = Math.max(0, Math.min(i, pageEls.length - 1));
+  if (was === PAGE.VIEWER && currentPage !== PAGE.VIEWER) {
+    cleanupViewerOnLeave();
+  }
+  if (was !== currentPage && typeof pauseAllForegroundVideo === 'function') {
+    pauseAllForegroundVideo();
+  }
+
   pageEls.forEach((p, idx) => p.classList.toggle('active', idx === currentPage));
   drawerNavItems.forEach((btn) => btn.classList.toggle('active', Number(btn.dataset.navPage) === currentPage));
   bottomNavItems.forEach((btn) => btn.classList.toggle('active', Number(btn.dataset.navPage) === currentPage));
-  if ($('appBarTitle')) $('appBarTitle').textContent = PAGE_TITLES[currentPage] || 'The OG Legends';
-  if ($('topBackBtn')) $('topBackBtn').hidden = currentPage === 0;
+
+  const titleText = customTitle || PAGE_TITLES[currentPage] || 'The OG Legends';
+  if ($('appBarTitle')) $('appBarTitle').textContent = titleText;
+
+  const isThreadView = currentPage === PAGE.MESSAGES && msgThreadOpen && Boolean(activeThread);
+  if (isThreadView) {
+    $('msgThreadPane')?.classList.add('mobile-show');
+    $('msgListPane')?.classList.add('mobile-hide');
+  } else {
+    $('msgThreadPane')?.classList.remove('mobile-show');
+    $('msgListPane')?.classList.remove('mobile-hide');
+  }
+
+  const isSubscreen = SUBSCREEN_PAGES.has(currentPage) || isThreadView;
+  const shell = $('siteShell');
+  if (shell) {
+    shell.classList.toggle('subscreen-mode', isSubscreen);
+    shell.classList.toggle('hide-fab', isSubscreen || currentPage === PAGE.MESSAGES);
+  }
+  if ($('topBackBtn')) $('topBackBtn').hidden = currentPage === 0 && !isThreadView;
+
   closeNavDrawerUI();
   const active = pageEls[currentPage];
-  if (active) active.scrollTop = 0;
+  if (active && was !== currentPage) active.scrollTop = 0;
   if (currentPage === RANDOM_PAGE_IDX && was !== RANDOM_PAGE_IDX) resetRandomBatch();
-  if (persist) localStorage.setItem('og_last_page', String(currentPage));
+  if (persist && PERSISTENT_PAGES.has(currentPage)) {
+    localStorage.setItem('og_last_page', String(currentPage));
+  }
 }
 
-function showPage(i, persist = true) {
+function showPage(i, options = true) {
+  const opts = typeof options === 'boolean' ? { persist: options } : (options || {});
+  const { persist = true, replace = false, title = null, msgThread = false } = opts;
   const target = Math.max(0, Math.min(i, pageEls.length - 1));
   const wasDrawerOpen = currentHistState.drawer;
   closeNavDrawerUI();
 
   if (isApplyingHistory) {
-    syncPageUI(target, persist);
+    syncPageUI(target, persist, title, msgThread);
     return;
   }
 
-  if (wasDrawerOpen) {
-    if (target === currentPage && !currentHistState.modals.length) {
+  if (wasDrawerOpen || replace) {
+    if (wasDrawerOpen && target === currentPage && !msgThread && !currentHistState.msgThread) {
       if (currentHistState.ogDepth > 0) history.back();
       return;
     }
-    replaceHistState({ page: target, drawer: false, modals: [], msgThread: false });
-    syncPageUI(target, persist);
+    replaceHistState({ page: target, drawer: false, msgThread, title });
+    syncPageUI(target, persist, title, msgThread);
     return;
   }
 
-  const hasOpenModals = currentHistState.modals.length > 0;
-  if (target === currentPage && !hasOpenModals) return;
-
-  if (Date.now() - lastModalClosedAt < 80 && hasOpenModals) {
-    replaceHistState({ page: target, drawer: false, modals: [], msgThread: false });
-  } else {
-    pushHistState({ page: target, drawer: false, modals: [], msgThread: false });
+  if (target === currentPage && msgThread === currentHistState.msgThread && title === currentHistState.title) {
+    return;
   }
-  syncPageUI(target, persist);
+
+  pushHistState({ page: target, drawer: false, msgThread, title });
+  syncPageUI(target, persist, title, msgThread);
 }
 
 function goBackInApp() {
+  if ($('appNavDrawer')?.classList.contains('open')) {
+    closeNavDrawer(false);
+    return;
+  }
   if (currentHistState.ogDepth > 0) {
     history.back();
+  } else if (currentPage === PAGE.MESSAGES && currentHistState.msgThread) {
+    replaceHistState({ msgThread: false, title: null });
+    syncPageUI(PAGE.MESSAGES, true, null, false);
   } else if (currentPage > 0) {
-    showPage(0);
+    showPage(0, { replace: true });
   }
 }
 
-$('brandHomeBtn')?.addEventListener('click', () => showPage(0));
+function finishSubscreenTo(fallbackPage) {
+  const prev = currentHistState.ogDepth > 0 ? histStack[currentHistState.ogDepth - 1] : null;
+  if (prev && prev.page === fallbackPage) {
+    goBackInApp();
+  } else {
+    showPage(fallbackPage, { replace: true });
+  }
+}
+
+$('brandHomeBtn')?.addEventListener('click', () => showPage(PAGE.HOME));
 $('topBackBtn')?.addEventListener('click', goBackInApp);
-$('enterMemoriesBtn')?.addEventListener('click', () => showPage(1));
-$('heroMessagesBtn')?.addEventListener('click', () => { closeNavDrawerUI(); openMessagesDialog(); });
-$('bottomChatsBtn')?.addEventListener('click', () => { closeNavDrawerUI(); openMessagesDialog(); });
+$('viewerBackBtn')?.addEventListener('click', goBackInApp);
+$('enterMemoriesBtn')?.addEventListener('click', () => showPage(PAGE.LEGENDS));
+$('heroMessagesBtn')?.addEventListener('click', () => openMessagesDialog());
+$('bottomChatsBtn')?.addEventListener('click', () => openMessagesDialog());
 $('homeOpenMsgCard')?.addEventListener('click', () => openMessagesDialog());
-$('homeJourneyBtn')?.addEventListener('click', () => showPage(2));
+$('homeJourneyBtn')?.addEventListener('click', () => showPage(PAGE.JOURNEY));
 $('homeAddPhotoBtn')?.addEventListener('click', async () => {
-  if (await addMedia('photo')) showPage(3);
+  if (await addMedia('photo')) showPage(PAGE.PHOTOS);
 });
 $('homeAddVideoBtn')?.addEventListener('click', async () => {
-  if (await addMedia('video')) showPage(4);
+  if (await addMedia('video')) showPage(PAGE.VIDEOS);
 });
 
 [...drawerNavItems, ...bottomNavItems].forEach((btn) => {
-  btn.addEventListener('click', () => showPage(Number(btn.dataset.navPage || 0)));
+  btn.addEventListener('click', () => {
+    const p = Number(btn.dataset.navPage || 0);
+    if (p === PAGE.MESSAGES) openMessagesDialog();
+    else showPage(p);
+  });
 });
 
 document.querySelectorAll('.jump-btn').forEach((b) => {
@@ -219,15 +294,14 @@ document.querySelectorAll('.jump-btn').forEach((b) => {
   });
 });
 
-// Android Add Media & Chapters Bottom Sheet
+// Full-screen Add to Memories screen
 function openAddSheet() {
-  openDialog($('addSheetDialog'));
+  showPage(PAGE.ADD_MEMORY);
 }
 
 $('mainFab')?.addEventListener('click', openAddSheet);
 $('railFabBtn')?.addEventListener('click', () => { closeNavDrawerUI(); openAddSheet(); });
 $('menuDrawerBtn')?.addEventListener('click', openNavDrawer);
-$('closeDrawerBtn')?.addEventListener('click', () => closeNavDrawer(false));
 $('drawerBackdrop')?.addEventListener('click', () => closeNavDrawer(false));
 $('drawerThemeBtn')?.addEventListener('click', () => {
   closeNavDrawerUI();
@@ -235,101 +309,33 @@ $('drawerThemeBtn')?.addEventListener('click', () => {
 });
 
 $('sheetAddPhotoBtn')?.addEventListener('click', async () => {
-  $('addSheetDialog')?.close();
-  if (await addMedia('photo')) showPage(3);
+  if (await addMedia('photo')) showPage(PAGE.PHOTOS, { replace: true });
 });
 
 $('sheetAddVideoBtn')?.addEventListener('click', async () => {
-  $('addSheetDialog')?.close();
-  if (await addMedia('video')) showPage(4);
+  if (await addMedia('video')) showPage(PAGE.VIDEOS, { replace: true });
 });
 
-$('sheetAddJourneyBtn')?.addEventListener('click', () => {
-  $('addSheetDialog')?.close();
-  openDialog($('newJourneyDialog'));
-});
-
-$('sheetAddProfileBtn')?.addEventListener('click', () => {
-  $('addSheetDialog')?.close();
-  openDialog($('newProfileDialog'));
-});
-
-// Sync every <dialog> with mobile Back button, Escape key, and backdrop tap
-document.querySelectorAll('dialog').forEach((dlg) => {
-  dlg.addEventListener('cancel', (e) => {
-    e.preventDefault();
-    if (dlg.id === 'messagesDialog' && $('msgThreadPane')?.classList.contains('mobile-show')) {
-      if (currentHistState.msgThread && currentHistState.ogDepth > 0) {
-        history.back();
-      } else {
-        $('msgThreadPane')?.classList.remove('mobile-show');
-        $('msgListPane')?.classList.remove('mobile-hide');
-      }
-      return;
-    }
-    dlg.close();
-  });
-
-  if (dlg.id !== 'mediaViewerDialog') {
-    dlg.addEventListener('click', (e) => {
-      if (e.target !== dlg) return;
-      const rect = dlg.getBoundingClientRect();
-      const clickedOutside =
-        e.clientX !== 0 &&
-        (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom);
-      if (clickedOutside) dlg.close();
-    });
-  }
-
-  dlg.addEventListener('close', () => {
-    if (isApplyingHistory) return;
-    lastModalClosedAt = Date.now();
-    queueMicrotask(() => {
-      if (isApplyingHistory) return;
-      const openIds = [...document.querySelectorAll('dialog[open]')].map((d) => d.id);
-      if (
-        openIds.length === currentHistState.modals.length &&
-        openIds.every((id, idx) => currentHistState.modals[idx] === id)
-      ) {
-        return;
-      }
-      if (currentHistState.modals.length === 0 && openIds.length === 0) return;
-
-      let targetDepth = currentHistState.ogDepth - 1;
-      while (targetDepth > 0) {
-        const candidate = histStack[targetDepth];
-        if (
-          candidate &&
-          candidate.modals.length === openIds.length &&
-          candidate.modals.every((id, idx) => candidate.modals[idx] === id) &&
-          (!candidate.msgThread || openIds.includes('messagesDialog'))
-        ) {
-          break;
-        }
-        targetDepth--;
-      }
-      const delta = currentHistState.ogDepth - targetDepth;
-      if (delta > 0) {
-        history.go(-delta);
-      }
-    });
-  });
-});
+$('sheetAddJourneyBtn')?.addEventListener('click', () => showPage(PAGE.NEW_JOURNEY));
+$('sheetAddProfileBtn')?.addEventListener('click', () => showPage(PAGE.NEW_PROFILE));
 
 // Initialize History Stack (Home at depth 0; restored sub-page at depth 1 so Back returns to Home)
 const savedStartPage = parseInt(localStorage.getItem('og_last_page') || '0', 10);
-const initialPage = Number.isFinite(savedStartPage) ? Math.max(0, Math.min(savedStartPage, pageEls.length - 1)) : 0;
-currentHistState = { ogApp: true, ogDepth: 0, page: 0, drawer: false, modals: [], msgThread: false };
+const initialPage = Number.isFinite(savedStartPage) && PERSISTENT_PAGES.has(savedStartPage) ? savedStartPage : 0;
+currentHistState = { ogApp: true, ogDepth: 0, page: 0, drawer: false, msgThread: false, title: null };
 histStack[0] = currentHistState;
 history.replaceState(currentHistState, '', location.href);
 if (initialPage > 0) {
-  pushHistState({ page: initialPage, drawer: false, modals: [], msgThread: false });
+  pushHistState({ page: initialPage, drawer: false, msgThread: false, title: null });
 }
-syncPageUI(initialPage, false);
+syncPageUI(initialPage, false, null, false);
 
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && $('appNavDrawer')?.classList.contains('open')) {
+  if (e.key !== 'Escape') return;
+  if ($('appNavDrawer')?.classList.contains('open')) {
     closeNavDrawer(false);
+  } else if (currentPage !== 0 || currentHistState.msgThread) {
+    goBackInApp();
   }
 });
 
@@ -345,41 +351,14 @@ window.addEventListener('popstate', (e) => {
     if (state.drawer) openNavDrawerUI();
     else closeNavDrawerUI();
 
-    const desired = state.modals || [];
-    const openDialogs = [...document.querySelectorAll('dialog[open]')];
-    for (let idx = openDialogs.length - 1; idx >= 0; idx--) {
-      const d = openDialogs[idx];
-      if (!desired.includes(d.id)) d.close();
-    }
-    for (const id of desired) {
-      const d = $(id);
-      if (d && !d.open) {
-        try { d.showModal(); } catch {}
-      }
-    }
-
-    if (desired.includes('messagesDialog')) {
-      if (state.msgThread && activeThread) {
-        $('msgThreadPane')?.classList.add('mobile-show');
-        $('msgListPane')?.classList.add('mobile-hide');
-      } else {
-        $('msgThreadPane')?.classList.remove('mobile-show');
-        $('msgListPane')?.classList.remove('mobile-hide');
-      }
-    } else {
-      $('msgThreadPane')?.classList.remove('mobile-show');
-      $('msgListPane')?.classList.remove('mobile-hide');
-    }
-
-    if (typeof state.page === 'number' && state.page !== currentPage) {
-      syncPageUI(state.page, true);
-    }
+    const targetPage = typeof state.page === 'number' ? state.page : 0;
+    syncPageUI(targetPage, true, state.title || null, Boolean(state.msgThread));
   } finally {
     isApplyingHistory = false;
   }
 });
 
-// Subtle non-blocking toast notification
+// Subtle non-blocking toast notification & 2-tap inline confirmation
 let toastTimer = null;
 function showToast(msg) {
   const el = $('appToast');
@@ -394,6 +373,28 @@ function showToast(msg) {
       if (!el.classList.contains('show')) el.hidden = true;
     }, 220);
   }, 2400);
+}
+
+const inlineConfirmTimers = new WeakMap();
+function resetConfirmTap(btn) {
+  if (!btn) return;
+  clearTimeout(inlineConfirmTimers.get(btn));
+  btn.dataset.confirming = '';
+  if (btn.dataset.origHtml) btn.innerHTML = btn.dataset.origHtml;
+}
+function confirmTap(btn, promptText = 'Tap again to confirm') {
+  if (!btn) return true;
+  if (btn.dataset.confirming === '1') {
+    resetConfirmTap(btn);
+    return true;
+  }
+  btn.dataset.origHtml = btn.innerHTML;
+  btn.dataset.confirming = '1';
+  btn.textContent = promptText;
+  showToast('Tap again to confirm');
+  const t = setTimeout(() => resetConfirmTap(btn), 3000);
+  inlineConfirmTimers.set(btn, t);
+  return false;
 }
 
 function pauseAllForegroundVideo() {
@@ -510,9 +511,7 @@ async function renderPeople() {
 
 $('peopleFilterInput')?.addEventListener('input', renderPeople);
 
-function openProfile(i) {
-  const p = activeProfiles[i];
-  if (!p) return;
+function renderProfileDetailBody(p) {
   $('profileDialogBody').innerHTML = `
     <div class="profile-top">
       <div class="profile-img-wrap">
@@ -535,32 +534,37 @@ function openProfile(i) {
       </div>
     </div>
     <div class="memory-box"><strong>Memory Note</strong><p>${escapeHtml(p.memory)}</p></div>`;
-  openDialog($('profileDialog'));
-  $('openProfileChatBtn').onclick = () => {
-    $('profileDialog').close();
-    openMessagesDialog('chats', p.n);
-  };
+  $('openProfileChatBtn').onclick = () => openMessagesDialog('chats', p.n);
   $('openLetterBtn').onclick = () => openFriendLetter(p);
   $('changeProfileImageBtn').onclick = async () => {
     const [file] = await filePicker('image/*', false);
     if (!file) return;
     p.imageBlob = file;
     await put('profiles', p);
-    $('profileDialog').close();
     await renderPeople();
-    openProfile(activeProfiles.findIndex((x) => x.id === p.id));
+    const updated = activeProfiles.find((x) => x.id === p.id) || p;
+    renderProfileDetailBody(updated);
+    showToast('Profile photo updated');
   };
   $('deleteProfileBtn').onclick = async () => {
-    if (!confirm('Delete this profile?')) return;
+    if (!confirmTap($('deleteProfileBtn'), 'Tap again to delete')) return;
     await recycleItem('profile', p.id, p);
     await del('profiles', p.id);
     if (p.builtin) localStorage.setItem('deleted_' + p.id, '1');
-    $('profileDialog').close();
-    renderPeople();
+    await renderPeople();
+    showToast(`${p.n} deleted (recoverable in Restore Center)`);
+    finishSubscreenTo(PAGE.LEGENDS);
   };
 }
 
-$('addProfileBtn').onclick = () => openDialog($('newProfileDialog'));
+function openProfile(i) {
+  const p = activeProfiles[i];
+  if (!p) return;
+  renderProfileDetailBody(p);
+  showPage(PAGE.PROFILE_DETAIL, { title: p.n });
+}
+
+$('addProfileBtn').onclick = () => showPage(PAGE.NEW_PROFILE);
 $('newProfileForm').onsubmit = async (e) => {
   e.preventDefault();
   const file = $('profileImageInput').files[0] || null;
@@ -580,14 +584,10 @@ $('newProfileForm').onsubmit = async (e) => {
   if (file) p.imageBlob = file;
   await put('profiles', p);
   e.target.reset();
-  $('newProfileDialog').close();
-  renderPeople();
+  await renderPeople();
   showToast(`Added ${p.n} to The Legends`);
+  finishSubscreenTo(PAGE.LEGENDS);
 };
-
-document.querySelectorAll('[data-close]').forEach((b) => {
-  b.onclick = () => b.closest('dialog').close();
-});
 
 // Built-in media manifest + directory fallback
 window.BUILTIN_MEDIA = window.BUILTIN_MEDIA || { photos: [], videos: [] };
@@ -850,7 +850,7 @@ $('deleteSelectedPhotosBtn')?.addEventListener('click', async () => {
   const photos = await getAllCombinedMedia('photo');
   const chosen = photos.filter((x) => selectionState.photo.ids.has(x.id));
   if (!chosen.length) return;
-  if (!confirm(`Delete ${chosen.length} selected ${chosen.length === 1 ? 'photo' : 'photos'}?`)) return;
+  if (!confirmTap($('deleteSelectedPhotosBtn'), `Confirm (${chosen.length})`)) return;
   selectionState.photo.active = false;
   selectionState.photo.ids.clear();
   await deleteMediaItems(chosen, 'photo');
@@ -862,7 +862,7 @@ $('deleteSelectedVideosBtn')?.addEventListener('click', async () => {
   const videos = await getAllCombinedMedia('video');
   const chosen = videos.filter((x) => selectionState.video.ids.has(x.id));
   if (!chosen.length) return;
-  if (!confirm(`Delete ${chosen.length} selected ${chosen.length === 1 ? 'video' : 'videos'}?`)) return;
+  if (!confirmTap($('deleteSelectedVideosBtn'), `Confirm (${chosen.length})`)) return;
   selectionState.video.active = false;
   selectionState.video.ids.clear();
   await deleteMediaItems(chosen, 'video');
@@ -876,7 +876,7 @@ $('playAllPhotosSlideshow')?.addEventListener('click', async () => {
   startSlideshow(photos);
 });
 
-// Media viewer
+// Full-screen Media viewer
 let currentViewerItems = [];
 let currentViewerIndex = 0;
 let currentViewerType = 'photo';
@@ -889,7 +889,7 @@ function openViewer(items, index, type) {
   currentViewerType = type;
   viewerScale = 1;
   renderViewer();
-  openDialog($('mediaViewerDialog'));
+  showPage(PAGE.VIEWER, { title: items[index]?.name || 'Memory Viewer' });
 }
 
 function getViewerSrc(item) {
@@ -899,6 +899,7 @@ function getViewerSrc(item) {
 function renderViewer() {
   const item = currentViewerItems[currentViewerIndex];
   if (!item) return;
+  resetConfirmTap($('viewerDelete'));
   $('viewerCount').textContent = `${currentViewerIndex + 1} / ${currentViewerItems.length}`;
   if ($('viewerTitle')) $('viewerTitle').textContent = item.name || (currentViewerType === 'photo' ? 'Photo Memory' : 'Video Memory');
   const stage = $('viewerStage');
@@ -965,12 +966,6 @@ $('viewerDownload').onclick = () => {
   a.remove();
   if (!item.builtin) setTimeout(() => URL.revokeObjectURL(src), 1500);
 };
-$('mediaViewerDialog').addEventListener('close', () => {
-  stopSlideshow();
-  $('viewerStage').querySelector('video')?.pause();
-  $('viewerStage').innerHTML = '';
-  viewerScale = 1;
-});
 
 function filePicker(accept, multiple = false) {
   return new Promise((res) => {
@@ -1047,20 +1042,21 @@ async function renderJourney() {
         <p>${escapeHtml(j.message)}</p>
         <button class="mini-btn danger journey-delete" type="button">🗑️ Delete Memory</button>
       </div>`;
-    c.querySelector('.journey-delete').onclick = async () => {
-      if (!confirm('Delete this journey memory?')) return;
+    c.querySelector('.journey-delete').onclick = async (ev) => {
+      if (!confirmTap(ev.currentTarget, 'Tap again to delete')) return;
       await recycleItem('journey', j.id, j);
       await del('journeys', j.id);
       if (j.builtin) localStorage.setItem('deleted_' + j.id, '1');
       renderJourney();
       updateV7Home();
+      showToast('Journey memory deleted (recoverable in Restore Center)');
     };
     host.appendChild(c);
   });
   updateV7Home();
 }
 
-$('addJourneyBtn').onclick = () => openDialog($('newJourneyDialog'));
+$('addJourneyBtn').onclick = () => showPage(PAGE.NEW_JOURNEY);
 $('newJourneyForm').onsubmit = async (e) => {
   e.preventDefault();
   const file = $('journeyMedia').files[0] || null;
@@ -1078,9 +1074,9 @@ $('newJourneyForm').onsubmit = async (e) => {
   }
   await put('journeys', j);
   e.target.reset();
-  $('newJourneyDialog').close();
-  renderJourney();
+  await renderJourney();
   showToast('Added memory to Our Journey');
+  finishSubscreenTo(PAGE.JOURNEY);
 };
 
 // 5-Memory Vault
@@ -1206,7 +1202,7 @@ async function renderMemoryDay() {
         rm.type = 'button';
         rm.className = 'memory-day-remove';
         rm.title = 'Remove from Memories of the Day';
-        rm.textContent = '✕';
+        rm.textContent = '🗑️';
         rm.onclick = async (e) => {
           e.stopPropagation();
           saveMemoryDayIds(memoryDaySavedIds().filter((id) => id !== item.id));
@@ -1237,8 +1233,7 @@ async function renderMemoryDay() {
 
 async function openMemoryDayPicker() {
   const grid = $('memoryDayPickerGrid');
-  const dlg = $('memoryDayPicker');
-  if (!grid || !dlg) return;
+  if (!grid) return;
   const all = await getMemoryDayPool();
   const selected = new Set(memoryDaySavedIds());
   grid.innerHTML = '';
@@ -1254,11 +1249,12 @@ async function openMemoryDayPicker() {
         saveMemoryDayIds(ids);
       }
       await renderMemoryDay();
-      dlg.close();
+      showToast('Added to Memories of the Day');
+      goBackInApp();
     };
     grid.appendChild(b);
   });
-  openDialog(dlg);
+  showPage(PAGE.MEMORY_PICKER);
 }
 
 async function randomizeMemoryDay() {
@@ -1309,12 +1305,12 @@ async function refreshViewerV7() {
 $('viewerDelete').onclick = async () => {
   const item = currentViewerItems[currentViewerIndex];
   if (!item) return;
-  if (!confirm(`Delete this ${currentViewerType} from your gallery?`)) return;
+  if (!confirmTap($('viewerDelete'), 'Confirm?')) return;
   stopSlideshow();
   await deleteMediaItems([item], currentViewerType);
   currentViewerItems.splice(currentViewerIndex, 1);
   if (!currentViewerItems.length) {
-    $('mediaViewerDialog')?.close();
+    goBackInApp();
     return;
   }
   if (currentViewerIndex >= currentViewerItems.length) {
@@ -1329,13 +1325,13 @@ $('viewerInfo').onclick = async () => {
   const m = await getMeta(item.id);
   $('metaDate').value = m?.date || '';
   $('metaCaption').value = m?.caption || '';
-  $('metaDialog').dataset.mediaId = item.id;
-  openDialog($('metaDialog'));
+  $('metaPage').dataset.mediaId = item.id;
+  showPage(PAGE.META);
 };
 
 $('metaForm').onsubmit = async (e) => {
   e.preventDefault();
-  const id = $('metaDialog').dataset.mediaId;
+  const id = $('metaPage').dataset.mediaId;
   if (!id) return;
   await put('mediaMeta', {
     id,
@@ -1343,10 +1339,10 @@ $('metaForm').onsubmit = async (e) => {
     caption: $('metaCaption').value.trim(),
     updated: Date.now()
   });
-  $('metaDialog').close();
   await refreshViewerV7();
   await updateV7Home();
   showToast('Caption & date saved');
+  goBackInApp();
 };
 
 $('viewerShare').onclick = async () => {
@@ -1391,7 +1387,7 @@ function startSlideshow(items) {
     $('viewerSlideshow').classList.add('active');
   }
   slideshowTimer = setInterval(() => {
-    if (!$('mediaViewerDialog').open) { stopSlideshow(); return; }
+    if (currentPage !== PAGE.VIEWER) { stopSlideshow(); return; }
     currentViewerIndex = (currentViewerIndex + 1) % currentViewerItems.length;
     renderViewer();
   }, 4000);
@@ -1410,13 +1406,13 @@ async function openFriendLetter(p) {
   const l = all.find((x) => x.id === p.id);
   $('letterTitle').textContent = `Letter to ${p.n}`;
   $('letterText').value = l?.text || defaultLetter(p);
-  openDialog($('letterDialog'));
+  showPage(PAGE.LETTER, { title: `Letter to ${p.n}` });
 }
 $('saveLetterBtn').onclick = async () => {
   if (!activeLetterProfile) return;
   await put('letters', { id: activeLetterProfile.id, text: $('letterText').value, updated: Date.now() });
-  $('letterDialog').close();
   showToast(`Letter saved for ${activeLetterProfile.n}`);
+  goBackInApp();
 };
 
 async function resolveMedia(id) {
@@ -1615,7 +1611,11 @@ async function openMessagesDialog(tab = null, directTarget = null) {
   if ($('msgAttachmentBar')) $('msgAttachmentBar').hidden = true;
   if ($('msgMediaInput')) $('msgMediaInput').value = '';
   closeNavDrawerUI();
-  openDialog($('messagesDialog'));
+  if (!directTarget) {
+    showPage(PAGE.MESSAGES, { msgThread: false });
+  } else {
+    showPage(PAGE.MESSAGES, { msgThread: false });
+  }
   await waitDB();
   syncSenderDropdown();
   await markMessagesSeen();
@@ -1637,8 +1637,7 @@ async function openMessagesDialog(tab = null, directTarget = null) {
   }
 }
 
-$('messageBtn')?.addEventListener('click', () => openMessagesDialog());
-$('toolsMsgBtn')?.addEventListener('click', () => { $('toolsDialog')?.close(); openMessagesDialog(); });
+$('toolsMsgBtn')?.addEventListener('click', () => openMessagesDialog());
 
 function setActiveMsgTabUI() {
   document.querySelectorAll('.msg-tab').forEach((btn) => {
@@ -1671,8 +1670,8 @@ $('msgBackToListBtn')?.addEventListener('click', () => {
   if (currentHistState.msgThread && currentHistState.ogDepth > 0) {
     history.back();
   } else {
-    $('msgThreadPane')?.classList.remove('mobile-show');
-    $('msgListPane')?.classList.remove('mobile-hide');
+    replaceHistState({ msgThread: false, title: null });
+    syncPageUI(PAGE.MESSAGES, true, null, false);
   }
 });
 
@@ -1686,9 +1685,9 @@ $('msgCreateActionBtn')?.addEventListener('click', () => {
       label.innerHTML = `<input type="checkbox" value="${escapeHtml(p.n)}" checked /><span>${escapeHtml(p.n)} <small>(${escapeHtml(p.nick)})</small></span>`;
       list.appendChild(label);
     });
-    openDialog($('createGroupDialog'));
+    showPage(PAGE.CREATE_GROUP);
   } else if (activeMsgTab === 'channels') {
-    openDialog($('createChannelDialog'));
+    showPage(PAGE.CREATE_CHANNEL);
   }
 });
 
@@ -1706,11 +1705,10 @@ $('createGroupForm')?.addEventListener('submit', async (e) => {
   };
   await put('groups', g);
   e.target.reset();
-  $('createGroupDialog').close();
   activeMsgTab = 'groups';
   setActiveMsgTabUI();
   await renderMessageList();
-  await openChatThread({ kind: 'group', id: g.id, title: g.name, sub: `${g.members.length} members`, avatar: 'assets/common.jpg' });
+  await openChatThread({ kind: 'group', id: g.id, title: g.name, sub: `${g.members.length} members`, avatar: 'assets/common.jpg' }, true);
   showToast(`Group "${name}" created`);
 });
 
@@ -1726,11 +1724,10 @@ $('createChannelForm')?.addEventListener('submit', async (e) => {
   };
   await put('channels', ch);
   e.target.reset();
-  $('createChannelDialog').close();
   activeMsgTab = 'channels';
   setActiveMsgTabUI();
   await renderMessageList();
-  await openChatThread({ kind: 'channel', id: ch.id, title: ch.name, sub: ch.desc, avatar: 'assets/common.jpg' });
+  await openChatThread({ kind: 'channel', id: ch.id, title: ch.name, sub: ch.desc, avatar: 'assets/common.jpg' }, true);
   showToast(`Noticeboard "${name}" created`);
 });
 
@@ -1826,16 +1823,11 @@ async function renderMessageList() {
   }
 }
 
-async function openChatThread(thread) {
-  const wasInThread = $('msgThreadPane')?.classList.contains('mobile-show');
+async function openChatThread(thread, replaceCurrent = false) {
   activeThread = thread;
   $('msgEmptyPlaceholder').hidden = true;
   $('msgActiveThread').hidden = false;
-  $('msgThreadPane')?.classList.add('mobile-show');
-  $('msgListPane')?.classList.add('mobile-hide');
-  if (!isApplyingHistory && !wasInThread && $('messagesDialog')?.open) {
-    pushHistState({ msgThread: true });
-  }
+  showPage(PAGE.MESSAGES, { replace: replaceCurrent, msgThread: true, title: thread.title });
   await renderMessageList();
   await renderActiveThread();
 }
@@ -1928,7 +1920,7 @@ async function renderActiveThread() {
         </div>
         ${mediaHtml}
         ${m.text ? `<div class="msg-bubble-text">${escapeHtml(m.text)}</div>` : ''}
-        <button class="msg-del-inline" type="button" title="Delete message" aria-label="Delete message">✕</button>
+        <button class="msg-del-inline" type="button" title="Delete message" aria-label="Delete message">🗑️</button>
       </div>`;
     row.querySelector('.msg-del-inline').onclick = async () => {
       const storeName = activeThread.kind === 'chat' ? 'messages' : 'groupMessages';
@@ -2013,7 +2005,7 @@ $('msgComposeForm')?.addEventListener('submit', async (e) => {
 
 $('msgClearThreadBtn')?.addEventListener('click', async () => {
   if (!activeThread) return;
-  if (!confirm(`Clear all messages in "${activeThread.title}"?`)) return;
+  if (!confirmTap($('msgClearThreadBtn'), 'Confirm?')) return;
   const sender = getChatSender();
   if (activeThread.kind === 'chat') {
     const pid = directPairId(sender, activeThread.id);
@@ -2029,6 +2021,7 @@ $('msgClearThreadBtn')?.addEventListener('click', async () => {
   await renderActiveThread();
   await renderMessageList();
   await updateV7Home();
+  showToast('Conversation cleared');
 });
 
 // =========================================================================
@@ -2037,11 +2030,11 @@ $('msgClearThreadBtn')?.addEventListener('click', async () => {
 function openSearchDialog() {
   $('searchInput').value = '';
   $('searchResults').innerHTML = '<div class="empty-state">Type to search names, nicknames, captions, photos, videos, or messages</div>';
-  openDialog($('searchDialog'));
+  showPage(PAGE.SEARCH);
   setTimeout(() => $('searchInput').focus(), 80);
 }
 $('searchBtn')?.addEventListener('click', openSearchDialog);
-$('toolsSearchBtn')?.addEventListener('click', () => { $('toolsDialog')?.close(); openSearchDialog(); });
+$('toolsSearchBtn')?.addEventListener('click', openSearchDialog);
 
 $('searchInput')?.addEventListener('input', async () => {
   const q = $('searchInput').value.trim().toLowerCase();
@@ -2118,21 +2111,16 @@ $('searchInput')?.addEventListener('input', async () => {
       if (r.kind === 'profile') {
         const arr = await getAll('profiles');
         activeProfiles = arr.sort((a, b2) => (a.order ?? 9999) - (b2.order ?? 9999));
-        $('searchDialog').close();
         openProfile(activeProfiles.findIndex((x) => x.id === r.id));
       } else if (r.kind === 'journey') {
-        $('searchDialog').close();
-        showPage(2);
+        showPage(PAGE.JOURNEY);
         setTimeout(() => document.querySelector(`[data-journey-id="${r.id}"]`)?.scrollIntoView({ behavior: 'smooth' }), 100);
       } else if (r.kind === 'dm') {
-        $('searchDialog').close();
         openMessagesDialog('chats', r.peer);
       } else if (r.kind === 'groupMsg') {
-        $('searchDialog').close();
         openMessagesDialog('groups');
       } else {
         const item = await resolveMedia(r.id);
-        $('searchDialog').close();
         if (item) openViewer([item], 0, item.type);
       }
     };
@@ -2140,7 +2128,7 @@ $('searchInput')?.addEventListener('input', async () => {
   });
 });
 
-$('toolsAddBtn')?.addEventListener('click', () => { $('toolsDialog')?.close(); openAddSheet(); });
+$('toolsAddBtn')?.addEventListener('click', openAddSheet);
 
 // Settings, Theme Switcher, Backup & Restore Center
 $('themePicker')?.addEventListener('click', (e) => {
@@ -2151,7 +2139,7 @@ $('themePicker')?.addEventListener('click', (e) => {
 $('toolsBtn').onclick = () => {
   $('restoreList').hidden = true;
   applyTheme(document.documentElement.dataset.theme || 'obsidian-gold', false);
-  openDialog($('toolsDialog'));
+  showPage(PAGE.TOOLS);
 };
 $('restoreBtn').onclick = renderRestoreCenter;
 

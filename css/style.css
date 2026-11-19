@@ -306,16 +306,6 @@ h1, h2, h3 {
   opacity: 0.85;
   letter-spacing: 0.04em;
 }
-.drawer-close-btn {
-  display: none;
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 36px;
-  height: 36px;
-  background: rgba(6, 7, 11, 0.68);
-  color: #fff;
-}
 
 .drawer-fab-wrap {
   padding: 12px 12px 6px;
@@ -548,6 +538,7 @@ h1, h2, h3 {
   position: absolute;
   inset: 0;
   opacity: 0;
+  visibility: hidden;
   pointer-events: none;
   transform: translateY(8px);
   transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -556,7 +547,8 @@ h1, h2, h3 {
   overflow-x: hidden;
   overscroll-behavior: contain;
 }
-.page.active { opacity: 1; pointer-events: auto; transform: none; }
+.page.active { opacity: 1; visibility: visible; pointer-events: auto; transform: none; }
+.viewer-page:not(.active) { display: none; }
 
 .section-head {
   display: flex;
@@ -1340,47 +1332,48 @@ h1, h2, h3 {
   color: var(--accent);
 }
 
-/* ==================== ANDROID BOTTOM SHEETS & THEME PICKER ==================== */
-.sheet-modal {
-  width: min(560px, 100%);
-  max-height: 86dvh;
-  margin: auto auto 0;
-  border-radius: 28px 28px 0 0;
+/* ==================== FULL-SCREEN ANDROID SUB-ACTIVITIES & ACTION TILES ==================== */
+.subpage {
+  padding: 20px 22px 64px;
+}
+.subpage-shell {
+  max-width: 820px;
+  margin: 0 auto;
+  width: 100%;
+}
+.subpage-card {
   border: 1px solid var(--line);
-  border-bottom: 0;
-  padding: 10px 20px calc(22px + env(safe-area-inset-bottom));
   background: var(--surface);
-  box-shadow: 0 -16px 48px rgba(0, 0, 0, 0.45);
-  overflow-y: auto;
-  animation: sheetSlideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 22px;
+  padding: clamp(20px, 3vw, 30px);
+  box-shadow: var(--shadow);
 }
-@keyframes sheetSlideUp {
-  from { transform: translateY(28px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+.subpage-card h2 {
+  margin: 0 0 10px;
+  font-size: clamp(1.4rem, 2.5vw, 1.95rem);
+  letter-spacing: -0.025em;
+  line-height: 1.15;
 }
-.sheet-handle {
-  width: 40px;
-  height: 4px;
-  border-radius: 99px;
-  background: var(--handle-bar);
-  margin: 4px auto 14px;
+.subpage-lead {
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 0.92rem;
 }
-.sheet-modal h3 { margin: 0 0 14px; font-size: 1.35rem; }
 
 .sheet-action-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 .sheet-tile {
   border: 1px solid var(--line);
   background: var(--surface-2);
   border-radius: 20px;
-  padding: 16px 14px;
-  min-height: 90px;
+  padding: 18px 16px;
+  min-height: 98px;
   text-align: left;
   display: grid;
-  gap: 3px;
+  gap: 4px;
   align-content: start;
   cursor: pointer;
   transition: transform 0.14s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.15s ease, background 0.15s ease;
@@ -1392,44 +1385,13 @@ h1, h2, h3 {
   background: var(--accent-soft);
   border-color: var(--accent-border);
 }
-.sheet-tile-icon { font-size: 1.45rem; line-height: 1; margin-bottom: 4px; }
-.sheet-tile strong { font-size: 0.94rem; font-weight: 700; }
-.sheet-tile small { font-size: 0.76rem; color: var(--muted); line-height: 1.35; }
-
-.sheet-chapters-list { display: grid; gap: 6px; }
-.sheet-chapter-row {
-  width: 100%;
-  border: 1px solid transparent;
-  background: var(--surface-2);
-  border-radius: 16px;
-  padding: 12px 14px;
-  min-height: 58px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  text-align: left;
-  cursor: pointer;
-  transition: background 0.14s ease, border-color 0.14s ease, transform 0.12s ease;
-}
-.sheet-chapter-row:hover { background: var(--surface-3); border-color: var(--line); }
-.sheet-chapter-row:active { transform: scale(0.98); }
-.sheet-chapter-row span {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: var(--surface-subtle);
-  border: 1px solid var(--line);
-  display: grid;
-  place-items: center;
-  font-size: 1.15rem;
-  flex: 0 0 auto;
-}
-.sheet-chapter-row strong { display: block; font-size: 0.94rem; }
-.sheet-chapter-row small { display: block; font-size: 0.76rem; color: var(--muted); }
+.sheet-tile-icon { font-size: 1.5rem; line-height: 1; margin-bottom: 4px; }
+.sheet-tile strong { font-size: 0.96rem; font-weight: 700; }
+.sheet-tile small { font-size: 0.78rem; color: var(--muted); line-height: 1.35; }
 
 /* Theme Picker inside Settings */
 .theme-picker-section {
-  margin-top: 12px;
+  margin-top: 14px;
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: 16px;
@@ -1482,39 +1444,9 @@ h1, h2, h3 {
   flex: 0 0 auto;
 }
 
-/* ==================== MODALS & LIGHTBOX VIEWER ==================== */
-dialog { color: var(--text); }
-dialog::backdrop { background: var(--backdrop-scrim); backdrop-filter: blur(10px); }
-
-.modal {
-  width: min(920px, calc(100% - 20px));
-  max-height: 90dvh;
-  border-radius: 22px;
-  padding: 24px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  box-shadow: var(--shadow);
-  overflow: auto;
-}
-.modal h3 { font-size: 1.4rem; margin: 0 0 8px; }
-
-.close-modal, .viewer-close {
-  position: absolute;
-  right: 14px;
-  top: 14px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  width: 40px;
-  height: 40px;
-  background: var(--surface-2);
-  color: var(--text);
-  cursor: pointer;
-  z-index: 6;
-}
-.close-modal:hover, .viewer-close:hover { background: var(--surface-3); }
-
-.modal-form { display: grid; gap: 12px; padding-top: 10px; }
-.modal-form h3 { margin: 0 0 4px; }
+/* ==================== FULLSCREEN FORMS & DETAIL CARDS ==================== */
+.modal-form { display: grid; gap: 12px; }
+.modal-form h2 { margin: 0 0 6px; }
 .modal-form input, .modal-form textarea, .v7-input, .letter-text {
   width: 100%;
   border: 1px solid var(--line);
@@ -1525,14 +1457,14 @@ dialog::backdrop { background: var(--backdrop-scrim); backdrop-filter: blur(10px
   outline: none;
 }
 .modal-form input:focus, .modal-form textarea:focus, .v7-input:focus, .letter-text:focus { border-color: var(--accent); }
-.modal-form textarea { min-height: 100px; resize: vertical; }
-.letter-text { min-height: 40dvh; line-height: 1.75; resize: vertical; }
-.dialog-actions { display: flex; justify-content: flex-end; margin-top: 12px; }
+.modal-form textarea { min-height: 110px; resize: vertical; }
+.letter-text { min-height: 44dvh; line-height: 1.75; resize: vertical; }
+.dialog-actions { display: flex; justify-content: flex-end; margin-top: 14px; }
 
 .file-label { display: grid; gap: 6px; color: var(--muted); font-size: 0.82rem; }
 .file-label input { padding: 9px; background: var(--surface-input); border: 1px solid var(--line); border-radius: 12px; }
 
-/* Profile Modal */
+/* Profile Full-Screen Detail */
 .profile-top {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
@@ -1582,37 +1514,55 @@ dialog::backdrop { background: var(--backdrop-scrim); backdrop-filter: blur(10px
   line-height: 1.65;
 }
 
-/* Media Viewer Modal (Always dark cinema canvas for viewing photos/videos) */
-.viewer-modal {
-  width: 100vw;
-  max-width: none;
-  height: 100dvh;
-  max-height: none;
-  margin: 0;
-  border: 0;
-  padding: 12px;
-  background: rgba(6, 7, 11, 0.98);
+/* Fullscreen Edge-to-Edge Media Viewer Screen (Always dark cinema canvas) */
+.viewer-page {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  padding: 10px 14px;
+  background: rgba(6, 7, 11, 0.99);
   color: #f6f3eb;
-}
-.viewer-modal .viewer-close {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.22);
-  color: #fff;
-}
-.viewer-modal[open] {
+  transform: none;
   display: grid;
-  grid-template-rows: 48px minmax(0, 1fr) auto;
+  grid-template-rows: 52px minmax(0, 1fr) auto;
   gap: 8px;
+  overflow: hidden;
 }
 .viewer-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 54px 0 8px;
+  gap: 10px;
+  padding: 0 6px 0 0;
 }
-.viewer-head span { font-weight: 700; font-size: 0.92rem; }
-.viewer-head small { display: block; color: rgba(255, 255, 255, 0.65); font-size: 0.74rem; }
-.viewer-head b { font-family: var(--font-mono); font-size: 0.82rem; font-variant-numeric: tabular-nums; }
+.viewer-back-btn {
+  color: #f6f3eb;
+  background: rgba(255, 255, 255, 0.1);
+  flex: 0 0 auto;
+}
+.viewer-back-btn:hover { background: rgba(255, 255, 255, 0.2); }
+.viewer-title-block { min-width: 0; flex: 1; }
+.viewer-head span {
+  display: block;
+  font-weight: 700;
+  font-size: 0.94rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.viewer-head small {
+  display: block;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.74rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.viewer-head b {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  flex: 0 0 auto;
+}
 .viewer-stage { min-height: 0; display: grid; place-items: center; overflow: hidden; }
 .viewer-photo, .viewer-video { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
 .viewer-video { width: min(100%, 1080px); }
@@ -1692,14 +1642,13 @@ dialog::backdrop { background: var(--backdrop-scrim); backdrop-filter: blur(10px
 }
 .restore-row span { font-size: 0.8rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* ==================== BATCH MESSAGE SYSTEM ==================== */
-.msg-modal {
-  width: min(1040px, calc(100% - 20px));
-  height: min(86dvh, 760px);
+/* ==================== BATCH MESSAGE SYSTEM (FULL SCREEN) ==================== */
+.messages-page {
   padding: 0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
-.msg-modal[open] { display: flex; flex-direction: column; }
 
 .msg-shell {
   display: grid;
@@ -1713,7 +1662,7 @@ dialog::backdrop { background: var(--backdrop-scrim); backdrop-filter: blur(10px
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 14px 62px 12px 18px;
+  padding: 14px 18px 12px;
   border-bottom: 1px solid var(--line);
   background: var(--surface-2);
   flex-wrap: wrap;
@@ -2046,14 +1995,6 @@ dialog::backdrop { background: var(--backdrop-scrim); backdrop-filter: blur(10px
 }
 
 /* ==================== RESPONSIVE BREAKPOINTS (ANDROID APK & TABLET) ==================== */
-@media (min-width: 761px) {
-  .sheet-modal {
-    margin: auto;
-    border-radius: 26px;
-    border-bottom: 1px solid var(--line);
-  }
-}
-
 @media (max-width: 1120px) {
   .stats-bar { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .stat-item { border-bottom: 1px solid var(--line); }
@@ -2064,6 +2005,7 @@ dialog::backdrop { background: var(--backdrop-scrim); backdrop-filter: blur(10px
 
 @media (max-width: 899px) {
   .drawer-btn { display: grid; }
+  .site-shell.subscreen-mode .drawer-btn { display: none; }
   .apk-body { grid-template-columns: 1fr; }
 
   .nav-drawer {
@@ -2078,7 +2020,6 @@ dialog::backdrop { background: var(--backdrop-scrim); backdrop-filter: blur(10px
     transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
   }
   .nav-drawer.open { transform: translateX(0); }
-  .drawer-close-btn { display: grid; }
 }
 
 @media (max-width: 760px) {
@@ -2197,26 +2138,27 @@ dialog::backdrop { background: var(--backdrop-scrim); backdrop-filter: blur(10px
   .stats-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .stat-item:nth-child(even) { border-right: 0; }
   .stat-item:last-child:nth-child(odd) { grid-column: 1 / -1; border-right: 0; border-bottom: 0; }
-  .chapters-grid, .wall-grid, .tool-grid { grid-template-columns: 1fr; }
+  .chapters-grid, .wall-grid, .tool-grid, .sheet-action-grid { grid-template-columns: 1fr; }
   .profile-top { grid-template-columns: 1fr; }
   .timeline-card { grid-template-columns: 36px minmax(0, 1fr); gap: 12px; padding: 14px; }
   .journey-step { width: 36px; height: 36px; font-size: 0.78rem; }
 
-  /* Native Android Bottom Sheet presentation for dialogs on mobile */
-  .modal:not(.msg-modal) {
-    width: 100%;
-    max-width: none;
-    max-height: 88dvh;
-    margin: auto auto 0;
-    border-radius: 26px 26px 0 0;
-    border-bottom: 0;
-    padding: 20px 18px calc(22px + env(safe-area-inset-bottom));
+  /* Full-Screen Android Subscreen Mode: hide bottom nav & FAB */
+  .site-shell.subscreen-mode {
+    grid-template-rows: 52px minmax(0, 1fr);
   }
+  .site-shell.subscreen-mode .android-bottom-nav,
+  .site-shell.subscreen-mode .android-fab,
+  .site-shell.hide-fab .android-fab {
+    display: none;
+  }
+  .subpage { padding: 14px 14px 36px; }
+  .subpage-card { padding: 18px 16px; border-radius: 18px; }
 
   .app-toast { bottom: calc(80px + env(safe-area-inset-bottom)); }
+  .site-shell.subscreen-mode ~ .app-toast { bottom: 24px; }
 
-  /* Mobile Messages full-screen sheet + slide between list & thread */
-  .msg-modal { width: 100vw; max-width: none; height: 100dvh; max-height: none; border-radius: 0; }
+  /* Mobile Messages full-screen view + slide between list & thread */
   .msg-workspace { grid-template-columns: 1fr; }
   .msg-list-pane.mobile-hide { display: none; }
   .msg-thread-pane { display: none; }
