@@ -1,0 +1,12 @@
+{
+	"appId": "com.oglegends.memories",
+	"appName": "The OG Legends",
+	"webDir": "dist",
+	"server": {
+		"androidScheme": "https"
+	},
+	"android": {
+		"backgroundColor": "#090a0f",
+		"allowMixedContent": true
+	}
+}
