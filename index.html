@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,500&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=14.7.0" />
+  <link rel="stylesheet" href="css/style.css?v=15.4.0" />
 </head>
 <body>
   <div id="app">
@@ -20,23 +20,25 @@
       <header class="topbar">
         <div class="top-left">
           <button id="menuDrawerBtn" class="nav-icon drawer-btn" type="button" title="Navigation Menu" aria-label="Open navigation drawer">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            <svg class="nav-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect class="duo" x="3" y="4" width="18" height="16" rx="4" stroke="none"/><line x1="5" y1="7.5" x2="19" y2="7.5"/><line x1="5" y1="12" x2="15.5" y2="12"/><line x1="5" y1="16.5" x2="19" y2="16.5"/></svg>
           </button>
           <button id="topBackBtn" class="nav-icon top-back-btn" type="button" title="Back" aria-label="Go back" hidden>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
           </button>
           <button id="brandHomeBtn" class="brand-btn" type="button" title="The OG Legends Home">
-            <span class="brand-mark" aria-hidden="true">👑</span>
+            <span class="brand-mark" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3 18h18v2.2H3V18Zm0-2.5L1.6 7.4a1 1 0 0 1 1.58-.98L7.6 9.8 11.15 4.2a1 1 0 0 1 1.7 0l3.55 5.6 4.42-3.38a1 1 0 0 1 1.58.98L21 15.5H3Z"/></svg>
+            </span>
             <span id="appBarTitle" class="brand-text">The OG Legends</span>
           </button>
         </div>
 
         <div class="top-actions">
           <button id="searchBtn" class="nav-icon" type="button" title="Search memories" aria-label="Search memories">
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <svg class="nav-svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle class="duo" cx="10.8" cy="10.8" r="7.2"/><circle cx="10.8" cy="10.8" r="7.2"/><path d="m20.5 20.5-4.3-4.3"/></svg>
           </button>
           <button id="toolsBtn" class="nav-icon" type="button" title="Theme & Settings" aria-label="Theme and Settings">
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg class="nav-svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.95" stroke-linecap="round" stroke-linejoin="round"><path class="duo" d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
         </div>
       </header>
@@ -56,61 +58,65 @@
 
           <div class="drawer-fab-wrap">
             <button id="railFabBtn" class="drawer-extended-fab" type="button">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5" fill="currentColor" fill-opacity="0.16" stroke="none"/><line x1="12" y1="6" x2="12" y2="18"/><line x1="6" y1="12" x2="18" y2="12"/></svg>
               <span>Add Photo / Video</span>
             </button>
           </div>
 
           <nav class="drawer-nav-list">
-            <div class="drawer-group-label">Explore</div>
-            <button class="drawer-item active" type="button" data-nav-page="0">
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-              <span>Home</span>
-            </button>
-            <button class="drawer-item" type="button" data-nav-page="3">
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-              <span>Photos</span>
-            </button>
-            <button class="drawer-item" type="button" data-nav-page="4">
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
-              <span>Videos</span>
-            </button>
-            <button class="drawer-item" type="button" data-nav-page="1">
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-              <span>The Legends</span>
-            </button>
-            <button id="messageBtn" class="drawer-item" type="button" data-nav-page="9">
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-              <span>Batch Chats</span>
-              <span id="msgUnreadBadge" class="drawer-badge" hidden>0</span>
-            </button>
-
-            <div class="drawer-divider"></div>
+            <div class="drawer-primary-only">
+              <div class="drawer-group-label">Explore</div>
+              <button class="drawer-item active" type="button" data-nav-page="0">
+                <svg class="nav-svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path class="duo" d="m3 9.5 9-7 9 7V20a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9.5Z"/><path d="M9.5 22v-7.5a1.5 1.5 0 0 1 1.5-1.5h2a1.5 1.5 0 0 1 1.5 1.5V22"/></svg>
+                <span>Home</span>
+              </button>
+              <button class="drawer-item" type="button" data-nav-page="3">
+                <svg class="nav-svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect class="duo" width="18" height="18" x="3" y="3" rx="3.5"/><circle cx="8.8" cy="8.8" r="1.7" fill="currentColor" stroke="none"/><path d="m21 15.5-3.8-3.8a2 2 0 0 0-2.83 0L6 20.5"/></svg>
+                <span>Photos</span>
+              </button>
+              <button class="drawer-item" type="button" data-nav-page="4">
+                <svg class="nav-svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect class="duo" x="2.5" y="5.5" width="14" height="13" rx="3"/><path class="duo" d="m16.5 13 4.3 2.8a.8.8 0 0 0 1.2-.68V8.88a.8.8 0 0 0-1.2-.68L16.5 11"/><polygon points="8 9.2 12.6 12 8 14.8 8 9.2" fill="currentColor" stroke="none"/></svg>
+                <span>Videos</span>
+              </button>
+              <button class="drawer-item" type="button" data-nav-page="1">
+                <svg class="nav-svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle class="duo" cx="9" cy="7.5" r="3.8"/><path class="duo" d="M2.5 20.5v-1.8A4.2 4.2 0 0 1 6.7 14.5h4.6a4.2 4.2 0 0 1 4.2 4.2v1.8"/><path d="M16.5 4.2a3.4 3.4 0 0 1 0 6.6"/><path d="M21.5 20.5v-1.7a3.8 3.8 0 0 0-3-3.7"/></svg>
+                <span>The Legends</span>
+              </button>
+              <button id="messageBtn" class="drawer-item" type="button" data-nav-page="9">
+                <svg class="nav-svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path class="duo" d="M21 14a2.5 2.5 0 0 1-2.5 2.5H8l-4.5 4V6A2.5 2.5 0 0 1 6 3.5h12.5A2.5 2.5 0 0 1 21 6v8Z"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="12.5" x2="13" y2="12.5"/></svg>
+                <span>Batch Group</span>
+                <span id="msgUnreadBadge" class="drawer-badge" hidden>0</span>
+              </button>
+              <div class="drawer-divider"></div>
+            </div>
             <div class="drawer-group-label">Chapters</div>
             <button class="drawer-item" type="button" data-nav-page="2">
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <svg class="nav-svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle class="duo" cx="12" cy="12" r="9.5"/><polyline points="12 7 12 12 15.5 14"/></svg>
               <span>Our Journey</span>
             </button>
             <button class="drawer-item" type="button" data-nav-page="5">
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <svg class="nav-svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon class="duo" points="12 2.5 14.9 8.6 21.6 9.5 16.7 14.2 17.9 20.9 12 17.7 6.1 20.9 7.3 14.2 2.4 9.5 9.1 8.6 12 2.5"/></svg>
               <span>Memories of the Day</span>
             </button>
             <button class="drawer-item" type="button" data-nav-page="6">
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"/></svg>
+              <svg class="nav-svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path class="duo" d="M3 20c3 0 6.5-1.2 6.5-7.5V5.2A1.7 1.7 0 0 0 7.8 3.5H4.7A1.7 1.7 0 0 0 3 5.2v5.3A1.7 1.7 0 0 0 4.7 12.2h1.8c0 2-.5 3.6-3.5 4.2V20Z"/><path class="duo" d="M14.5 20c3 0 6.5-1.2 6.5-7.5V5.2a1.7 1.7 0 0 0-1.7-1.7h-3.1a1.7 1.7 0 0 0-1.7 1.7v5.3a1.7 1.7 0 0 0 1.7 1.7H18c0 2-.5 3.6-3.5 4.2V20Z"/></svg>
               <span>Memory Wall</span>
             </button>
             <button class="drawer-item" type="button" data-nav-page="7">
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/></svg>
+              <svg class="nav-svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path class="duo" d="M4.5 19V5A2.5 2.5 0 0 1 7 2.5h12.5v19H7A2.5 2.5 0 0 1 4.5 19Z"/><path d="M4.5 17A2.5 2.5 0 0 1 7 14.5h12.5"/><line x1="9" y1="7" x2="15" y2="7"/></svg>
               <span>5-Memory Vault</span>
             </button>
             <button class="drawer-item" type="button" data-nav-page="8">
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+              <svg class="nav-svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path class="duo" d="m2 10 10-5 10 5-10 5-10-5Z"/><path d="M22 10v5.5"/><path d="M6.5 12.5v4.5c3 2.5 8 2.5 11 0v-4.5"/></svg>
               <span>Not The End</span>
             </button>
           </nav>
 
           <div class="drawer-footer">
-            <button id="drawerThemeBtn" class="drawer-footer-btn" type="button">🎨 Switch Theme & Backup</button>
+            <button id="drawerThemeBtn" class="drawer-footer-btn" type="button">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5" fill="currentColor" fill-opacity="0.16"/><circle cx="8.5" cy="10" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="7.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="15.5" cy="10" r="1.2" fill="currentColor" stroke="none"/><path d="M16.5 14.5a2.5 2.5 0 0 1-2.5 2.5h-1a1.5 1.5 0 0 0-1.5 1.5v.8a2.2 2.2 0 0 1-2.2 2.2"/></svg>
+              <span>Switch Theme & Backup</span>
+            </button>
           </div>
         </aside>
 
@@ -130,7 +136,10 @@
                   <blockquote class="hero-quote">“We came as classmates, we left as memories.”</blockquote>
                   <div class="hero-actions">
                     <button id="enterMemoriesBtn" class="primary-btn" type="button">Explore Legends</button>
-                    <button id="heroMessagesBtn" class="tonal-btn" type="button">💬 Open Batch Chats</button>
+                    <button id="heroMessagesBtn" class="tonal-btn" type="button">
+                      <svg class="ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 14a2.5 2.5 0 0 1-2.5 2.5H8l-4.5 4V6A2.5 2.5 0 0 1 6 3.5h12.5A2.5 2.5 0 0 1 21 6v8Z" fill="currentColor" fill-opacity="0.18"/></svg>
+                      <span>Open Batch Group</span>
+                    </button>
                   </div>
                 </div>
               </section>
@@ -138,28 +147,36 @@
               <!-- Android Quick Action Launcher Tiles -->
               <section class="launcher-grid" aria-label="Quick app actions">
                 <button id="homeAddPhotoBtn" class="launcher-tile" type="button">
-                  <span class="launcher-icon">📸</span>
+                  <span class="launcher-icon" aria-hidden="true">
+                    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" fill="currentColor" fill-opacity="0.16"/><circle cx="12" cy="13" r="3.2"/></svg>
+                  </span>
                   <div>
                     <strong>Add Photos</strong>
                     <small>Upload to gallery</small>
                   </div>
                 </button>
                 <button id="homeAddVideoBtn" class="launcher-tile" type="button">
-                  <span class="launcher-icon">🎬</span>
+                  <span class="launcher-icon" aria-hidden="true">
+                    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5.5" width="14" height="13" rx="3" fill="currentColor" fill-opacity="0.16"/><path d="m16.5 13 4.3 2.8a.8.8 0 0 0 1.2-.68V8.88a.8.8 0 0 0-1.2-.68L16.5 11"/><polygon points="8 9.2 12.6 12 8 14.8 8 9.2" fill="currentColor" stroke="none"/></svg>
+                  </span>
                   <div>
                     <strong>Add Videos</strong>
                     <small>Upload MP4 clips</small>
                   </div>
                 </button>
                 <button id="homeOpenMsgCard" class="launcher-tile" type="button">
-                  <span class="launcher-icon">💬</span>
+                  <span class="launcher-icon" aria-hidden="true">
+                    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 14a2.5 2.5 0 0 1-2.5 2.5H8l-4.5 4V6A2.5 2.5 0 0 1 6 3.5h12.5A2.5 2.5 0 0 1 21 6v8Z" fill="currentColor" fill-opacity="0.16"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="12.5" x2="13" y2="12.5"/></svg>
+                  </span>
                   <div>
-                    <strong>Batch Chats</strong>
-                    <small>DMs, groups & board</small>
+                    <strong>Batch Group</strong>
+                    <small>Shared class chat</small>
                   </div>
                 </button>
                 <button id="homeJourneyBtn" class="launcher-tile" type="button">
-                  <span class="launcher-icon">📖</span>
+                  <span class="launcher-icon" aria-hidden="true">
+                    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5.5A2.5 2.5 0 0 1 4.5 3H11v17H4.5A2.5 2.5 0 0 0 2 22.5v-17Z" fill="currentColor" fill-opacity="0.16"/><path d="M22 5.5A2.5 2.5 0 0 0 19.5 3H13v17h6.5a2.5 2.5 0 0 1 2.5 2.5v-17Z"/></svg>
+                  </span>
                   <div>
                     <strong>Our Journey</strong>
                     <small>Timeline & trips</small>
@@ -174,7 +191,10 @@
                     <div class="eyebrow">People</div>
                     <h3>The Legends</h3>
                   </div>
-                  <button class="mini-btn jump-btn" type="button" data-target="1">View All →</button>
+                  <button class="mini-btn jump-btn" type="button" data-target="1">
+                    <span>View All</span>
+                    <svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+                  </button>
                 </div>
                 <div id="homePeopleStrip" class="home-people-strip"></div>
               </section>
@@ -186,7 +206,10 @@
                     <div class="eyebrow">Today’s Spotlight</div>
                     <h3>Memories of the Day</h3>
                   </div>
-                  <button class="mini-btn jump-btn" type="button" data-target="5">Customize 5 →</button>
+                  <button class="mini-btn jump-btn" type="button" data-target="5">
+                    <span>Customize 5</span>
+                    <svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+                  </button>
                 </div>
                 <div id="homeTodayStrip" class="home-today-grid"></div>
               </section>
@@ -248,7 +271,10 @@
               <div class="section-actions">
                 <input id="peopleFilterInput" class="inline-search" type="search" placeholder="Filter by name or nickname..." aria-label="Filter profiles" />
                 <div id="peopleCounter" class="counter">12 Profiles</div>
-                <button id="addProfileBtn" class="primary-btn small" type="button">＋ Add Legend</button>
+                <button id="addProfileBtn" class="primary-btn small" type="button">
+                  <svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  <span>Add Legend</span>
+                </button>
               </div>
             </div>
             <div id="peopleGrid" class="people-grid"></div>
@@ -261,7 +287,10 @@
                 <div class="eyebrow">Chapter 02 · Our Journey</div>
                 <h2>From Classmates to Memories</h2>
               </div>
-              <button id="addJourneyBtn" class="primary-btn small" type="button">＋ Add Memory</button>
+              <button id="addJourneyBtn" class="primary-btn small" type="button">
+                <svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <span>Add Memory</span>
+              </button>
             </div>
             <div class="journey-intro">Some journeys are not measured by distance. Ours was measured in classroom laughter, unplanned moments, trips, fun, small arguments and the people who made ordinary school days feel special.</div>
             <div id="journeyTimeline" class="timeline"></div>
@@ -275,16 +304,25 @@
                 <h2>Photos</h2>
               </div>
               <div class="section-actions">
-                <button id="quickUploadPhotoBtn" class="primary-btn small" type="button">＋ Add Photos</button>
+                <button id="quickUploadPhotoBtn" class="primary-btn small" type="button">
+                  <svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  <span>Add Photos</span>
+                </button>
                 <button id="selectPhotosBtn" class="tonal-btn small" type="button">Select</button>
-                <button id="playAllPhotosSlideshow" class="mini-btn" type="button">▶ Slideshow</button>
+                <button id="playAllPhotosSlideshow" class="mini-btn" type="button">
+                  <svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+                  <span>Slideshow</span>
+                </button>
               </div>
             </div>
 
             <div id="photoSelectBar" class="select-action-bar" hidden>
               <span id="photoSelectCount">0 selected</span>
               <div class="select-bar-btns">
-                <button id="deleteSelectedPhotosBtn" class="mini-btn danger" type="button" disabled>🗑️ Delete Selected</button>
+                <button id="deleteSelectedPhotosBtn" class="mini-btn danger" type="button" disabled>
+                  <svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                  <span>Delete Selected</span>
+                </button>
                 <button id="cancelSelectPhotosBtn" class="mini-btn" type="button">Done</button>
               </div>
             </div>
@@ -308,7 +346,10 @@
                 <h2>Videos</h2>
               </div>
               <div class="section-actions">
-                <button id="quickUploadVideoBtn" class="primary-btn small" type="button">＋ Add Videos</button>
+                <button id="quickUploadVideoBtn" class="primary-btn small" type="button">
+                  <svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  <span>Add Videos</span>
+                </button>
                 <button id="selectVideosBtn" class="tonal-btn small" type="button">Select</button>
               </div>
             </div>
@@ -316,7 +357,10 @@
             <div id="videoSelectBar" class="select-action-bar" hidden>
               <span id="videoSelectCount">0 selected</span>
               <div class="select-bar-btns">
-                <button id="deleteSelectedVideosBtn" class="mini-btn danger" type="button" disabled>🗑️ Delete Selected</button>
+                <button id="deleteSelectedVideosBtn" class="mini-btn danger" type="button" disabled>
+                  <svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                  <span>Delete Selected</span>
+                </button>
                 <button id="cancelSelectVideosBtn" class="mini-btn" type="button">Done</button>
               </div>
             </div>
@@ -340,8 +384,14 @@
                 <h2>Memories of the Day</h2>
               </div>
               <div class="memory-day-actions">
-                <button id="memoryDayAdd" class="primary-btn small" type="button">＋ Pick Photos</button>
-                <button id="memoryDayRandom" class="mini-btn" type="button">🎲 Shuffle 5</button>
+                <button id="memoryDayAdd" class="primary-btn small" type="button">
+                  <svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  <span>Pick Photos</span>
+                </button>
+                <button id="memoryDayRandom" class="mini-btn" type="button">
+                  <svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+                  <span>Shuffle 5</span>
+                </button>
               </div>
             </div>
             <section id="memoryDaySection" class="memory-day-section memory-day-page" aria-label="Memories of the day">
@@ -374,13 +424,19 @@
           <!-- PAGE 7: 5-MEMORY VAULT -->
           <article class="page" data-page="7" id="randomPage">
             <div class="random-pro">
-              <div class="random-kicker"><span>Chapter 07 · 5-Memory Vault</span><span>👑 The OG Legends</span></div>
+              <div class="random-kicker"><span>Chapter 07 · 5-Memory Vault</span><span>The OG Legends</span></div>
               <h2>Five Memories, One Moment</h2>
               <p class="random-intro">Open a curated batch of five reflections from our school chapter. Tap anytime to reveal all five or return to your previous chapter.</p>
               <div id="randomBatch" class="random-batch"></div>
               <div class="random-actions">
-                <button id="randomBtn" class="primary-btn" type="button">✨ Open 5 Memories</button>
-                <button id="randomBack" class="mini-btn" type="button" hidden>← Back to Previous Chapter</button>
+                <button id="randomBtn" class="primary-btn" type="button">
+                  <svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2" fill="currentColor" fill-opacity="0.22"/><polyline points="2 12 12 17 22 12"/><polyline points="2 17 12 22 22 17"/></svg>
+                  <span>Open 5 Memories</span>
+                </button>
+                <button id="randomBack" class="mini-btn" type="button" hidden>
+                  <svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m11 18-6-6 6-6"/></svg>
+                  <span>Back to Previous Chapter</span>
+                </button>
               </div>
             </div>
           </article>
@@ -401,80 +457,71 @@
               </div>
             </div>
           </article>
-          <!-- PAGE 9: BATCH MESSAGES (Full-Screen App Screen) -->
+          <!-- PAGE 9: FULL-SCREEN BATCH GROUP CHAT (Android Native Chat Screen) -->
           <article class="page messages-page" data-page="9" id="messagesPage">
-            <div class="msg-shell">
-              <header class="msg-topbar">
-                <div class="msg-title-group">
-                  <div class="eyebrow">Batch Messaging · Open Access</div>
-                  <h3>💬 OG Legends Messages</h3>
+            <div class="chat-screen">
+              <header class="chat-header">
+                <button id="msgBackBtn" class="nav-icon chat-back-btn" type="button" title="Back" aria-label="Go back">
+                  <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                </button>
+                <div class="chat-avatar-wrap">
+                  <img class="chat-group-avatar" src="assets/common.jpg" alt="The OG Legends Group" referrerpolicy="no-referrer" />
+                  <span class="chat-online-dot" aria-hidden="true"></span>
                 </div>
-                <div class="msg-persona-bar">
-                  <label for="chatSenderSelect" class="persona-label">Chatting as</label>
-                  <select id="chatSenderSelect" class="persona-select" aria-label="Select sender persona"></select>
-                  <form id="customSenderWrap" class="custom-sender-wrap" hidden>
-                    <input id="customSenderInput" type="text" maxlength="28" placeholder="Your name..." aria-label="Enter display name" />
-                    <button class="mini-btn" type="submit">Set</button>
-                  </form>
+                <div class="chat-header-info">
+                  <b id="msgThreadTitle">The OG Legends</b>
+                  <small id="msgThreadSub">Batch 2025–26 · Everyone sees every message</small>
                 </div>
+                <button id="chatWhoToggleBtn" class="chat-who-btn" type="button" aria-expanded="false" aria-controls="chatWhoTray" title="Switch who is writing">
+                  <span id="chatWhoLabel">Rehan</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+                <button id="msgClearThreadBtn" class="nav-icon chat-clear-btn" type="button" title="Clear all group messages" aria-label="Clear group messages">
+                  <svg class="nav-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path class="duo" d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6Z"/><path d="M3 6h18"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                </button>
               </header>
 
-              <div class="msg-tabs" role="tablist">
-                <button class="msg-tab active" type="button" data-msg-tab="chats" role="tab">Direct Chats</button>
-                <button class="msg-tab" type="button" data-msg-tab="groups" role="tab">Groups</button>
-                <button class="msg-tab" type="button" data-msg-tab="channels" role="tab">Noticeboard</button>
+              <div id="chatWhoTray" class="chat-who-tray" hidden>
+                <div class="chat-who-head">
+                  <span>Writing as</span>
+                  <small>Tap any Legend or enter your name</small>
+                </div>
+                <div id="chatSenderChips" class="chat-sender-chips"></div>
+                <form id="customSenderWrap" class="chat-custom-sender">
+                  <input id="customSenderInput" type="text" maxlength="28" placeholder="Or type another name..." aria-label="Enter custom display name" />
+                  <button class="primary-btn small" type="submit">Use Name</button>
+                </form>
               </div>
 
-              <div class="msg-workspace">
-                <aside id="msgListPane" class="msg-list-pane">
-                  <div class="msg-list-tools">
-                    <input id="msgSearchInput" class="msg-search" type="search" placeholder="Search legends, groups, or boards..." autocomplete="off" />
-                    <button id="msgCreateActionBtn" class="primary-btn small" type="button" hidden>＋ New</button>
-                  </div>
-                  <div id="msgListHost" class="msg-list-host"></div>
-                </aside>
+              <div id="msgFeedHost" class="chat-feed" aria-live="polite"></div>
 
-                <section id="msgThreadPane" class="msg-thread-pane">
-                  <div id="msgEmptyPlaceholder" class="msg-thread-empty">
-                    <div>
-                      <strong>Select a conversation</strong>
-                      <p>Pick any Legend, batch group, or announcement channel from the list to read or send messages and media — no ID or login required.</p>
-                    </div>
-                  </div>
-
-                  <div id="msgActiveThread" class="msg-active-thread" hidden>
-                    <div class="msg-thread-header">
-                      <button id="msgBackToListBtn" class="mini-btn msg-back-btn" type="button">← Back</button>
-                      <div class="msg-thread-peer">
-                        <img id="msgThreadAvatar" src="assets/common.jpg" alt="" referrerpolicy="no-referrer" />
-                        <div>
-                          <b id="msgThreadTitle">Thread Title</b>
-                          <small id="msgThreadSub">Batch 2025–26</small>
-                        </div>
-                      </div>
-                      <div class="msg-thread-header-actions">
-                        <button id="msgClearThreadBtn" class="mini-btn danger" type="button" title="Clear messages">Clear</button>
-                      </div>
-                    </div>
-
-                    <div id="msgFeedHost" class="msg-feed-host"></div>
-
-                    <div id="msgAttachmentBar" class="msg-attach-preview" hidden>
-                      <span id="msgAttachName"></span>
-                      <button id="msgClearAttachBtn" class="mini-btn" type="button">Remove</button>
-                    </div>
-
-                    <form id="msgComposeForm" class="msg-compose">
-                      <label class="msg-attach-btn" title="Attach photo or video">
-                        📎
-                        <input id="msgMediaInput" type="file" accept="image/*,video/*" hidden />
-                      </label>
-                      <input id="msgTextInput" type="text" placeholder="Write a message..." autocomplete="off" maxlength="1000" />
-                      <button class="primary-btn small" type="submit">Send</button>
-                    </form>
-                  </div>
-                </section>
+              <div id="chatReplyBar" class="chat-reply-bar" hidden>
+                <div class="chat-reply-accent"></div>
+                <div class="chat-reply-info">
+                  <strong id="chatReplyAuthor"></strong>
+                  <small id="chatReplySnippet"></small>
+                </div>
+                <button id="chatCancelReplyBtn" class="mini-btn" type="button">Cancel</button>
               </div>
+
+              <div id="msgAttachmentBar" class="chat-attach-bar" hidden>
+                <div class="chat-attach-info">
+                  <img id="msgAttachThumb" class="chat-attach-thumb" alt="" hidden />
+                  <span id="msgAttachName"></span>
+                </div>
+                <button id="msgClearAttachBtn" class="mini-btn" type="button">Remove</button>
+              </div>
+
+              <form id="msgComposeForm" class="chat-composer">
+                <label class="chat-attach-btn" title="Attach photo or video" aria-label="Attach photo or video">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="4" fill="currentColor" fill-opacity="0.14"/><circle cx="8.8" cy="8.8" r="1.6" fill="currentColor" stroke="none"/><path d="m21 15.5-3.8-3.8a2 2 0 0 0-2.83 0L6 20.5"/></svg>
+                  <input id="msgMediaInput" type="file" accept="image/*,video/*" hidden />
+                </label>
+                <input id="msgTextInput" class="chat-input" type="text" placeholder="Message everyone..." autocomplete="off" maxlength="1000" />
+                <button id="msgSendBtn" class="chat-send-btn" type="submit" aria-label="Send message" title="Send message">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3.4 20.4 20.85 12.92a1 1 0 0 0 0-1.84L3.4 3.6a1 1 0 0 0-1.39 1.06l1.2 5.38a1 1 0 0 0 .82.77l8.97 1.19-8.97 1.19a1 1 0 0 0-.82.77l-1.2 5.38a1 1 0 0 0 1.39 1.06Z"/></svg>
+                </button>
+              </form>
             </div>
           </article>
 
@@ -487,22 +534,30 @@
                 <p class="subpage-lead">Choose what you want to add to the batch archive from your device.</p>
                 <div class="sheet-action-grid">
                   <button id="sheetAddPhotoBtn" class="sheet-tile accent-photo" type="button">
-                    <span class="sheet-tile-icon">📸</span>
+                    <span class="sheet-tile-icon" aria-hidden="true">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3.2"/></svg>
+                    </span>
                     <strong>Add Photos</strong>
                     <small>Pick one or multiple images</small>
                   </button>
                   <button id="sheetAddVideoBtn" class="sheet-tile accent-video" type="button">
-                    <span class="sheet-tile-icon">🎬</span>
+                    <span class="sheet-tile-icon" aria-hidden="true">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5.5" width="14" height="13" rx="3"/><path d="m16.5 13 4.3 2.8a.8.8 0 0 0 1.2-.68V8.88a.8.8 0 0 0-1.2-.68L16.5 11"/><polygon points="8 9.2 12.6 12 8 14.8 8 9.2" fill="currentColor" stroke="none"/></svg>
+                    </span>
                     <strong>Add Videos</strong>
                     <small>Upload MP4 or clips from device</small>
                   </button>
                   <button id="sheetAddJourneyBtn" class="sheet-tile" type="button">
-                    <span class="sheet-tile-icon">📖</span>
+                    <span class="sheet-tile-icon" aria-hidden="true">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5.5A2.5 2.5 0 0 1 4.5 3H11v17H4.5A2.5 2.5 0 0 0 2 22.5v-17Z" fill="currentColor" fill-opacity="0.16"/><path d="M22 5.5A2.5 2.5 0 0 0 19.5 3H13v17h6.5a2.5 2.5 0 0 1 2.5 2.5v-17Z"/></svg>
+                    </span>
                     <strong>Journey Story</strong>
                     <small>Add date, note & media</small>
                   </button>
                   <button id="sheetAddProfileBtn" class="sheet-tile" type="button">
-                    <span class="sheet-tile-icon">👤</span>
+                    <span class="sheet-tile-icon" aria-hidden="true">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9.5" cy="7.5" r="3.8" fill="currentColor" fill-opacity="0.16"/><path d="M2.5 20.5v-1.8A4.2 4.2 0 0 1 6.7 14.5h5.6a4.2 4.2 0 0 1 4.2 4.2v1.8" fill="currentColor" fill-opacity="0.12"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg>
+                    </span>
                     <strong>Add Legend</strong>
                     <small>Add a classmate profile</small>
                   </button>
@@ -606,42 +661,8 @@
             </div>
           </article>
 
-          <!-- PAGE 18: CREATE GROUP (Full-Screen Android Activity) -->
-          <article class="page subpage" data-page="18" id="createGroupPage">
-            <div class="subpage-shell">
-              <div class="subpage-card">
-                <form id="createGroupForm" class="modal-form">
-                  <div class="eyebrow">New Group Chat</div>
-                  <h2>Create Batch Group</h2>
-                  <input id="groupNameInput" maxlength="50" placeholder="Group name (e.g. Farewell Crew)" required />
-                  <input id="groupDescInput" maxlength="100" placeholder="Short description (optional)" />
-                  <div class="group-member-box">
-                    <div class="group-member-label">Include Legends</div>
-                    <div id="groupMemberChecklist" class="group-member-checklist"></div>
-                  </div>
-                  <button class="primary-btn" type="submit">Create Group</button>
-                </form>
-              </div>
-            </div>
-          </article>
-
-          <!-- PAGE 19: CREATE NOTICEBOARD CHANNEL (Full-Screen Android Activity) -->
-          <article class="page subpage" data-page="19" id="createChannelPage">
-            <div class="subpage-shell">
-              <div class="subpage-card">
-                <form id="createChannelForm" class="modal-form">
-                  <div class="eyebrow">New Noticeboard</div>
-                  <h2>Create Announcement Board</h2>
-                  <input id="channelNameInput" maxlength="50" placeholder="Board name (e.g. Reunion Updates)" required />
-                  <textarea id="channelDescInput" maxlength="200" placeholder="What is this board for?"></textarea>
-                  <button class="primary-btn" type="submit">Create Board</button>
-                </form>
-              </div>
-            </div>
-          </article>
-
-          <!-- PAGE 20: THEME & SETTINGS (Full-Screen Android Activity) -->
-          <article class="page subpage" data-page="20" id="toolsPage">
+          <!-- PAGE 18: THEME & SETTINGS (Full-Screen Android Activity) -->
+          <article class="page subpage" data-page="18" id="toolsPage">
             <div class="subpage-shell">
               <div class="subpage-card">
                 <div class="eyebrow">Archive Controls</div>
@@ -671,68 +692,114 @@
                   </div>
                 </div>
                 <div class="tool-grid">
-                  <button id="toolsSearchBtn" class="tool-card" type="button"><b>🔎 Search</b><small>Find memories & chats</small></button>
-                  <button id="toolsAddBtn" class="tool-card" type="button"><b>📸 Upload Media</b><small>Add photos or videos</small></button>
-                  <button id="toolsMsgBtn" class="tool-card" type="button"><b>💬 Messages</b><small>Batch chats & groups</small></button>
-                  <button id="exportBtn" class="tool-card" type="button"><b>⬇ Export Backup</b><small>Save archive JSON</small></button>
-                  <label class="tool-card"><b>⬆ Import Backup</b><small>Restore JSON file</small><input id="importInput" type="file" accept="application/json" hidden /></label>
-                  <button id="restoreBtn" class="tool-card" type="button"><b>♻️ Restore Center</b><small>Recover deleted items</small></button>
+                  <button id="toolsSearchBtn" class="tool-card" type="button">
+                    <span class="tool-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.8" cy="10.8" r="7.2" fill="currentColor" fill-opacity="0.16"/><path d="m20.5 20.5-4.3-4.3"/></svg></span>
+                    <b>Search</b>
+                    <small>Find memories & messages</small>
+                  </button>
+                  <button id="toolsAddBtn" class="tool-card" type="button">
+                    <span class="tool-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" fill="currentColor" fill-opacity="0.16"/><circle cx="12" cy="13" r="3.2"/></svg></span>
+                    <b>Upload Media</b>
+                    <small>Add photos or videos</small>
+                  </button>
+                  <button id="toolsMsgBtn" class="tool-card" type="button">
+                    <span class="tool-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 14a2.5 2.5 0 0 1-2.5 2.5H8l-4.5 4V6A2.5 2.5 0 0 1 6 3.5h12.5A2.5 2.5 0 0 1 21 6v8Z" fill="currentColor" fill-opacity="0.16"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="12.5" x2="13" y2="12.5"/></svg></span>
+                    <b>Batch Group</b>
+                    <small>Open shared group chat</small>
+                  </button>
+                  <button id="exportBtn" class="tool-card" type="button">
+                    <span class="tool-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" fill="currentColor" fill-opacity="0.14"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
+                    <b>Export Backup</b>
+                    <small>Save archive JSON</small>
+                  </button>
+                  <label class="tool-card">
+                    <span class="tool-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" fill="currentColor" fill-opacity="0.14"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
+                    <b>Import Backup</b>
+                    <small>Restore JSON file</small>
+                    <input id="importInput" type="file" accept="application/json" hidden />
+                  </label>
+                  <button id="restoreBtn" class="tool-card" type="button">
+                    <span class="tool-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8" fill="currentColor" fill-opacity="0.12"/><path d="M3 3v5h5"/><polyline points="12 7 12 12 15.5 14"/></svg></span>
+                    <b>Restore Center</b>
+                    <small>Recover deleted items</small>
+                  </button>
                 </div>
                 <div id="restoreList" class="restore-list" hidden></div>
               </div>
             </div>
           </article>
 
-          <!-- PAGE 21: FULLSCREEN MEDIA VIEWER (Edge-to-Edge Android Cinema Screen) -->
-          <article class="page viewer-page" data-page="21" id="mediaViewerPage">
+          <!-- PAGE 19: FULLSCREEN MEDIA VIEWER (Edge-to-Edge Android Cinema Screen) -->
+          <article class="page viewer-page" data-page="19" id="mediaViewerPage">
             <div class="viewer-head">
               <button id="viewerBackBtn" class="nav-icon viewer-back-btn" type="button" title="Back" aria-label="Go back">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
               </button>
               <div class="viewer-title-block"><span id="viewerTitle">Memory Viewer</span><small id="viewerMetaLine"></small></div>
               <b id="viewerCount">1 / 1</b>
             </div>
             <div id="viewerStage" class="viewer-stage"></div>
             <div class="viewer-controls">
-              <button id="viewerPrev" type="button">← Prev</button>
-              <button id="viewerZoomOut" class="viewer-tool" type="button" title="Zoom out">−</button>
+              <button id="viewerPrev" type="button" aria-label="Previous memory">
+                <svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                <span>Prev</span>
+              </button>
+              <button id="viewerZoomOut" class="viewer-tool" type="button" title="Zoom out" aria-label="Zoom out">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+              </button>
               <button id="viewerReset" class="viewer-tool" type="button" title="Reset zoom">1:1</button>
-              <button id="viewerZoomIn" class="viewer-tool" type="button" title="Zoom in">＋</button>
-              <button id="viewerInfo" class="viewer-tool" type="button" title="Caption & date">📝</button>
-              <button id="viewerShare" class="viewer-tool" type="button" title="Share">📤</button>
-              <button id="viewerSlideshow" class="viewer-tool" type="button" title="Slideshow">▶</button>
-              <button id="viewerDelete" class="viewer-tool viewer-delete" type="button" title="Delete from gallery" aria-label="Delete from gallery">🗑️</button>
-              <button id="viewerDownload" class="viewer-download" type="button">⬇ Download</button>
-              <button id="viewerNext" type="button">Next →</button>
+              <button id="viewerZoomIn" class="viewer-tool" type="button" title="Zoom in" aria-label="Zoom in">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+              </button>
+              <button id="viewerInfo" class="viewer-tool" type="button" title="Caption & date" aria-label="Edit caption and date">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+              </button>
+              <button id="viewerShare" class="viewer-tool" type="button" title="Share" aria-label="Share memory">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+              </button>
+              <button id="viewerSlideshow" class="viewer-tool" type="button" title="Slideshow" aria-label="Toggle slideshow">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+              </button>
+              <button id="viewerDelete" class="viewer-tool viewer-delete" type="button" title="Delete from gallery" aria-label="Delete from gallery">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+              </button>
+              <button id="viewerDownload" class="viewer-download" type="button">
+                <svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span>Download</span>
+              </button>
+              <button id="viewerNext" type="button" aria-label="Next memory">
+                <span>Next</span>
+                <svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+              </button>
             </div>
           </article>
         </section>
       </div>
 
       <!-- MOBILE ANDROID MATERIAL 3 BOTTOM NAVIGATION BAR (5 Primary Tabs) -->
-      <nav class="android-bottom-nav" aria-label="Mobile bottom navigation">
+      <nav id="androidBottomNav" class="android-bottom-nav" aria-label="Mobile bottom navigation">
         <button class="bnav-item active" type="button" data-nav-page="0">
-          <span class="bnav-pill"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+          <span class="bnav-pill"><svg class="nav-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path class="duo" d="m3 9.5 9-7 9 7V20a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9.5Z"/><path d="M9.5 22v-7.5a1.5 1.5 0 0 1 1.5-1.5h2a1.5 1.5 0 0 1 1.5 1.5V22"/></svg></span>
           <span>Home</span>
         </button>
         <button class="bnav-item" type="button" data-nav-page="3">
-          <span class="bnav-pill"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg></span>
+          <span class="bnav-pill"><svg class="nav-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect class="duo" width="18" height="18" x="3" y="3" rx="3.5"/><circle cx="8.8" cy="8.8" r="1.7" fill="currentColor" stroke="none"/><path d="m21 15.5-3.8-3.8a2 2 0 0 0-2.83 0L6 20.5"/></svg></span>
           <span>Photos</span>
         </button>
         <button class="bnav-item" type="button" data-nav-page="4">
-          <span class="bnav-pill"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg></span>
+          <span class="bnav-pill"><svg class="nav-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect class="duo" x="2.5" y="5.5" width="14" height="13" rx="3"/><path class="duo" d="m16.5 13 4.3 2.8a.8.8 0 0 0 1.2-.68V8.88a.8.8 0 0 0-1.2-.68L16.5 11"/><polygon points="8 9.2 12.6 12 8 14.8 8 9.2" fill="currentColor" stroke="none"/></svg></span>
           <span>Videos</span>
         </button>
         <button class="bnav-item" type="button" data-nav-page="1">
-          <span class="bnav-pill"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+          <span class="bnav-pill"><svg class="nav-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle class="duo" cx="9" cy="7.5" r="3.8"/><path class="duo" d="M2.5 20.5v-1.8A4.2 4.2 0 0 1 6.7 14.5h4.6a4.2 4.2 0 0 1 4.2 4.2v1.8"/><path d="M16.5 4.2a3.4 3.4 0 0 1 0 6.6"/><path d="M21.5 20.5v-1.7a3.8 3.8 0 0 0-3-3.7"/></svg></span>
           <span>Legends</span>
         </button>
         <button id="bottomChatsBtn" class="bnav-item" type="button" data-nav-page="9">
           <span class="bnav-pill">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <svg class="nav-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path class="duo" d="M21 14a2.5 2.5 0 0 1-2.5 2.5H8l-4.5 4V6A2.5 2.5 0 0 1 6 3.5h12.5A2.5 2.5 0 0 1 21 6v8Z"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="12.5" x2="13" y2="12.5"/></svg>
             <span id="bottomChatBadge" class="bnav-badge" hidden>0</span>
           </span>
-          <span>Chats</span>
+          <span>Chat</span>
         </button>
       </nav>
 
@@ -745,7 +812,7 @@
 
   <div id="appToast" class="app-toast" role="status" aria-live="polite" hidden></div>
 
-  <script src="js/media-manifest.js?v=14.7.0"></script>
-  <script src="js/app.js?v=14.7.0"></script>
+  <script src="js/media-manifest.js?v=15.4.0"></script>
+  <script src="js/app.js?v=15.4.0"></script>
 </body>
 </html>

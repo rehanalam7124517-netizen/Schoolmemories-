@@ -11,7 +11,7 @@ const PEOPLE = [
   { n: 'Krishna', nick: 'Maharaj', title: 'The Maharaj', nature: 'Cool', special: 'Royal Presence', memory: 'Maharaj — the name itself said everything. That calm presence and those shared classroom moments made him unforgettable.' },
   { n: 'Hemant', nick: 'Sustmal', title: 'The Sustmal', nature: 'Laid-back', special: 'Sleepyhead', memory: 'Sustmal — the unhurried vibe and quiet humour are what set Hemant apart. Some memories do not need noise to be remembered.' },
   { n: 'Depanshu', nick: 'Nautanki', title: 'The Nautanki', nature: 'Dramatic', special: 'Drama King', memory: 'Nautanki — the theatrics and humour never failed to keep the whole group entertained. Those scenes are ones we will always smile back on.' },
-  { n: 'Sahin Praveen', nick: 'Sahin', title: 'The Graceful One', nature: 'Warm & Cheerful', special: 'Pure Positivity', memory: 'A bright presence in the batch who always brought warmth, kindness, and genuine smiles to ordinary school days. Whether it was classroom laughter or group moments together, Sahin Praveen made every memory feel special.' }
+  { n: 'Sahin Praveen', nick: 'Sahin', title: 'The Graceful One', nature: 'Kind & Cheerful', special: 'Brightest Smile', memory: 'One of the sweetest and most genuine souls in our batch. Always polite, warm-hearted, and ready with a smile that could brighten any ordinary classroom afternoon. The shared laughs and group memories with Sahin Praveen will always hold a special place in our story.' }
 ];
 
 const $ = (id) => document.getElementById(id);
@@ -37,13 +37,11 @@ const PAGE = {
   SEARCH: 15,
   META: 16,
   LETTER: 17,
-  CREATE_GROUP: 18,
-  CREATE_CHANNEL: 19,
-  TOOLS: 20,
-  VIEWER: 21
+  TOOLS: 18,
+  VIEWER: 19
 };
-const PERSISTENT_PAGES = new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
-const SUBSCREEN_PAGES = new Set([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]);
+const PERSISTENT_PAGES = new Set([0, 1, 2, 3, 4, 5, 6, 7, 8]);
+const SUBSCREEN_PAGES = new Set([9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]);
 const PAGE_TITLES = [
   'The OG Legends',
   'The Legends',
@@ -54,7 +52,7 @@ const PAGE_TITLES = [
   'Memory Wall',
   '5-Memory Vault',
   'Not The End',
-  'Batch Chats',
+  'Batch Group',
   'Add to Memories',
   'Legend Profile',
   'Add Legend',
@@ -63,8 +61,6 @@ const PAGE_TITLES = [
   'Search Archive',
   'Memory Info',
   'Friend Letter',
-  'Create Batch Group',
-  'Create Noticeboard',
   'Theme & Settings',
   'Memory Viewer'
 ];
@@ -167,7 +163,7 @@ function cleanupViewerOnLeave() {
   if (typeof viewerScale !== 'undefined') viewerScale = 1;
 }
 
-function syncPageUI(i, persist = true, customTitle = null, msgThreadOpen = false) {
+function syncPageUI(i, persist = true, customTitle = null) {
   const was = currentPage;
   currentPage = Math.max(0, Math.min(i, pageEls.length - 1));
   if (was === PAGE.VIEWER && currentPage !== PAGE.VIEWER) {
@@ -179,32 +175,32 @@ function syncPageUI(i, persist = true, customTitle = null, msgThreadOpen = false
 
   pageEls.forEach((p, idx) => p.classList.toggle('active', idx === currentPage));
   drawerNavItems.forEach((btn) => btn.classList.toggle('active', Number(btn.dataset.navPage) === currentPage));
-  bottomNavItems.forEach((btn) => btn.classList.toggle('active', Number(btn.dataset.navPage) === currentPage));
+  bottomNavItems.forEach((btn) => {
+    const isActive = Number(btn.dataset.navPage) === currentPage;
+    btn.classList.toggle('active', isActive);
+    if (isActive && typeof btn.scrollIntoView === 'function') {
+      btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  });
 
   const titleText = customTitle || PAGE_TITLES[currentPage] || 'The OG Legends';
   if ($('appBarTitle')) $('appBarTitle').textContent = titleText;
 
-  const isThreadView = currentPage === PAGE.MESSAGES && msgThreadOpen && Boolean(activeThread);
-  if (isThreadView) {
-    $('msgThreadPane')?.classList.add('mobile-show');
-    $('msgListPane')?.classList.add('mobile-hide');
-  } else {
-    $('msgThreadPane')?.classList.remove('mobile-show');
-    $('msgListPane')?.classList.remove('mobile-hide');
-  }
-
-  const isSubscreen = SUBSCREEN_PAGES.has(currentPage) || isThreadView;
+  const isSubscreen = SUBSCREEN_PAGES.has(currentPage);
   const shell = $('siteShell');
   if (shell) {
     shell.classList.toggle('subscreen-mode', isSubscreen);
     shell.classList.toggle('hide-fab', isSubscreen || currentPage === PAGE.MESSAGES);
   }
-  if ($('topBackBtn')) $('topBackBtn').hidden = currentPage === 0 && !isThreadView;
+  if ($('topBackBtn')) $('topBackBtn').hidden = currentPage === 0;
 
   closeNavDrawerUI();
   const active = pageEls[currentPage];
   if (active && was !== currentPage) active.scrollTop = 0;
   if (currentPage === RANDOM_PAGE_IDX && was !== RANDOM_PAGE_IDX) resetRandomBatch();
+  if (currentPage === PAGE.MESSAGES && typeof renderGroupChat === 'function') {
+    renderGroupChat();
+  }
   if (persist && PERSISTENT_PAGES.has(currentPage)) {
     localStorage.setItem('og_last_page', String(currentPage));
   }
@@ -212,32 +208,32 @@ function syncPageUI(i, persist = true, customTitle = null, msgThreadOpen = false
 
 function showPage(i, options = true) {
   const opts = typeof options === 'boolean' ? { persist: options } : (options || {});
-  const { persist = true, replace = false, title = null, msgThread = false } = opts;
+  const { persist = true, replace = false, title = null } = opts;
   const target = Math.max(0, Math.min(i, pageEls.length - 1));
   const wasDrawerOpen = currentHistState.drawer;
   closeNavDrawerUI();
 
   if (isApplyingHistory) {
-    syncPageUI(target, persist, title, msgThread);
+    syncPageUI(target, persist, title);
     return;
   }
 
   if (wasDrawerOpen || replace) {
-    if (wasDrawerOpen && target === currentPage && !msgThread && !currentHistState.msgThread) {
+    if (wasDrawerOpen && target === currentPage) {
       if (currentHistState.ogDepth > 0) history.back();
       return;
     }
-    replaceHistState({ page: target, drawer: false, msgThread, title });
-    syncPageUI(target, persist, title, msgThread);
+    replaceHistState({ page: target, drawer: false, title });
+    syncPageUI(target, persist, title);
     return;
   }
 
-  if (target === currentPage && msgThread === currentHistState.msgThread && title === currentHistState.title) {
+  if (target === currentPage && title === currentHistState.title) {
     return;
   }
 
-  pushHistState({ page: target, drawer: false, msgThread, title });
-  syncPageUI(target, persist, title, msgThread);
+  pushHistState({ page: target, drawer: false, title });
+  syncPageUI(target, persist, title);
 }
 
 function goBackInApp() {
@@ -247,9 +243,6 @@ function goBackInApp() {
   }
   if (currentHistState.ogDepth > 0) {
     history.back();
-  } else if (currentPage === PAGE.MESSAGES && currentHistState.msgThread) {
-    replaceHistState({ msgThread: false, title: null });
-    syncPageUI(PAGE.MESSAGES, true, null, false);
   } else if (currentPage > 0) {
     showPage(0, { replace: true });
   }
@@ -267,9 +260,9 @@ function finishSubscreenTo(fallbackPage) {
 $('brandHomeBtn')?.addEventListener('click', () => showPage(PAGE.HOME));
 $('topBackBtn')?.addEventListener('click', goBackInApp);
 $('viewerBackBtn')?.addEventListener('click', goBackInApp);
+$('msgBackBtn')?.addEventListener('click', goBackInApp);
 $('enterMemoriesBtn')?.addEventListener('click', () => showPage(PAGE.LEGENDS));
 $('heroMessagesBtn')?.addEventListener('click', () => openMessagesDialog());
-$('bottomChatsBtn')?.addEventListener('click', () => openMessagesDialog());
 $('homeOpenMsgCard')?.addEventListener('click', () => openMessagesDialog());
 $('homeJourneyBtn')?.addEventListener('click', () => showPage(PAGE.JOURNEY));
 $('homeAddPhotoBtn')?.addEventListener('click', async () => {
@@ -398,7 +391,7 @@ function confirmTap(btn, promptText = 'Tap again to confirm') {
 }
 
 function pauseAllForegroundVideo() {
-  document.querySelectorAll('#viewerStage video, .timeline-card video, .quick-video-card video, .msg-attachment-media video').forEach((v) => {
+  document.querySelectorAll('#viewerStage video, .timeline-card video, .quick-video-card video, .chat-bubble-media video').forEach((v) => {
     try { v.pause(); } catch {}
   });
 }
@@ -446,14 +439,26 @@ let activeProfiles = [];
 function profileImageSrc(p) {
   return p?.imageBlob ? URL.createObjectURL(p.imageBlob) : (p?.image || 'assets/common.jpg');
 }
+const PROFILE_SEED_VER = 2;
 async function seedProfiles() {
   const saved = await getAll('profiles');
   for (let i = 0; i < PEOPLE.length; i++) {
     const id = 'builtin-profile-' + i;
     const existing = saved.find((x) => x.id === id);
     if (!localStorage.getItem('deleted_' + id)) {
-      if (!existing) await put('profiles', { ...PEOPLE[i], id, builtin: true, order: i, image: 'assets/common.jpg' });
-      else if (HAS_SMALLCAPS.test(existing.n || '')) await put('profiles', { ...existing, ...PEOPLE[i] });
+      if (!existing) {
+        await put('profiles', { ...PEOPLE[i], id, builtin: true, order: i, image: 'assets/common.jpg', profileVer: PROFILE_SEED_VER });
+      } else if (HAS_SMALLCAPS.test(existing.n || '') || (existing.profileVer || 0) < PROFILE_SEED_VER) {
+        await put('profiles', {
+          ...existing,
+          ...PEOPLE[i],
+          id,
+          builtin: true,
+          order: existing.order ?? i,
+          image: existing.image || 'assets/common.jpg',
+          profileVer: PROFILE_SEED_VER
+        });
+      }
     }
   }
 }
@@ -526,15 +531,15 @@ function renderProfileDetailBody(p) {
           <p><strong>Special:</strong> ${escapeHtml(p.special)}</p>
         </div>
         <div class="profile-actions">
-          <button class="mini-btn" id="openProfileChatBtn" type="button">💬 Message ${escapeHtml(p.n)}</button>
-          <button class="mini-btn" id="openLetterBtn" type="button">💌 Open Letter</button>
-          <button class="mini-btn" id="changeProfileImageBtn" type="button">🖼️ Change Photo</button>
-          <button class="mini-btn danger" id="deleteProfileBtn" type="button">🗑️ Delete</button>
+          <button class="mini-btn" id="openProfileChatBtn" type="button"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 14a2.5 2.5 0 0 1-2.5 2.5H8l-4.5 4V6A2.5 2.5 0 0 1 6 3.5h12.5A2.5 2.5 0 0 1 21 6v8Z" fill="currentColor" fill-opacity="0.16"/></svg><span>Message in Batch Group</span></button>
+          <button class="mini-btn" id="openLetterBtn" type="button"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5" fill="currentColor" fill-opacity="0.14"/><path d="m3.5 7 8.5 6 8.5-6"/></svg><span>Open Letter</span></button>
+          <button class="mini-btn" id="changeProfileImageBtn" type="button"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="3.5" fill="currentColor" fill-opacity="0.14"/><circle cx="8.8" cy="8.8" r="1.6" fill="currentColor" stroke="none"/><path d="m21 15.5-3.8-3.8a2 2 0 0 0-2.83 0L6 20.5"/></svg><span>Change Photo</span></button>
+          <button class="mini-btn danger" id="deleteProfileBtn" type="button"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg><span>Delete</span></button>
         </div>
       </div>
     </div>
     <div class="memory-box"><strong>Memory Note</strong><p>${escapeHtml(p.memory)}</p></div>`;
-  $('openProfileChatBtn').onclick = () => openMessagesDialog('chats', p.n);
+  $('openProfileChatBtn').onclick = () => openMessagesDialog(p.n);
   $('openLetterBtn').onclick = () => openFriendLetter(p);
   $('changeProfileImageBtn').onclick = async () => {
     const [file] = await filePicker('image/*', false);
@@ -777,7 +782,7 @@ async function renderQuickGalleries() {
         const isSelected = st.active && st.ids.has(item.id);
         card.className = 'quick-media-card' + (isSelected ? ' selected' : '');
         card.innerHTML = `
-          ${st.active ? `<span class="quick-select-badge" aria-hidden="true">${isSelected ? '✓' : ''}</span>` : ''}
+          ${st.active ? `<span class="quick-select-badge" aria-hidden="true">${isSelected ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : ''}</span>` : ''}
           <img src="${src}" alt="${escapeHtml(item.name || 'Memory photo')}" loading="lazy" referrerpolicy="no-referrer" onerror="this.src='assets/common.jpg'">
           <div class="quick-media-caption">
             <span>${escapeHtml(item.name || 'Batch Photo')}</span>
@@ -818,10 +823,10 @@ async function renderQuickGalleries() {
         const isSelected = st.active && st.ids.has(item.id);
         card.className = 'quick-video-card' + (isSelected ? ' selected' : '');
         card.innerHTML = `
-          ${st.active ? `<span class="quick-select-badge" aria-hidden="true">${isSelected ? '✓' : ''}</span>` : ''}
+          ${st.active ? `<span class="quick-select-badge" aria-hidden="true">${isSelected ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : ''}</span>` : ''}
           <div class="quick-video-thumb">
             <video src="${src}" muted playsinline preload="metadata"></video>
-            <button class="quick-play-overlay" type="button" aria-label="Play ${escapeHtml(item.name || 'Video')}">▶</button>
+            <button class="quick-play-overlay" type="button" aria-label="Play ${escapeHtml(item.name || 'Video')}"><svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg></button>
           </div>
           <div class="quick-video-meta">
             <div>
@@ -1040,7 +1045,7 @@ async function renderJourney() {
         <h3>${escapeHtml(j.title)}</h3>
         ${media}
         <p>${escapeHtml(j.message)}</p>
-        <button class="mini-btn danger journey-delete" type="button">🗑️ Delete Memory</button>
+        <button class="mini-btn danger journey-delete" type="button"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg><span>Delete Memory</span></button>
       </div>`;
     c.querySelector('.journey-delete').onclick = async (ev) => {
       if (!confirmTap(ev.currentTarget, 'Tap again to delete')) return;
@@ -1202,7 +1207,8 @@ async function renderMemoryDay() {
         rm.type = 'button';
         rm.className = 'memory-day-remove';
         rm.title = 'Remove from Memories of the Day';
-        rm.textContent = '🗑️';
+        rm.setAttribute('aria-label', 'Remove from Memories of the Day');
+        rm.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>';
         rm.onclick = async (e) => {
           e.stopPropagation();
           saveMemoryDayIds(memoryDaySavedIds().filter((id) => id !== item.id));
@@ -1271,13 +1277,12 @@ async function updateV7Home() {
   const hidden = new Set((await getAll('hiddenMedia')).map((x) => x.id));
   const p = (window.BUILTIN_MEDIA.photos || []).filter((_, i) => !hidden.has(`builtin-photos-b${i}`)).length;
   const v = (window.BUILTIN_MEDIA.videos || []).filter((_, i) => !hidden.has(`builtin-videos-b${i}`)).length;
-  const [local, profiles, journeys, msgs, grpMsgs, chPosts] = await Promise.all([
-    getAll('media'), getAll('profiles'), getAll('journeys'),
-    getAll('messages'), getAll('groupMessages'), getAll('channelPosts')
+  const [local, profiles, journeys, grpMsgs] = await Promise.all([
+    getAll('media'), getAll('profiles'), getAll('journeys'), getAll('groupMessages')
   ]);
   const lp = local.filter((x) => x.type === 'photo').length;
   const lv = local.filter((x) => x.type === 'video').length;
-  const totalMsgs = msgs.length + grpMsgs.length + chPosts.length;
+  const totalMsgs = grpMsgs.filter((m) => m.groupId === SHARED_GROUP_ID).length;
   if ($('memoryStats')) {
     $('memoryStats').innerHTML = `
       <div class="stat-item"><b>${p + lp}</b><span>Photos</span></div>
@@ -1374,7 +1379,7 @@ function stopSlideshow() {
     slideshowTimer = null;
   }
   if ($('viewerSlideshow')) {
-    $('viewerSlideshow').textContent = '▶';
+    $('viewerSlideshow').innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>';
     $('viewerSlideshow').classList.remove('active');
   }
 }
@@ -1383,7 +1388,7 @@ function startSlideshow(items) {
   stopSlideshow();
   openViewer(items, 0, 'photo');
   if ($('viewerSlideshow')) {
-    $('viewerSlideshow').textContent = '❚❚';
+    $('viewerSlideshow').innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>';
     $('viewerSlideshow').classList.add('active');
   }
   slideshowTimer = setInterval(() => {
@@ -1431,11 +1436,15 @@ async function resolveMedia(id) {
 }
 
 // =========================================================================
-// BATCH MESSAGE SYSTEM (ZERO ID-CREATION / ZERO LOGIN — INDEXEDDB PERSISTED)
+// RECREATED FULL-SCREEN BATCH GROUP CHAT (ONE GROUP — EVERYONE SEES EVERY MESSAGE)
 // =========================================================================
-let activeMsgTab = 'chats'; // 'chats' | 'groups' | 'channels'
-let activeThread = null; // { kind: 'chat'|'group'|'channel', id, title, avatar }
-let pendingMsgMedia = null; // { blob, mediaType, name }
+const SHARED_GROUP_ID = 'grp-og-legends';
+const CHAT_SENDER_PALETTE = ['#f4c152', '#4ae3b5', '#82b6ff', '#ff8aa8', '#c09bff', '#ffa65c', '#5ce1e6'];
+const CHAT_REACTIONS = ['❤️', '😂', '🔥', '👏'];
+let pendingMsgMedia = null; // { blob, mediaType, name, previewUrl }
+let activeChatObjectUrls = [];
+let chatRenderSeq = 0;
+let replyingToMsg = null; // { id, sender, snippet }
 
 function getChatSender() {
   return localStorage.getItem('og_chat_sender') || 'Rehan';
@@ -1443,149 +1452,167 @@ function getChatSender() {
 function setChatSender(name) {
   localStorage.setItem('og_chat_sender', name || 'Rehan');
 }
-
-function syncSenderDropdown() {
-  const sel = $('chatSenderSelect');
-  if (!sel) return;
-  const current = getChatSender();
-  const names = [...new Set([...activeProfiles.map((p) => p.n), current, 'Guest Friend'])].filter(Boolean);
-  sel.innerHTML = '';
-  names.forEach((name) => {
-    const opt = document.createElement('option');
-    opt.value = name;
-    opt.textContent = name;
-    if (name === current) opt.selected = true;
-    sel.appendChild(opt);
-  });
-  const customOpt = document.createElement('option');
-  customOpt.value = '__custom__';
-  customOpt.textContent = '＋ Custom Name...';
-  sel.appendChild(customOpt);
+function senderAccentColor(name) {
+  let h = 0;
+  const s = String(name || 'Legend');
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  return CHAT_SENDER_PALETTE[Math.abs(h) % CHAT_SENDER_PALETTE.length];
+}
+function senderInitials(name) {
+  const parts = String(name || '?').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+function formatDateLabel(ts) {
+  const d = new Date(ts);
+  const now = new Date();
+  const startOfDay = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diffDays = Math.round((startOfDay(now) - startOfDay(d)) / 86400000);
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  return d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+}
+function revokeChatUrls() {
+  activeChatObjectUrls.forEach((u) => { try { URL.revokeObjectURL(u); } catch {} });
+  activeChatObjectUrls = [];
+}
+function clearPendingAttachment() {
+  if (pendingMsgMedia?.previewUrl) {
+    try { URL.revokeObjectURL(pendingMsgMedia.previewUrl); } catch {}
+  }
+  pendingMsgMedia = null;
+  if ($('msgMediaInput')) $('msgMediaInput').value = '';
+  if ($('msgAttachThumb')) {
+    $('msgAttachThumb').src = '';
+    $('msgAttachThumb').hidden = true;
+  }
+  if ($('msgAttachmentBar')) $('msgAttachmentBar').hidden = true;
 }
 
-$('chatSenderSelect')?.addEventListener('change', async (e) => {
-  const val = e.target.value;
-  if (val === '__custom__') {
-    if ($('customSenderWrap')) {
-      $('customSenderWrap').hidden = false;
-      $('customSenderInput').value = '';
-      $('customSenderInput').focus();
-    }
-    return;
+function closeWhoTray() {
+  if ($('chatWhoTray')) $('chatWhoTray').hidden = true;
+  if ($('chatWhoToggleBtn')) $('chatWhoToggleBtn').setAttribute('aria-expanded', 'false');
+}
+
+function clearReplyTarget() {
+  replyingToMsg = null;
+  if ($('chatReplyAuthor')) $('chatReplyAuthor').textContent = '';
+  if ($('chatReplySnippet')) $('chatReplySnippet').textContent = '';
+  if ($('chatReplyBar')) $('chatReplyBar').hidden = true;
+}
+
+function setReplyTarget(m) {
+  if (!m) return;
+  const snippet = m.text?.trim()
+    || (m.mediaType?.startsWith('video') ? '🎥 Video' : (m.mediaBlob ? '📷 Photo' : 'Message'));
+  replyingToMsg = { id: m.id, sender: m.sender || 'Legend', snippet };
+  if ($('chatReplyAuthor')) $('chatReplyAuthor').textContent = `Replying to ${replyingToMsg.sender}`;
+  if ($('chatReplySnippet')) $('chatReplySnippet').textContent = replyingToMsg.snippet;
+  if ($('chatReplyBar')) $('chatReplyBar').hidden = false;
+  $('msgTextInput')?.focus();
+}
+
+$('chatCancelReplyBtn')?.addEventListener('click', clearReplyTarget);
+
+function syncSenderDropdown() {
+  const current = getChatSender();
+  if ($('chatWhoLabel')) $('chatWhoLabel').textContent = current;
+  const host = $('chatSenderChips');
+  if (!host) return;
+  const names = [...new Set([...activeProfiles.map((p) => p.n), current, 'Guest Friend'])].filter(Boolean);
+  host.innerHTML = '';
+  names.forEach((name) => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'chat-sender-chip' + (name === current ? ' active' : '');
+    const accent = senderAccentColor(name);
+    chip.innerHTML = `<span class="chat-chip-dot" style="color:${accent}">${escapeHtml(senderInitials(name))}</span><span>${escapeHtml(name)}</span>`;
+    chip.onclick = async () => {
+      setChatSender(name);
+      closeWhoTray();
+      syncSenderDropdown();
+      await renderGroupChat();
+      showToast(`Writing as ${name}`);
+    };
+    host.appendChild(chip);
+  });
+}
+
+$('chatWhoToggleBtn')?.addEventListener('click', () => {
+  const tray = $('chatWhoTray');
+  const btn = $('chatWhoToggleBtn');
+  if (!tray || !btn) return;
+  const opening = tray.hidden;
+  tray.hidden = !opening;
+  btn.setAttribute('aria-expanded', opening ? 'true' : 'false');
+  if (opening) {
+    syncSenderDropdown();
+    if ($('customSenderInput')) $('customSenderInput').value = '';
   }
-  if ($('customSenderWrap')) $('customSenderWrap').hidden = true;
-  setChatSender(val);
-  await renderMessageList();
-  if (activeThread) await renderActiveThread();
-  showToast(`Now messaging as ${val}`);
 });
 
 $('customSenderWrap')?.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const name = $('customSenderInput').value.trim();
+  const input = $('customSenderInput');
+  const name = input?.value.trim();
   if (!name) return;
   setChatSender(name);
-  $('customSenderWrap').hidden = true;
+  if (input) input.value = '';
+  closeWhoTray();
   syncSenderDropdown();
-  await renderMessageList();
-  if (activeThread) await renderActiveThread();
-  showToast(`Now messaging as ${name}`);
+  await renderGroupChat();
+  showToast(`Writing as ${name}`);
 });
 
 async function seedSocialMessages() {
-  const [msgs, groups, grpMsgs, channels, chPosts] = await Promise.all([
-    getAll('messages'), getAll('groups'), getAll('groupMessages'), getAll('channels'), getAll('channelPosts')
-  ]);
-  const now = Date.now();
-
-  if (!groups.length && !localStorage.getItem('seeded_og_groups')) {
-    await put('groups', {
-      id: 'grp-og-legends',
-      name: '👑 The OG Legends (Batch 2025–26)',
-      desc: 'Main class group · No formality, only memories',
-      members: PEOPLE.map((p) => p.n),
-      created: now - 3600000
-    });
-    await put('groups', {
-      id: 'grp-kushinagar',
-      name: '🚌 Kushinagar Trip Squad',
-      desc: 'Trip photos, jokes & bus memories',
-      members: ['Rehan', 'Abdul', 'Sonu', 'Amrendra', 'Amrit', 'Aniket', 'Krishna', 'Depanshu'],
-      created: now - 3200000
-    });
-    localStorage.setItem('seeded_og_groups', '1');
-
-    if (!grpMsgs.length) {
-      await put('groupMessages', { id: 'gm-1', groupId: 'grp-og-legends', sender: 'Rehan', text: 'Welcome everyone to our open Batch Message space! Drop photos, videos, or jokes anytime — no ID or login needed.', created: now - 3000000 });
-      await put('groupMessages', { id: 'gm-2', groupId: 'grp-og-legends', sender: 'Sonu', text: 'Yaar ek idea hai — sab log apne Kushinagar trip aur farewell pics upload karo! 😄', created: now - 2500000 });
-      await put('groupMessages', { id: 'gm-3', groupId: 'grp-og-legends', sender: 'Abdul', text: 'Done! Check the Photos & Videos chapters too, highlights clip mast bana hai.', created: now - 1900000 });
-      await put('groupMessages', { id: 'gm-4', groupId: 'grp-kushinagar', sender: 'Amrendra', text: 'Bus ke piche wali seats ka maza hi alag tha bhai log 🔥', created: now - 1500000 });
-      await put('groupMessages', { id: 'gm-5', groupId: 'grp-kushinagar', sender: 'Depanshu', text: 'Aur Amrit ka Tandoor mode on tha pure trip mein 😂', created: now - 1100000 });
-    }
-  }
-
-  if (!channels.length && !localStorage.getItem('seeded_og_channels')) {
-    await put('channels', {
-      id: 'chn-batch-notice',
-      name: '📢 Batch 2025–26 Noticeboard',
-      desc: 'Shared milestones, reunion updates & highlights for all OG Legends',
-      created: now - 4000000
-    });
-    localStorage.setItem('seeded_og_channels', '1');
-
-    if (!chPosts.length) {
-      await put('channelPosts', {
-        id: 'cp-1',
-        channelId: 'chn-batch-notice',
-        sender: 'Rehan',
-        text: '👑 Mother Teresa Public School — Batch 2025–26 Archive is live with restored Photos, Video Highlights, Friend Letters, and Open Batch Messaging.',
-        likes: 11,
-        created: now - 2800000
-      });
-      await put('channelPosts', {
-        id: 'cp-2',
-        channelId: 'chn-batch-notice',
-        sender: 'Saniya',
-        text: '✨ Do not forget to write a personal Friend Letter in every Legend profile card and add your own photos from device anytime!',
-        likes: 8,
-        created: now - 1200000
-      });
-    }
-  }
-
-  if (!msgs.length && !localStorage.getItem('seeded_og_dms')) {
-    localStorage.setItem('seeded_og_dms', '1');
-    await put('messages', {
-      id: 'dm-1',
-      pairId: directPairId('Rehan', 'Abdul'),
-      sender: 'Abdul',
-      recipient: 'Rehan',
-      text: 'Bhai, group photos aur video archive ek number lag raha hai! ❤️',
-      created: now - 2100000
-    });
-    await put('messages', {
-      id: 'dm-2',
-      pairId: directPairId('Rehan', 'Abdul'),
+  const grpMsgs = await getAll('groupMessages');
+  const shared = grpMsgs.filter((m) => m.groupId === SHARED_GROUP_ID);
+  if (!shared.length && !localStorage.getItem('seeded_shared_group_v2')) {
+    localStorage.setItem('seeded_shared_group_v2', '1');
+    const now = Date.now();
+    await put('groupMessages', {
+      id: 'gm-1',
+      groupId: SHARED_GROUP_ID,
       sender: 'Rehan',
-      recipient: 'Abdul',
-      text: 'Hamesha yaad rahega ye chapter 🤝',
-      created: now - 1800000
+      text: 'Welcome everyone to The OG Legends Group! Jo bhi likhoge woh sabko dikhega — drop messages, photos, or videos anytime.',
+      created: now - 3000000
     });
-    await put('messages', {
-      id: 'dm-3',
-      pairId: directPairId('Rehan', 'Sonu'),
+    await put('groupMessages', {
+      id: 'gm-2',
+      groupId: SHARED_GROUP_ID,
       sender: 'Sonu',
-      recipient: 'Rehan',
-      text: 'Gulabo reporting in! Naya photo add kar raha hu gallery mein.',
-      created: now - 900000
+      text: 'Yaar ek idea hai — sab log apne Kushinagar trip aur school ke best moments share karo! 😄',
+      created: now - 2400000
+    });
+    await put('groupMessages', {
+      id: 'gm-3',
+      groupId: SHARED_GROUP_ID,
+      sender: 'Sahin Praveen',
+      text: 'This batch keepsake feels so warm ❤️ So good seeing everyone here together!',
+      created: now - 1900000
+    });
+    await put('groupMessages', {
+      id: 'gm-4',
+      groupId: SHARED_GROUP_ID,
+      sender: 'Abdul',
+      text: 'Done! Check the Photos & Videos tabs too, pura archive ek number lag raha hai.',
+      created: now - 1400000
+    });
+    await put('groupMessages', {
+      id: 'gm-5',
+      groupId: SHARED_GROUP_ID,
+      sender: 'Saniya',
+      text: 'Batch 2025–26 memories forever ❤️✨',
+      created: now - 800000
     });
   }
 }
 
 async function updateUnreadBadge() {
   if (!DB) return;
-  const [msgs, gm, cp] = await Promise.all([getAll('messages'), getAll('groupMessages'), getAll('channelPosts')]);
-  const total = msgs.length + gm.length + cp.length;
+  const gm = (await getAll('groupMessages')).filter((m) => m.groupId === SHARED_GROUP_ID);
+  const total = gm.length;
   const seen = Number(localStorage.getItem('og_msg_seen_count') || '0');
   const diff = Math.max(0, total - seen);
   const label = diff > 9 ? '9+' : String(diff);
@@ -1599,433 +1626,259 @@ async function updateUnreadBadge() {
 
 async function markMessagesSeen() {
   if (!DB) return;
-  const [msgs, gm, cp] = await Promise.all([getAll('messages'), getAll('groupMessages'), getAll('channelPosts')]);
-  localStorage.setItem('og_msg_seen_count', String(msgs.length + gm.length + cp.length));
+  const gm = (await getAll('groupMessages')).filter((m) => m.groupId === SHARED_GROUP_ID);
+  localStorage.setItem('og_msg_seen_count', String(gm.length));
   updateUnreadBadge();
 }
 
-async function openMessagesDialog(tab = null, directTarget = null) {
-  if (tab) activeMsgTab = tab;
-  setActiveMsgTabUI();
-  pendingMsgMedia = null;
-  if ($('msgAttachmentBar')) $('msgAttachmentBar').hidden = true;
-  if ($('msgMediaInput')) $('msgMediaInput').value = '';
+async function openMessagesDialog(mentionName = null) {
+  clearPendingAttachment();
+  clearReplyTarget();
+  closeWhoTray();
   closeNavDrawerUI();
-  if (!directTarget) {
-    showPage(PAGE.MESSAGES, { msgThread: false });
-  } else {
-    showPage(PAGE.MESSAGES, { msgThread: false });
-  }
+  const alreadyHere = currentPage === PAGE.MESSAGES;
+  showPage(PAGE.MESSAGES);
   await waitDB();
   syncSenderDropdown();
   await markMessagesSeen();
-  await renderMessageList();
-
-  if (directTarget) {
-    const p = activeProfiles.find((x) => x.n.toLowerCase() === directTarget.toLowerCase());
-    if (p) {
-      await openChatThread({
-        kind: 'chat',
-        id: p.n,
-        title: p.n,
-        sub: `${p.nick} · ${p.title}`,
-        avatar: profileImageSrc(p)
-      });
-    }
-  } else if (activeThread) {
-    await renderActiveThread();
+  if (alreadyHere || !chatRenderSeq) {
+    await renderGroupChat();
+  }
+  if (typeof mentionName === 'string' && mentionName.trim() && $('msgTextInput')) {
+    const input = $('msgTextInput');
+    if (!input.value) input.value = `@${mentionName.trim()} `;
+    input.focus();
   }
 }
 
 $('toolsMsgBtn')?.addEventListener('click', () => openMessagesDialog());
 
-function setActiveMsgTabUI() {
-  document.querySelectorAll('.msg-tab').forEach((btn) => {
-    btn.classList.toggle('active', btn.dataset.msgTab === activeMsgTab);
-  });
-  const createBtn = $('msgCreateActionBtn');
-  if (createBtn) {
-    if (activeMsgTab === 'groups') {
-      createBtn.hidden = false;
-      createBtn.textContent = '＋ New Group';
-    } else if (activeMsgTab === 'channels') {
-      createBtn.hidden = false;
-      createBtn.textContent = '＋ New Board';
-    } else {
-      createBtn.hidden = true;
-    }
-  }
-}
-
-document.querySelectorAll('.msg-tab').forEach((btn) => {
-  btn.addEventListener('click', async () => {
-    activeMsgTab = btn.dataset.msgTab;
-    setActiveMsgTabUI();
-    await renderMessageList();
-  });
-});
-
-$('msgSearchInput')?.addEventListener('input', renderMessageList);
-$('msgBackToListBtn')?.addEventListener('click', () => {
-  if (currentHistState.msgThread && currentHistState.ogDepth > 0) {
-    history.back();
-  } else {
-    replaceHistState({ msgThread: false, title: null });
-    syncPageUI(PAGE.MESSAGES, true, null, false);
-  }
-});
-
-$('msgCreateActionBtn')?.addEventListener('click', () => {
-  if (activeMsgTab === 'groups') {
-    const list = $('groupMemberChecklist');
-    list.innerHTML = '';
-    activeProfiles.forEach((p) => {
-      const label = document.createElement('label');
-      label.className = 'member-check-item';
-      label.innerHTML = `<input type="checkbox" value="${escapeHtml(p.n)}" checked /><span>${escapeHtml(p.n)} <small>(${escapeHtml(p.nick)})</small></span>`;
-      list.appendChild(label);
-    });
-    showPage(PAGE.CREATE_GROUP);
-  } else if (activeMsgTab === 'channels') {
-    showPage(PAGE.CREATE_CHANNEL);
-  }
-});
-
-$('createGroupForm')?.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const name = $('groupNameInput').value.trim();
-  const desc = $('groupDescInput').value.trim();
-  const members = [...document.querySelectorAll('#groupMemberChecklist input:checked')].map((x) => x.value);
-  const g = {
-    id: 'grp-' + Date.now(),
-    name,
-    desc: desc || `${members.length} members`,
-    members,
-    created: Date.now()
-  };
-  await put('groups', g);
-  e.target.reset();
-  activeMsgTab = 'groups';
-  setActiveMsgTabUI();
-  await renderMessageList();
-  await openChatThread({ kind: 'group', id: g.id, title: g.name, sub: `${g.members.length} members`, avatar: 'assets/common.jpg' }, true);
-  showToast(`Group "${name}" created`);
-});
-
-$('createChannelForm')?.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const name = $('channelNameInput').value.trim();
-  const desc = $('channelDescInput').value.trim();
-  const ch = {
-    id: 'chn-' + Date.now(),
-    name,
-    desc: desc || 'Open Batch Noticeboard',
-    created: Date.now()
-  };
-  await put('channels', ch);
-  e.target.reset();
-  activeMsgTab = 'channels';
-  setActiveMsgTabUI();
-  await renderMessageList();
-  await openChatThread({ kind: 'channel', id: ch.id, title: ch.name, sub: ch.desc, avatar: 'assets/common.jpg' }, true);
-  showToast(`Noticeboard "${name}" created`);
-});
-
-async function renderMessageList() {
-  const host = $('msgListHost');
-  if (!host || !DB) return;
-  const q = ($('msgSearchInput')?.value || '').trim().toLowerCase();
-  const sender = getChatSender();
-  host.innerHTML = '';
-
-  if (activeMsgTab === 'chats') {
-    const allMsgs = await getAll('messages');
-    const peers = activeProfiles.filter((p) => {
-      if (p.n.toLowerCase() === sender.toLowerCase()) return false;
-      return !q || [p.n, p.nick, p.title].join(' ').toLowerCase().includes(q);
-    });
-    if (!peers.length) {
-      host.innerHTML = '<div class="empty-state">No matching legends found.</div>';
-      return;
-    }
-    peers.forEach((p) => {
-      const pid = directPairId(sender, p.n);
-      const threadMsgs = allMsgs.filter((m) => m.pairId === pid).sort((a, b) => a.created - b.created);
-      const last = threadMsgs[threadMsgs.length - 1];
-      const preview = last ? `${last.sender === sender ? 'You: ' : ''}${last.text || (last.mediaBlob ? '📎 Media attachment' : '')}` : `${p.nick} · Tap to start chatting`;
-      const row = document.createElement('button');
-      row.type = 'button';
-      row.className = 'msg-list-item' + (activeThread?.kind === 'chat' && activeThread?.id === p.n ? ' active' : '');
-      row.innerHTML = `
-        <img src="${profileImageSrc(p)}" alt="${escapeHtml(p.n)}" referrerpolicy="no-referrer" onerror="this.src='assets/common.jpg'">
-        <div class="msg-list-meta">
-          <div class="msg-list-top">
-            <b>${escapeHtml(p.n)}</b>
-            <small>${last ? formatTimeShort(last.created) : ''}</small>
-          </div>
-          <p>${escapeHtml(preview)}</p>
-        </div>`;
-      row.onclick = () => openChatThread({ kind: 'chat', id: p.n, title: p.n, sub: `${p.nick} · ${p.title}`, avatar: profileImageSrc(p) });
-      host.appendChild(row);
-    });
-  } else if (activeMsgTab === 'groups') {
-    const [groups, grpMsgs] = await Promise.all([getAll('groups'), getAll('groupMessages')]);
-    const list = groups.filter((g) => !q || [g.name, g.desc].join(' ').toLowerCase().includes(q));
-    if (!list.length) {
-      host.innerHTML = '<div class="empty-state">No groups yet — create one with ＋ New Group.</div>';
-      return;
-    }
-    list.sort((a, b) => (a.created || 0) - (b.created || 0)).forEach((g) => {
-      const msgs = grpMsgs.filter((m) => m.groupId === g.id).sort((a, b) => a.created - b.created);
-      const last = msgs[msgs.length - 1];
-      const preview = last ? `${last.sender}: ${last.text || '📎 Media'}` : (g.desc || `${(g.members || []).length} members`);
-      const row = document.createElement('button');
-      row.type = 'button';
-      row.className = 'msg-list-item' + (activeThread?.kind === 'group' && activeThread?.id === g.id ? ' active' : '');
-      row.innerHTML = `
-        <img src="assets/common.jpg" alt="${escapeHtml(g.name)}" referrerpolicy="no-referrer">
-        <div class="msg-list-meta">
-          <div class="msg-list-top">
-            <b>${escapeHtml(g.name)}</b>
-            <small>${last ? formatTimeShort(last.created) : ''}</small>
-          </div>
-          <p>${escapeHtml(preview)}</p>
-        </div>`;
-      row.onclick = () => openChatThread({ kind: 'group', id: g.id, title: g.name, sub: g.desc || `${(g.members || []).length} members`, avatar: 'assets/common.jpg' });
-      host.appendChild(row);
-    });
-  } else if (activeMsgTab === 'channels') {
-    const [channels, chPosts] = await Promise.all([getAll('channels'), getAll('channelPosts')]);
-    const list = channels.filter((c) => !q || [c.name, c.desc].join(' ').toLowerCase().includes(q));
-    if (!list.length) {
-      host.innerHTML = '<div class="empty-state">No noticeboards yet — create one above.</div>';
-      return;
-    }
-    list.sort((a, b) => (a.created || 0) - (b.created || 0)).forEach((ch) => {
-      const posts = chPosts.filter((p) => p.channelId === ch.id).sort((a, b) => a.created - b.created);
-      const last = posts[posts.length - 1];
-      const preview = last ? `${last.sender}: ${last.text || '📎 Media'}` : ch.desc;
-      const row = document.createElement('button');
-      row.type = 'button';
-      row.className = 'msg-list-item' + (activeThread?.kind === 'channel' && activeThread?.id === ch.id ? ' active' : '');
-      row.innerHTML = `
-        <img src="assets/common.jpg" alt="${escapeHtml(ch.name)}" referrerpolicy="no-referrer">
-        <div class="msg-list-meta">
-          <div class="msg-list-top">
-            <b>${escapeHtml(ch.name)}</b>
-            <small>${last ? formatTimeShort(last.created) : ''}</small>
-          </div>
-          <p>${escapeHtml(preview)}</p>
-        </div>`;
-      row.onclick = () => openChatThread({ kind: 'channel', id: ch.id, title: ch.name, sub: ch.desc, avatar: 'assets/common.jpg' });
-      host.appendChild(row);
-    });
-  }
-}
-
-async function openChatThread(thread, replaceCurrent = false) {
-  activeThread = thread;
-  $('msgEmptyPlaceholder').hidden = true;
-  $('msgActiveThread').hidden = false;
-  showPage(PAGE.MESSAGES, { replace: replaceCurrent, msgThread: true, title: thread.title });
-  await renderMessageList();
-  await renderActiveThread();
-}
-
-async function renderActiveThread() {
-  if (!activeThread || !DB) return;
-  const sender = getChatSender();
-  $('msgThreadTitle').textContent = activeThread.title;
-  $('msgThreadSub').textContent = activeThread.sub || '';
-  $('msgThreadAvatar').src = activeThread.avatar || 'assets/common.jpg';
-
+async function renderGroupChat({ preserveScroll = false } = {}) {
+  if (!DB) return;
   const feed = $('msgFeedHost');
+  if (!feed) return;
+
+  const seq = ++chatRenderSeq;
+  const prevScroll = feed.scrollTop;
+  const sender = getChatSender();
+  if ($('chatWhoLabel')) $('chatWhoLabel').textContent = sender;
+
+  const items = (await getAll('groupMessages'))
+    .filter((m) => m.groupId === SHARED_GROUP_ID)
+    .sort((a, b) => a.created - b.created);
+
+  if (seq !== chatRenderSeq) return;
+
+  revokeChatUrls();
   feed.innerHTML = '';
 
-  let items = [];
-  if (activeThread.kind === 'chat') {
-    const pid = directPairId(sender, activeThread.id);
-    items = (await getAll('messages')).filter((m) => m.pairId === pid).sort((a, b) => a.created - b.created);
-    $('msgTextInput').placeholder = `Message ${activeThread.title} as ${sender}...`;
-  } else if (activeThread.kind === 'group') {
-    items = (await getAll('groupMessages')).filter((m) => m.groupId === activeThread.id).sort((a, b) => a.created - b.created);
-    $('msgTextInput').placeholder = `Message group as ${sender}...`;
-  } else if (activeThread.kind === 'channel') {
-    items = (await getAll('channelPosts')).filter((m) => m.channelId === activeThread.id).sort((a, b) => a.created - b.created);
-    $('msgTextInput').placeholder = `Post announcement as ${sender}...`;
+  if ($('msgThreadSub')) {
+    $('msgThreadSub').textContent = `${activeProfiles.length} Legends · ${items.length} ${items.length === 1 ? 'message' : 'messages'} · Everyone sees all`;
+  }
+  if ($('msgTextInput')) {
+    $('msgTextInput').placeholder = `Message everyone as ${sender}...`;
   }
 
+  const banner = document.createElement('div');
+  banner.className = 'chat-welcome-banner';
+  banner.innerHTML = '<strong><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 18h18v2.2H3V18Zm0-2.5L1.6 7.4a1 1 0 0 1 1.58-.98L7.6 9.8 11.15 4.2a1 1 0 0 1 1.7 0l3.55 5.6 4.42-3.38a1 1 0 0 1 1.58.98L21 15.5H3Z"/></svg> The OG Legends Group</strong><br>One shared room for the whole batch — tap your name above to switch sender, reply, react, or share photos &amp; videos.';
+  feed.appendChild(banner);
+
   if (!items.length) {
-    feed.innerHTML = `<div class="empty-state">No messages yet.<br><small>Send a note or attach a photo/video below — you are messaging as <strong>${escapeHtml(sender)}</strong>.</small></div>`;
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.innerHTML = `No messages yet.<br><small>Write a message or attach a photo/video below as <strong>${escapeHtml(sender)}</strong>.</small>`;
+    feed.appendChild(empty);
     return;
   }
 
+  let lastDateLabel = '';
   items.forEach((m) => {
-    const isMe = m.sender === sender;
-    if (activeThread.kind === 'channel') {
-      const post = document.createElement('article');
-      post.className = 'channel-post-card';
-      let mediaHtml = '';
-      if (m.mediaBlob) {
-        const u = URL.createObjectURL(m.mediaBlob);
-        mediaHtml = m.mediaType?.startsWith('video')
-          ? `<div class="msg-attachment-media"><video src="${u}" controls playsinline></video></div>`
-          : `<div class="msg-attachment-media"><img src="${u}" alt="Attachment" referrerpolicy="no-referrer"></div>`;
-      }
-      post.innerHTML = `
-        <div class="channel-post-head">
-          <strong>${escapeHtml(m.sender)}</strong>
-          <small>${formatTimeShort(m.created)}</small>
-        </div>
-        ${mediaHtml}
-        ${m.text ? `<p>${escapeHtml(m.text)}</p>` : ''}
-        <div class="channel-post-actions">
-          <button class="mini-btn like-post-btn" type="button">♥ ${m.likes || 0}</button>
-          <button class="mini-btn danger del-msg-btn" type="button">Delete</button>
-        </div>`;
-      post.querySelector('.like-post-btn').onclick = async () => {
-        m.likes = (m.likes || 0) + 1;
-        await put('channelPosts', m);
-        await renderActiveThread();
-      };
-      post.querySelector('.del-msg-btn').onclick = async () => {
-        await del('channelPosts', m.id);
-        await renderActiveThread();
-        await renderMessageList();
-        await updateV7Home();
-      };
-      if (m.mediaBlob && !m.mediaType?.startsWith('video')) {
-        post.querySelector('.msg-attachment-media img')?.addEventListener('click', () => {
-          openViewer([{ id: m.id, blob: m.mediaBlob, builtin: false, type: 'photo', name: m.mediaName || 'Chat Photo' }], 0, 'photo');
-        });
-      }
-      feed.appendChild(post);
-      return;
+    const dLabel = formatDateLabel(m.created);
+    if (dLabel !== lastDateLabel) {
+      lastDateLabel = dLabel;
+      const dateEl = document.createElement('div');
+      dateEl.className = 'chat-date-pill';
+      dateEl.textContent = dLabel;
+      feed.appendChild(dateEl);
     }
 
+    const isMe = m.sender === sender;
     const row = document.createElement('div');
-    row.className = 'msg-bubble-row ' + (isMe ? 'me' : 'them');
+    row.className = 'chat-row ' + (isMe ? 'me' : 'them');
+
+    const quoteHtml = m.replyTo
+      ? `<div class="chat-quote-box"><strong>${escapeHtml(m.replyTo.sender || 'Legend')}</strong><span>${escapeHtml(m.replyTo.snippet || '')}</span></div>`
+      : '';
+
     let mediaHtml = '';
     if (m.mediaBlob) {
       const u = URL.createObjectURL(m.mediaBlob);
+      activeChatObjectUrls.push(u);
       mediaHtml = m.mediaType?.startsWith('video')
-        ? `<div class="msg-attachment-media"><video src="${u}" controls playsinline></video></div>`
-        : `<div class="msg-attachment-media"><img src="${u}" alt="Attachment" referrerpolicy="no-referrer"></div>`;
+        ? `<div class="chat-bubble-media"><video src="${u}" controls playsinline></video></div>`
+        : `<div class="chat-bubble-media"><img src="${u}" alt="${escapeHtml(m.mediaName || 'Shared photo')}" referrerpolicy="no-referrer"></div>`;
     }
+
+    const reactionsMap = m.reactions && typeof m.reactions === 'object' ? m.reactions : {};
+    const reactHtml = CHAT_REACTIONS.map((emoji) => {
+      const users = Array.isArray(reactionsMap[emoji]) ? reactionsMap[emoji] : [];
+      const active = users.includes(sender);
+      const countText = users.length > 0 ? ` <span>${users.length}</span>` : '';
+      return `<button class="chat-react-chip${active ? ' active' : ''}" type="button" data-emoji="${emoji}" aria-label="React ${emoji}">${emoji}${countText}</button>`;
+    }).join('');
+
+    const accent = senderAccentColor(m.sender);
+    const avatarHtml = !isMe
+      ? `<div class="chat-avatar-dot" style="color:${accent}" aria-hidden="true">${escapeHtml(senderInitials(m.sender))}</div>`
+      : '';
+
     row.innerHTML = `
-      <div class="msg-bubble">
-        <div class="msg-bubble-meta">
-          <span>${escapeHtml(m.sender)}</span>
-          <small>${formatTimeShort(m.created)}</small>
+      ${avatarHtml}
+      <div class="chat-bubble">
+        <div class="chat-bubble-head">
+          <span class="chat-sender-name" style="color:${isMe ? 'var(--accent)' : accent}">${escapeHtml(m.sender)}</span>
+          <div class="chat-bubble-actions">
+            <button class="chat-mini-act reply" type="button" title="Reply" aria-label="Reply to message"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg></button>
+            <button class="chat-mini-act del" type="button" title="Delete message" aria-label="Delete message"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
+          </div>
         </div>
+        ${quoteHtml}
         ${mediaHtml}
-        ${m.text ? `<div class="msg-bubble-text">${escapeHtml(m.text)}</div>` : ''}
-        <button class="msg-del-inline" type="button" title="Delete message" aria-label="Delete message">🗑️</button>
+        ${m.text ? `<div class="chat-bubble-text">${escapeHtml(m.text)}</div>` : ''}
+        <div class="chat-bubble-bottom">
+          <div class="chat-react-row">${reactHtml}</div>
+          <div class="chat-bubble-foot">
+            <span>${formatTimeShort(m.created)}</span>
+            ${isMe ? '<span class="chat-ticks" aria-hidden="true">✓✓</span>' : ''}
+          </div>
+        </div>
       </div>`;
-    row.querySelector('.msg-del-inline').onclick = async () => {
-      const storeName = activeThread.kind === 'chat' ? 'messages' : 'groupMessages';
-      await del(storeName, m.id);
-      await renderActiveThread();
-      await renderMessageList();
+
+    row.querySelector('.chat-mini-act.reply').onclick = () => setReplyTarget(m);
+    row.querySelector('.chat-mini-act.del').onclick = async () => {
+      if (replyingToMsg?.id === m.id) clearReplyTarget();
+      await del('groupMessages', m.id);
+      await markMessagesSeen();
+      await renderGroupChat({ preserveScroll: true });
       await updateV7Home();
+      showToast('Message deleted');
     };
+    row.querySelectorAll('.chat-react-chip').forEach((chip) => {
+      chip.onclick = async () => {
+        const emoji = chip.dataset.emoji;
+        const nextReactions = { ...(m.reactions || {}) };
+        const list = Array.isArray(nextReactions[emoji]) ? [...nextReactions[emoji]] : [];
+        const idx = list.indexOf(sender);
+        if (idx >= 0) list.splice(idx, 1);
+        else list.push(sender);
+        if (list.length) nextReactions[emoji] = list;
+        else delete nextReactions[emoji];
+        m.reactions = nextReactions;
+        await put('groupMessages', m);
+        await renderGroupChat({ preserveScroll: true });
+      };
+    });
     if (m.mediaBlob && !m.mediaType?.startsWith('video')) {
-      row.querySelector('.msg-attachment-media img')?.addEventListener('click', () => {
+      row.querySelector('.chat-bubble-media img')?.addEventListener('click', () => {
         openViewer([{ id: m.id, blob: m.mediaBlob, builtin: false, type: 'photo', name: m.mediaName || 'Shared Photo' }], 0, 'photo');
       });
     }
     feed.appendChild(row);
   });
 
-  feed.scrollTop = feed.scrollHeight;
+  requestAnimationFrame(() => {
+    feed.scrollTop = preserveScroll ? prevScroll : feed.scrollHeight;
+  });
 }
 
 $('msgMediaInput')?.addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file) return;
-  pendingMsgMedia = { blob: file, mediaType: file.type, name: file.name };
-  $('msgAttachName').textContent = `📎 ${file.name}`;
+  if (pendingMsgMedia?.previewUrl) {
+    try { URL.revokeObjectURL(pendingMsgMedia.previewUrl); } catch {}
+  }
+  const previewUrl = file.type?.startsWith('image') ? URL.createObjectURL(file) : '';
+  pendingMsgMedia = { blob: file, mediaType: file.type, name: file.name, previewUrl };
+  $('msgAttachName').textContent = file.name;
+  if ($('msgAttachThumb')) {
+    if (previewUrl) {
+      $('msgAttachThumb').src = previewUrl;
+      $('msgAttachThumb').hidden = false;
+    } else {
+      $('msgAttachThumb').src = '';
+      $('msgAttachThumb').hidden = true;
+    }
+  }
   $('msgAttachmentBar').hidden = false;
+  $('msgTextInput')?.focus();
 });
 
-$('msgClearAttachBtn')?.addEventListener('click', () => {
-  pendingMsgMedia = null;
-  $('msgMediaInput').value = '';
-  $('msgAttachmentBar').hidden = true;
-});
+$('msgClearAttachBtn')?.addEventListener('click', clearPendingAttachment);
 
 $('msgComposeForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
-  if (!activeThread) return;
   const text = $('msgTextInput').value.trim();
   if (!text && !pendingMsgMedia) return;
+  await waitDB();
   const sender = getChatSender();
-  const base = {
+  const msg = {
+    id: 'gm-' + Date.now() + '-' + Math.random().toString(36).slice(2),
+    groupId: SHARED_GROUP_ID,
     sender,
     text,
     created: Date.now()
   };
+  if (replyingToMsg) {
+    msg.replyTo = { ...replyingToMsg };
+  }
   if (pendingMsgMedia) {
-    base.mediaBlob = pendingMsgMedia.blob;
-    base.mediaType = pendingMsgMedia.mediaType;
-    base.mediaName = pendingMsgMedia.name;
+    msg.mediaBlob = pendingMsgMedia.blob;
+    msg.mediaType = pendingMsgMedia.mediaType;
+    msg.mediaName = pendingMsgMedia.name;
   }
 
-  if (activeThread.kind === 'chat') {
-    await put('messages', {
-      ...base,
-      id: 'dm-' + Date.now() + '-' + Math.random().toString(36).slice(2),
-      pairId: directPairId(sender, activeThread.id),
-      recipient: activeThread.id
-    });
-  } else if (activeThread.kind === 'group') {
-    await put('groupMessages', {
-      ...base,
-      id: 'gm-' + Date.now() + '-' + Math.random().toString(36).slice(2),
-      groupId: activeThread.id
-    });
-  } else if (activeThread.kind === 'channel') {
-    await put('channelPosts', {
-      ...base,
-      id: 'cp-' + Date.now() + '-' + Math.random().toString(36).slice(2),
-      channelId: activeThread.id,
-      likes: 0
-    });
-  }
-
+  await put('groupMessages', msg);
   $('msgTextInput').value = '';
-  pendingMsgMedia = null;
-  $('msgMediaInput').value = '';
-  $('msgAttachmentBar').hidden = true;
+  clearPendingAttachment();
+  clearReplyTarget();
+  closeWhoTray();
   await markMessagesSeen();
-  await renderActiveThread();
-  await renderMessageList();
+  await renderGroupChat();
   await updateV7Home();
+  $('msgTextInput')?.focus();
 });
 
+let clearChatConfirmTimer = null;
 $('msgClearThreadBtn')?.addEventListener('click', async () => {
-  if (!activeThread) return;
-  if (!confirmTap($('msgClearThreadBtn'), 'Confirm?')) return;
-  const sender = getChatSender();
-  if (activeThread.kind === 'chat') {
-    const pid = directPairId(sender, activeThread.id);
-    const all = await getAll('messages');
-    for (const m of all.filter((x) => x.pairId === pid)) await del('messages', m.id);
-  } else if (activeThread.kind === 'group') {
-    const all = await getAll('groupMessages');
-    for (const m of all.filter((x) => x.groupId === activeThread.id)) await del('groupMessages', m.id);
-  } else if (activeThread.kind === 'channel') {
-    const all = await getAll('channelPosts');
-    for (const m of all.filter((x) => x.channelId === activeThread.id)) await del('channelPosts', m.id);
+  const btn = $('msgClearThreadBtn');
+  if (btn.dataset.confirming !== '1') {
+    btn.dataset.confirming = '1';
+    btn.style.color = 'var(--danger)';
+    showToast('Tap trash icon again to clear all chat messages');
+    clearTimeout(clearChatConfirmTimer);
+    clearChatConfirmTimer = setTimeout(() => {
+      btn.dataset.confirming = '';
+      btn.style.color = '';
+    }, 3000);
+    return;
   }
-  await renderActiveThread();
-  await renderMessageList();
+  clearTimeout(clearChatConfirmTimer);
+  btn.dataset.confirming = '';
+  btn.style.color = '';
+  const all = await getAll('groupMessages');
+  for (const m of all.filter((x) => x.groupId === SHARED_GROUP_ID)) {
+    await del('groupMessages', m.id);
+  }
+  clearReplyTarget();
+  await markMessagesSeen();
+  await renderGroupChat();
   await updateV7Home();
-  showToast('Conversation cleared');
+  showToast('Group messages cleared');
 });
 
 // =========================================================================
-// ARCHIVE SEARCH (Legends, Journeys, Photos, Videos & Messages)
+// ARCHIVE SEARCH (Legends, Journeys, Photos, Videos & Batch Group Messages)
 // =========================================================================
 function openSearchDialog() {
   $('searchInput').value = '';
@@ -2044,8 +1897,8 @@ $('searchInput')?.addEventListener('input', async () => {
     return;
   }
   await waitDB();
-  const [profiles, journeys, metas, localMedia, dms, grpMsgs] = await Promise.all([
-    getAll('profiles'), getAll('journeys'), getAll('mediaMeta'), getAll('media'), getAll('messages'), getAll('groupMessages')
+  const [profiles, journeys, metas, localMedia, grpMsgs] = await Promise.all([
+    getAll('profiles'), getAll('journeys'), getAll('mediaMeta'), getAll('media'), getAll('groupMessages')
   ]);
   const out = [];
   profiles.forEach((p) => {
@@ -2086,14 +1939,9 @@ $('searchInput')?.addEventListener('input', async () => {
       });
     }
   });
-  dms.forEach((m) => {
-    if ([m.sender, m.recipient, m.text].join(' ').toLowerCase().includes(q)) {
-      out.push({ kind: 'dm', title: m.text || 'Media Message', sub: `Chat · ${m.sender} → ${m.recipient}`, peer: m.sender === getChatSender() ? m.recipient : m.sender });
-    }
-  });
-  grpMsgs.forEach((m) => {
+  grpMsgs.filter((m) => m.groupId === SHARED_GROUP_ID).forEach((m) => {
     if ([m.sender, m.text].join(' ').toLowerCase().includes(q)) {
-      out.push({ kind: 'groupMsg', title: m.text || 'Group Media', sub: `Group Message · ${m.sender}`, groupId: m.groupId });
+      out.push({ kind: 'groupMsg', title: m.text || 'Group Media', sub: `Batch Group · ${m.sender}` });
     }
   });
 
@@ -2115,10 +1963,8 @@ $('searchInput')?.addEventListener('input', async () => {
       } else if (r.kind === 'journey') {
         showPage(PAGE.JOURNEY);
         setTimeout(() => document.querySelector(`[data-journey-id="${r.id}"]`)?.scrollIntoView({ behavior: 'smooth' }), 100);
-      } else if (r.kind === 'dm') {
-        openMessagesDialog('chats', r.peer);
       } else if (r.kind === 'groupMsg') {
-        openMessagesDialog('groups');
+        openMessagesDialog();
       } else {
         const item = await resolveMedia(r.id);
         if (item) openViewer([item], 0, item.type);
@@ -2284,3 +2130,4 @@ $('importInput').onchange = async (e) => {
   }
   e.target.value = '';
 };
+
