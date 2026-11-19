@@ -15,20 +15,54 @@ const PEOPLE = [
 
 const $ = (id) => document.getElementById(id);
 const pageEls = [...document.querySelectorAll('.page')];
-const topNavLinks = [...document.querySelectorAll('.top-nav-link')];
+const drawerNavItems = [...document.querySelectorAll('.drawer-item[data-nav-page]')];
+const bottomNavItems = [...document.querySelectorAll('.bnav-item[data-nav-page]')];
+const PAGE_TITLES = [
+  'The OG Legends',
+  'The Legends',
+  'Our Journey',
+  'Photos & Albums',
+  'Videos & Clips',
+  'Memories of the Day',
+  'Memory Wall',
+  '5-Memory Vault',
+  'Not The End'
+];
+const THEME_META_COLORS = {
+  'obsidian-gold': '#0a0b0f',
+  'midnight-emerald': '#070d0c',
+  'cobalt-studio': '#090c14',
+  'warm-parchment': '#f6f4ee'
+};
+
+function applyTheme(themeId, persist = true) {
+  const valid = THEME_META_COLORS[themeId] ? themeId : 'obsidian-gold';
+  document.documentElement.dataset.theme = valid;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', THEME_META_COLORS[valid]);
+  document.querySelectorAll('#themePicker .theme-swatch-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.themeChoice === valid);
+  });
+  if (persist) localStorage.setItem('og_theme', valid);
+}
+
+applyTheme(localStorage.getItem('og_theme') || 'obsidian-gold', false);
+
 let currentPage = 0;
-const dots = $('pageDots');
 const RANDOM_PAGE_IDX = pageEls.findIndex((p) => p.id === 'randomPage');
-pageEls.forEach((_, i) => {
-  const d = document.createElement('button');
-  d.type = 'button';
-  d.setAttribute('aria-label', `Go to chapter ${i + 1}`);
-  d.onclick = () => showPage(i);
-  dots.appendChild(d);
-});
 
 let internalNav = false;
 let randomBatchShown = false;
+
+function openNavDrawer() {
+  $('appNavDrawer')?.classList.add('open');
+  if ($('drawerBackdrop')) $('drawerBackdrop').hidden = false;
+}
+
+function closeNavDrawer() {
+  $('appNavDrawer')?.classList.remove('open');
+  if ($('drawerBackdrop')) $('drawerBackdrop').hidden = true;
+}
 
 function resetRandomBatch() {
   randomBatchShown = false;
@@ -45,14 +79,11 @@ function showPage(i, push = true, persist = true) {
   const was = currentPage;
   currentPage = Math.max(0, Math.min(i, pageEls.length - 1));
   pageEls.forEach((p, idx) => p.classList.toggle('active', idx === currentPage));
-  [...dots.children].forEach((d, idx) => d.classList.toggle('active', idx === currentPage));
-  if ($('chapterJumpSelect')) $('chapterJumpSelect').value = String(currentPage);
-  topNavLinks.forEach((btn) => {
-    const p = Number(btn.dataset.navPage);
-    btn.classList.toggle('active', p === currentPage);
-  });
-  $('prevBtn').disabled = currentPage === 0;
-  $('nextBtn').disabled = currentPage === pageEls.length - 1;
+  drawerNavItems.forEach((btn) => btn.classList.toggle('active', Number(btn.dataset.navPage) === currentPage));
+  bottomNavItems.forEach((btn) => btn.classList.toggle('active', Number(btn.dataset.navPage) === currentPage));
+  if ($('appBarTitle')) $('appBarTitle').textContent = PAGE_TITLES[currentPage] || 'The OG Legends';
+  if ($('topBackBtn')) $('topBackBtn').hidden = currentPage === 0;
+  closeNavDrawer();
   const active = pageEls[currentPage];
   if (active) active.scrollTop = 0;
   if (currentPage === RANDOM_PAGE_IDX && was !== RANDOM_PAGE_IDX) resetRandomBatch();
@@ -60,25 +91,132 @@ function showPage(i, push = true, persist = true) {
   if (push && !internalNav) history.pushState({ ogPage: currentPage }, '', location.href);
 }
 
-$('prevBtn').onclick = () => showPage(Math.max(0, currentPage - 1));
-$('nextBtn').onclick = () => showPage(Math.min(pageEls.length - 1, currentPage + 1));
-$('chapterJumpSelect')?.addEventListener('change', (e) => showPage(Number(e.target.value || 0)));
 $('brandHomeBtn')?.addEventListener('click', () => showPage(0));
+$('topBackBtn')?.addEventListener('click', () => showPage(0));
 $('enterMemoriesBtn')?.addEventListener('click', () => showPage(1));
-$('heroPhotosBtn')?.addEventListener('click', () => showPage(3));
-$('heroMessagesBtn')?.addEventListener('click', () => openMessagesDialog());
+$('heroMessagesBtn')?.addEventListener('click', () => { closeNavDrawer(); openMessagesDialog(); });
+$('bottomChatsBtn')?.addEventListener('click', () => { closeNavDrawer(); openMessagesDialog(); });
 $('homeOpenMsgCard')?.addEventListener('click', () => openMessagesDialog());
-topNavLinks.forEach((btn) => {
+$('homeFavBtn')?.addEventListener('click', () => openFavouritesDialog());
+$('homeAddPhotoBtn')?.addEventListener('click', async () => {
+  const folderId = await resolveUploadFolderId('photo');
+  if (await addMedia(folderId, 'photo', false)) showPage(3);
+});
+$('homeAddVideoBtn')?.addEventListener('click', async () => {
+  const folderId = await resolveUploadFolderId('video');
+  if (await addMedia(folderId, 'video', false)) showPage(4);
+});
+
+[...drawerNavItems, ...bottomNavItems].forEach((btn) => {
   btn.addEventListener('click', () => showPage(Number(btn.dataset.navPage || 0)));
 });
+
 document.querySelectorAll('.jump-btn').forEach((b) => {
-  b.addEventListener('click', () => showPage(+b.dataset.target));
+  b.addEventListener('click', () => {
+    closeNavDrawer();
+    showPage(+b.dataset.target);
+  });
+});
+
+async function resolveUploadFolderId(type, preferredVal = '') {
+  if (!DB) return type === 'photo' ? 'builtin-photos' : 'builtin-videos';
+  const folders = await getAll('folders');
+  const matching = folders.filter((f) => f.type === type);
+  if (preferredVal && preferredVal.startsWith(type + ':')) {
+    const chosenId = preferredVal.slice(type.length + 1);
+    if (matching.some((f) => f.id === chosenId)) return chosenId;
+  }
+  const builtinId = type === 'photo' ? 'builtin-photos' : 'builtin-videos';
+  if (matching.some((f) => f.id === builtinId)) return builtinId;
+  if (matching.length) return matching[0].id;
+  const fallback = {
+    id: 'folder-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+    type,
+    name: type === 'photo' ? 'Uploaded Photos' : 'Uploaded Videos',
+    builtin: false,
+    created: Date.now()
+  };
+  await put('folders', fallback);
+  return fallback.id;
+}
+
+// Android Add Media & Chapters Bottom Sheets
+async function openAddSheet() {
+  const sel = $('uploadTargetFolder');
+  if (sel && DB) {
+    const folders = await getAll('folders');
+    sel.innerHTML = '';
+    folders.forEach((f) => {
+      const opt = document.createElement('option');
+      opt.value = `${f.type}:${f.id}`;
+      opt.textContent = `${f.type === 'photo' ? '📸' : '🎬'} ${f.name}`;
+      sel.appendChild(opt);
+    });
+  }
+  $('addSheetDialog')?.showModal();
+}
+
+$('mainFab')?.addEventListener('click', openAddSheet);
+$('railFabBtn')?.addEventListener('click', () => { closeNavDrawer(); openAddSheet(); });
+$('menuDrawerBtn')?.addEventListener('click', openNavDrawer);
+$('closeDrawerBtn')?.addEventListener('click', closeNavDrawer);
+$('drawerBackdrop')?.addEventListener('click', closeNavDrawer);
+$('drawerThemeBtn')?.addEventListener('click', () => {
+  closeNavDrawer();
+  $('toolsBtn')?.click();
+});
+
+$('sheetAddPhotoBtn')?.addEventListener('click', async () => {
+  const val = $('uploadTargetFolder')?.value || '';
+  $('addSheetDialog')?.close();
+  const targetId = await resolveUploadFolderId('photo', val);
+  if (await addMedia(targetId, 'photo', false)) showPage(3);
+});
+
+$('sheetAddVideoBtn')?.addEventListener('click', async () => {
+  const val = $('uploadTargetFolder')?.value || '';
+  $('addSheetDialog')?.close();
+  const targetId = await resolveUploadFolderId('video', val);
+  if (await addMedia(targetId, 'video', false)) showPage(4);
+});
+
+$('sheetNewPhotoFolderBtn')?.addEventListener('click', () => {
+  $('addSheetDialog')?.close();
+  newFolderType = 'photo';
+  $('newFolderTitle').textContent = 'Create Photo Folder';
+  $('newFolderDialog').showModal();
+});
+
+$('sheetNewVideoFolderBtn')?.addEventListener('click', () => {
+  $('addSheetDialog')?.close();
+  newFolderType = 'video';
+  $('newFolderTitle').textContent = 'Create Video Folder';
+  $('newFolderDialog').showModal();
+});
+
+$('sheetAddJourneyBtn')?.addEventListener('click', () => {
+  $('addSheetDialog')?.close();
+  $('newJourneyDialog').showModal();
+});
+
+$('sheetAddProfileBtn')?.addEventListener('click', () => {
+  $('addSheetDialog')?.close();
+  $('newProfileDialog').showModal();
 });
 
 const savedStartPage = parseInt(localStorage.getItem('og_last_page') || '0', 10);
 showPage(Number.isFinite(savedStartPage) ? savedStartPage : 0, false, false);
 history.replaceState({ ogPage: currentPage }, '', location.href);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && $('appNavDrawer')?.classList.contains('open')) closeNavDrawer();
+});
+
 window.addEventListener('popstate', () => {
+  if ($('appNavDrawer')?.classList.contains('open')) {
+    closeNavDrawer();
+    history.pushState({ ogPage: currentPage }, '', location.href);
+    return;
+  }
   const open = [...document.querySelectorAll('dialog[open]')].pop();
   if (open) {
     open.close();
@@ -111,82 +249,16 @@ function showToast(msg) {
   }, 2400);
 }
 
-// Background audio controller
-const bgMusic = $('bgMusic');
-let musicOn = false;
-let musicWanted = localStorage.getItem('og_music_wanted') !== '0';
-
-function hasAudioTrack() {
-  return !!(bgMusic && (bgMusic.currentSrc || bgMusic.getAttribute('src') || bgMusic.querySelector('source')?.getAttribute('src')));
-}
-function setMusicButton() {
-  const b = $('musicBtn');
-  if (!b) return;
-  const active = !!(musicWanted && musicOn);
-  b.classList.toggle('is-playing', active);
-  b.setAttribute('aria-pressed', active ? 'true' : 'false');
-  b.title = hasAudioTrack() ? (active ? 'Pause music' : 'Play music') : 'No background audio track configured';
-}
-function pauseBackgroundMusic() {
-  try { bgMusic?.pause(); } catch {}
-  musicOn = false;
-  setMusicButton();
-}
-async function tryPlayMusic() {
-  if (!hasAudioTrack() || !musicWanted || document.hidden) {
-    pauseBackgroundMusic();
-    return;
-  }
-  try {
-    if (bgMusic.readyState === 0) bgMusic.load();
-    await bgMusic.play();
-    musicOn = !bgMusic.paused;
-    setMusicButton();
-  } catch {
-    musicOn = false;
-    setMusicButton();
-  }
-}
-$('musicBtn').onclick = async () => {
-  if (!hasAudioTrack()) {
-    musicOn = false;
-    setMusicButton();
-    showToast('No background audio file in media/music/');
-    return;
-  }
-  if (musicWanted && !bgMusic.paused) {
-    musicWanted = false;
-    localStorage.setItem('og_music_wanted', '0');
-    pauseBackgroundMusic();
-  } else {
-    musicWanted = true;
-    localStorage.setItem('og_music_wanted', '1');
-    await tryPlayMusic();
-  }
-};
 function pauseAllForegroundVideo() {
   document.querySelectorAll('#viewerStage video, .timeline-card video, .quick-video-card video, .msg-attachment-media video').forEach((v) => {
     try { v.pause(); } catch {}
   });
 }
-window.addEventListener('pagehide', () => { pauseBackgroundMusic(); pauseAllForegroundVideo(); });
-window.addEventListener('beforeunload', () => { pauseBackgroundMusic(); pauseAllForegroundVideo(); });
+window.addEventListener('pagehide', pauseAllForegroundVideo);
+window.addEventListener('beforeunload', pauseAllForegroundVideo);
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) { pauseBackgroundMusic(); pauseAllForegroundVideo(); }
-  else tryPlayMusic();
+  if (document.hidden) pauseAllForegroundVideo();
 });
-document.addEventListener('play', (e) => {
-  if (e.target instanceof HTMLVideoElement) pauseBackgroundMusic();
-}, true);
-document.addEventListener('pause', (e) => {
-  if (e.target instanceof HTMLVideoElement && !document.hidden) {
-    setTimeout(() => {
-      if (![...document.querySelectorAll('video')].some((x) => !x.paused && !x.ended)) tryPlayMusic();
-    }, 80);
-  }
-}, true);
-document.addEventListener('ended', (e) => { if (e.target instanceof HTMLVideoElement) tryPlayMusic(); }, true);
-setMusicButton();
 
 function escapeHtml(v) {
   return String(v ?? '')
@@ -268,6 +340,22 @@ async function renderPeople() {
       peopleGrid.appendChild(c);
     });
   }
+  // Populate Home Legends Avatar Strip
+  const homePeopleStrip = $('homePeopleStrip');
+  if (homePeopleStrip) {
+    homePeopleStrip.innerHTML = '';
+    activeProfiles.forEach((p, idx) => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'home-person-chip';
+      chip.innerHTML = `
+        <img src="${profileImageSrc(p)}" alt="${escapeHtml(p.n)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.src='assets/common.jpg'">
+        <span>${escapeHtml(p.n)}</span>`;
+      chip.onclick = () => openProfile(idx);
+      homePeopleStrip.appendChild(chip);
+    });
+  }
+
   syncSenderDropdown();
   if (typeof updateV7Home === 'function') updateV7Home();
 }
@@ -596,8 +684,8 @@ async function renderQuickGalleries() {
   }
 }
 
-$('quickUploadPhotoBtn')?.addEventListener('click', () => addMedia('builtin-photos', 'photo', false));
-$('quickUploadVideoBtn')?.addEventListener('click', () => addMedia('builtin-videos', 'video', false));
+$('quickUploadPhotoBtn')?.addEventListener('click', async () => addMedia(await resolveUploadFolderId('photo'), 'photo', false));
+$('quickUploadVideoBtn')?.addEventListener('click', async () => addMedia(await resolveUploadFolderId('video'), 'video', false));
 $('playAllPhotosSlideshow')?.addEventListener('click', async () => {
   const photos = await getAllCombinedMedia('photo');
   if (!photos.length) return showToast('No photos available for slideshow');
@@ -732,7 +820,6 @@ function renderViewer() {
     img.onerror = () => { img.src = 'assets/common.jpg'; };
     stage.appendChild(img);
   } else {
-    pauseBackgroundMusic();
     const v = document.createElement('video');
     v.src = src;
     v.controls = true;
@@ -788,7 +875,6 @@ $('mediaViewerDialog').addEventListener('close', () => {
   $('viewerStage').querySelector('video')?.pause();
   $('viewerStage').innerHTML = '';
   viewerScale = 1;
-  tryPlayMusic();
 });
 
 async function openFolder(id) {
@@ -891,7 +977,7 @@ function filePicker(accept, multiple = false) {
 
 async function addMedia(folderId, type, reopenFolder = true) {
   const files = await filePicker(type === 'photo' ? 'image/*' : 'video/*', true);
-  if (!files.length) return;
+  if (!files.length) return 0;
   for (const file of files) {
     await put('media', {
       id: 'm-' + Date.now() + '-' + Math.random().toString(36).slice(2),
@@ -908,6 +994,7 @@ async function addMedia(folderId, type, reopenFolder = true) {
   await renderQuickGalleries();
   await updateV7Home();
   showToast(`Added ${files.length} ${type}${files.length > 1 ? 's' : ''}`);
+  return files.length;
 }
 
 async function chooseCover(folderId, after) {
@@ -1523,14 +1610,18 @@ async function seedSocialMessages() {
 }
 
 async function updateUnreadBadge() {
-  const badge = $('msgUnreadBadge');
-  if (!badge || !DB) return;
+  if (!DB) return;
   const [msgs, gm, cp] = await Promise.all([getAll('messages'), getAll('groupMessages'), getAll('channelPosts')]);
   const total = msgs.length + gm.length + cp.length;
   const seen = Number(localStorage.getItem('og_msg_seen_count') || '0');
   const diff = Math.max(0, total - seen);
-  badge.textContent = diff > 9 ? '9+' : String(diff);
-  badge.hidden = diff === 0;
+  const label = diff > 9 ? '9+' : String(diff);
+  ['msgUnreadBadge', 'bottomChatBadge'].forEach((id) => {
+    const el = $(id);
+    if (!el) return;
+    el.textContent = label;
+    el.hidden = diff === 0;
+  });
 }
 
 async function markMessagesSeen() {
@@ -1548,6 +1639,7 @@ async function openMessagesDialog(tab = null, directTarget = null) {
   pendingMsgMedia = null;
   if ($('msgAttachmentBar')) $('msgAttachmentBar').hidden = true;
   if ($('msgMediaInput')) $('msgMediaInput').value = '';
+  closeNavDrawer();
   $('messagesDialog').showModal();
   await markMessagesSeen();
   await renderMessageList();
@@ -2090,8 +2182,17 @@ async function renderFavourites() {
   }
 }
 
-// Settings, Backup & Restore Center
-$('toolsBtn').onclick = () => { $('restoreList').hidden = true; $('toolsDialog').showModal(); };
+// Settings, Theme Switcher, Backup & Restore Center
+$('themePicker')?.addEventListener('click', (e) => {
+  const btn = e.target.closest('.theme-swatch-btn[data-theme-choice]');
+  if (!btn) return;
+  applyTheme(btn.dataset.themeChoice, true);
+});
+$('toolsBtn').onclick = () => {
+  $('restoreList').hidden = true;
+  applyTheme(document.documentElement.dataset.theme || 'obsidian-gold', false);
+  $('toolsDialog').showModal();
+};
 $('restoreBtn').onclick = renderRestoreCenter;
 
 async function renderRestoreCenter() {

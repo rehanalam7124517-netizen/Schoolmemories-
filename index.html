@@ -3,330 +3,494 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="theme-color" content="#070a11" />
+  <meta name="theme-color" content="#0a0b0f" />
   <meta name="description" content="The OG Legends — Mother Teresa Public School Batch 2025–26 memories, cohort profiles, journey timeline, photo & video gallery, and batch messages." />
   <meta property="og:title" content="The OG Legends — Our Memories" />
   <meta property="og:description" content="Mother Teresa Public School Batch 2025–26 memories, cohort profiles, journey timeline, photo & video gallery, and batch messages." />
   <title>The OG Legends — Our Memories</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=11.0.0" />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,500&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css?v=14.0.0" />
 </head>
 <body>
   <div id="app">
     <main id="siteShell" class="site-shell">
+      <!-- ANDROID TOP APP BAR -->
       <header class="topbar">
         <div class="top-left">
-          <button id="brandHomeBtn" class="brand-btn" type="button" title="Go to Home">
+          <button id="menuDrawerBtn" class="nav-icon drawer-btn" type="button" title="Navigation Menu" aria-label="Open navigation drawer">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <button id="topBackBtn" class="nav-icon top-back-btn" type="button" title="Back to Home" aria-label="Back to Home" hidden>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
+          <button id="brandHomeBtn" class="brand-btn" type="button" title="The OG Legends Home">
             <span class="brand-mark" aria-hidden="true">👑</span>
-            <span class="brand-text">The OG Legends</span>
+            <span id="appBarTitle" class="brand-text">The OG Legends</span>
           </button>
         </div>
 
-        <nav class="top-nav" aria-label="Primary chapters">
-          <button class="top-nav-link active" type="button" data-nav-page="0">Home</button>
-          <button class="top-nav-link" type="button" data-nav-page="1">Legends</button>
-          <button class="top-nav-link" type="button" data-nav-page="2">Journey</button>
-          <button class="top-nav-link" type="button" data-nav-page="3">Photos</button>
-          <button class="top-nav-link" type="button" data-nav-page="4">Videos</button>
-          <button class="top-nav-link" type="button" data-nav-page="5">Today</button>
-          <button class="top-nav-link" type="button" data-nav-page="7">Vault</button>
-        </nav>
-
         <div class="top-actions">
           <button id="searchBtn" class="nav-icon" type="button" title="Search memories" aria-label="Search memories">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
           </button>
           <button id="favBtn" class="nav-icon" type="button" title="Favourites" aria-label="Favourites">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
           </button>
-          <button id="messageBtn" class="nav-icon msg-trigger" type="button" title="Batch Messages" aria-label="Open Batch Messages">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            <span id="msgUnreadBadge" class="msg-unread-badge" hidden>0</span>
-          </button>
-          <button id="musicBtn" class="nav-icon" type="button" title="Background Audio" aria-label="Music">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-          </button>
-          <button id="toolsBtn" class="nav-icon" type="button" title="Settings & Backup" aria-label="Settings">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+          <button id="toolsBtn" class="nav-icon" type="button" title="Theme & Settings" aria-label="Theme and Settings">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
         </div>
       </header>
 
-      <section id="pageViewport" class="page-viewport">
-        <!-- PAGE 0: HOME -->
-        <article class="page active" data-page="0" id="homePage">
-          <div class="home-stack">
-            <section class="hero-card">
-              <div class="hero-copy">
-                <div class="eyebrow">Mother Teresa Public School · Batch 2025–26</div>
-                <h1>The OG Legends</h1>
-                <p class="hero-lead">Our shared digital archive of classroom afternoons, spontaneous jokes, Kushinagar trip frames, video highlights, and batch conversations.</p>
-                <blockquote class="hero-quote">“We came as classmates, we left as memories.”</blockquote>
-                <div class="hero-actions">
-                  <button id="enterMemoriesBtn" class="primary-btn" type="button">Explore The Legends →</button>
-                  <button id="heroPhotosBtn" class="secondary-btn" type="button">Photos & Videos</button>
-                  <button id="heroMessagesBtn" class="secondary-btn" type="button">💬 Batch Messages</button>
+      <div id="drawerBackdrop" class="drawer-backdrop" hidden></div>
+
+      <div class="apk-body">
+        <!-- ANDROID MATERIAL 3 NAVIGATION DRAWER (Persistent Sidebar on Desktop, Slide-in Drawer on Mobile) -->
+        <aside id="appNavDrawer" class="nav-drawer" aria-label="App Navigation Drawer">
+          <div class="drawer-hero">
+            <img src="assets/common.jpg" alt="The OG Legends" referrerpolicy="no-referrer" />
+            <div class="drawer-hero-scrim">
+              <strong>The OG Legends</strong>
+              <span>MTPS · Batch 2025–26</span>
+            </div>
+            <button id="closeDrawerBtn" class="nav-icon drawer-close-btn" type="button" aria-label="Close navigation drawer">✕</button>
+          </div>
+
+          <div class="drawer-fab-wrap">
+            <button id="railFabBtn" class="drawer-extended-fab" type="button">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <span>Add Photo / Video</span>
+            </button>
+          </div>
+
+          <nav class="drawer-nav-list">
+            <div class="drawer-group-label">Explore</div>
+            <button class="drawer-item active" type="button" data-nav-page="0">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+              <span>Home</span>
+            </button>
+            <button class="drawer-item" type="button" data-nav-page="3">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+              <span>Photos & Albums</span>
+            </button>
+            <button class="drawer-item" type="button" data-nav-page="4">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
+              <span>Videos & Clips</span>
+            </button>
+            <button class="drawer-item" type="button" data-nav-page="1">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <span>The Legends</span>
+            </button>
+            <button id="messageBtn" class="drawer-item" type="button">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <span>Batch Chats</span>
+              <span id="msgUnreadBadge" class="drawer-badge" hidden>0</span>
+            </button>
+
+            <div class="drawer-divider"></div>
+            <div class="drawer-group-label">Chapters</div>
+            <button class="drawer-item" type="button" data-nav-page="2">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span>Our Journey</span>
+            </button>
+            <button class="drawer-item" type="button" data-nav-page="5">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <span>Memories of the Day</span>
+            </button>
+            <button class="drawer-item" type="button" data-nav-page="6">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"/></svg>
+              <span>Memory Wall</span>
+            </button>
+            <button class="drawer-item" type="button" data-nav-page="7">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/></svg>
+              <span>5-Memory Vault</span>
+            </button>
+            <button class="drawer-item" type="button" data-nav-page="8">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+              <span>Not The End</span>
+            </button>
+          </nav>
+
+          <div class="drawer-footer">
+            <button id="drawerThemeBtn" class="drawer-footer-btn" type="button">🎨 Switch Theme & Backup</button>
+          </div>
+        </aside>
+
+        <section id="pageViewport" class="page-viewport">
+          <!-- PAGE 0: HOME FEED (Android App Home Screen) -->
+          <article class="page active" data-page="0" id="homePage">
+            <div class="home-stack">
+              <!-- Featured Batch Banner -->
+              <section class="hero-card">
+                <div class="hero-copy">
+                  <div class="eyebrow">Mother Teresa Public School · Batch 2025–26</div>
+                  <h1>The OG Legends</h1>
+                  <p class="hero-lead">Our private batch keepsake of classroom afternoons, spontaneous jokes, Kushinagar trip frames, video highlights, and shared conversations.</p>
+                  <blockquote class="hero-quote">“We came as classmates, we left as memories.”</blockquote>
+                  <div class="hero-actions">
+                    <button id="enterMemoriesBtn" class="primary-btn" type="button">Explore Legends</button>
+                    <button id="heroMessagesBtn" class="tonal-btn" type="button">💬 Open Batch Chats</button>
+                  </div>
                 </div>
-              </div>
-              <div class="hero-photo-wrap">
-                <img src="assets/common.jpg" class="hero-photo" alt="The OG Legends cohort portrait" referrerpolicy="no-referrer" />
-              </div>
-            </section>
+                <div class="hero-photo-wrap">
+                  <img src="assets/common.jpg" class="hero-photo" alt="The OG Legends cohort portrait" referrerpolicy="no-referrer" />
+                </div>
+              </section>
 
-            <section id="memoryStats" class="stats-bar" aria-label="Archive totals"></section>
+              <!-- Android Quick Action Launcher Tiles -->
+              <section class="launcher-grid" aria-label="Quick app actions">
+                <button id="homeAddPhotoBtn" class="launcher-tile" type="button">
+                  <span class="launcher-icon">📸</span>
+                  <div>
+                    <strong>Add Photos</strong>
+                    <small>Upload to gallery</small>
+                  </div>
+                </button>
+                <button id="homeAddVideoBtn" class="launcher-tile" type="button">
+                  <span class="launcher-icon">🎬</span>
+                  <div>
+                    <strong>Add Videos</strong>
+                    <small>Upload MP4 clips</small>
+                  </div>
+                </button>
+                <button id="homeOpenMsgCard" class="launcher-tile" type="button">
+                  <span class="launcher-icon">💬</span>
+                  <div>
+                    <strong>Batch Chats</strong>
+                    <small>DMs, groups & board</small>
+                  </div>
+                </button>
+                <button id="homeFavBtn" class="launcher-tile" type="button">
+                  <span class="launcher-icon">♥</span>
+                  <div>
+                    <strong>Favourites</strong>
+                    <small>Saved highlights</small>
+                  </div>
+                </button>
+              </section>
 
-            <section class="home-band">
-              <div class="home-band-head">
+              <!-- Horizontal Legends Strip (Google Photos / WhatsApp People Carousel) -->
+              <section class="home-band">
+                <div class="home-band-head">
+                  <div>
+                    <div class="eyebrow">People</div>
+                    <h3>The Legends</h3>
+                  </div>
+                  <button class="mini-btn jump-btn" type="button" data-target="1">View All →</button>
+                </div>
+                <div id="homePeopleStrip" class="home-people-strip"></div>
+              </section>
+
+              <!-- Memories of the Day Carousel / Strip -->
+              <section class="home-band">
+                <div class="home-band-head">
+                  <div>
+                    <div class="eyebrow">Today’s Spotlight</div>
+                    <h3>Memories of the Day</h3>
+                  </div>
+                  <button class="mini-btn jump-btn" type="button" data-target="5">Customize 5 →</button>
+                </div>
+                <div id="homeTodayStrip" class="home-today-grid"></div>
+              </section>
+
+              <!-- Archive Totals -->
+              <section id="memoryStats" class="stats-bar" aria-label="Archive totals"></section>
+
+              <!-- Chapters & Keepsakes -->
+              <section class="home-band">
+                <div class="home-band-head">
+                  <div>
+                    <div class="eyebrow">Archive Library</div>
+                    <h3>Chapters & Keepsakes</h3>
+                  </div>
+                </div>
+                <div class="chapters-grid">
+                  <button class="chapter-card jump-btn" type="button" data-target="3">
+                    <span class="chapter-num">01 · GALLERY</span>
+                    <strong>Photo Albums</strong>
+                    <small>All photos, folders & slideshow</small>
+                  </button>
+                  <button class="chapter-card jump-btn" type="button" data-target="4">
+                    <span class="chapter-num">02 · CINEMA</span>
+                    <strong>Video Highlights</strong>
+                    <small>MP4 montage clips & device uploads</small>
+                  </button>
+                  <button class="chapter-card jump-btn" type="button" data-target="2">
+                    <span class="chapter-num">03 · TIMELINE</span>
+                    <strong>Our Journey</strong>
+                    <small>From 2024 classrooms to Kushinagar</small>
+                  </button>
+                  <button class="chapter-card jump-btn" type="button" data-target="6">
+                    <span class="chapter-num">04 · QUOTES</span>
+                    <strong>Memory Wall</strong>
+                    <small>Ten lines we will keep forever</small>
+                  </button>
+                  <button class="chapter-card jump-btn" type="button" data-target="7">
+                    <span class="chapter-num">05 · ESSAYS</span>
+                    <strong>5-Memory Vault</strong>
+                    <small>Long-form reflections from school days</small>
+                  </button>
+                  <button class="chapter-card jump-btn" type="button" data-target="8">
+                    <span class="chapter-num">06 · EPILOGUE</span>
+                    <strong>Not The End</strong>
+                    <small>Closing note for Batch 2025–26</small>
+                  </button>
+                </div>
+              </section>
+            </div>
+          </article>
+
+          <!-- PAGE 1: PEOPLE -->
+          <article class="page" data-page="1" id="peoplePage">
+            <div class="section-head">
+              <div>
+                <div class="eyebrow">Chapter 01 · Our People</div>
+                <h2>The Legends</h2>
+              </div>
+              <div class="section-actions">
+                <input id="peopleFilterInput" class="inline-search" type="search" placeholder="Filter by name or nickname..." aria-label="Filter profiles" />
+                <div id="peopleCounter" class="counter">11 Profiles</div>
+                <button id="addProfileBtn" class="primary-btn small" type="button">＋ Add Legend</button>
+              </div>
+            </div>
+            <div id="peopleGrid" class="people-grid"></div>
+          </article>
+
+          <!-- PAGE 2: JOURNEY TIMELINE -->
+          <article class="page" data-page="2" id="timelinePage">
+            <div class="section-head">
+              <div>
+                <div class="eyebrow">Chapter 02 · Our Journey</div>
+                <h2>From Classmates to Memories</h2>
+              </div>
+              <button id="addJourneyBtn" class="primary-btn small" type="button">＋ Add Memory</button>
+            </div>
+            <div class="journey-intro">Some journeys are not measured by distance. Ours was measured in classroom laughter, unplanned moments, trips, fun, small arguments and the people who made ordinary school days feel special.</div>
+            <div id="journeyTimeline" class="timeline"></div>
+          </article>
+
+          <!-- PAGE 3: PHOTOS (Android Gallery: Albums Shelf First + Photo Masonry) -->
+          <article class="page" data-page="3" id="photosPage">
+            <div class="section-head">
+              <div>
+                <div class="eyebrow">Chapter 03 · Photo Archive</div>
+                <h2>Photos & Albums</h2>
+              </div>
+              <div class="section-actions">
+                <button id="quickUploadPhotoBtn" class="primary-btn small" type="button">＋ Add Photos</button>
+                <button class="tonal-btn small" type="button" data-new-folder="photo">＋ New Album</button>
+                <button id="playAllPhotosSlideshow" class="mini-btn" type="button">▶ Slideshow</button>
+              </div>
+            </div>
+
+            <div class="gallery-block">
+              <div class="gallery-subhead">
                 <div>
-                  <div class="eyebrow">Today’s Archive Highlight</div>
-                  <h3>Memories of the Day</h3>
+                  <h3>Albums & Folders</h3>
+                  <small>Create albums, upload photos from device, or customize folder covers.</small>
                 </div>
-                <button class="mini-btn jump-btn" type="button" data-target="5">Open Curated Picks →</button>
               </div>
-              <div id="homeTodayStrip" class="home-today-grid"></div>
-            </section>
+              <div id="photoFolders" class="folders-grid"></div>
+            </div>
 
-            <section class="home-band">
-              <div class="home-band-head">
+            <div class="gallery-block">
+              <div class="gallery-subhead">
                 <div>
-                  <div class="eyebrow">Archive Index</div>
-                  <h3>Jump to a Chapter</h3>
+                  <h3>All Photos</h3>
+                  <small id="allPhotosCountLabel">Loading photos...</small>
                 </div>
               </div>
-              <div class="chapters-grid">
-                <button class="chapter-card jump-btn" type="button" data-target="1">
-                  <span class="chapter-num">01 · PROFILES</span>
-                  <strong>The 11 Legends</strong>
-                  <small>Nicknames, memories & friend letters</small>
-                </button>
-                <button class="chapter-card jump-btn" type="button" data-target="2">
-                  <span class="chapter-num">02 · TIMELINE</span>
-                  <strong>Our Journey</strong>
-                  <small>From 2024 classrooms to Kushinagar</small>
-                </button>
-                <button class="chapter-card jump-btn" type="button" data-target="3">
-                  <span class="chapter-num">03 · GALLERY</span>
-                  <strong>Photo Archive</strong>
-                  <small>All batch photos, folders & slideshow</small>
-                </button>
-                <button class="chapter-card jump-btn" type="button" data-target="4">
-                  <span class="chapter-num">04 · CINEMA</span>
-                  <strong>Video Highlights</strong>
-                  <small>MP4 montage clips & uploaded videos</small>
-                </button>
-                <button class="chapter-card" type="button" id="homeOpenMsgCard">
-                  <span class="chapter-num">05 · COMMUNITY</span>
-                  <strong>Batch Messages</strong>
-                  <small>Direct chats, groups & noticeboard — no login</small>
-                </button>
-                <button class="chapter-card jump-btn" type="button" data-target="6">
-                  <span class="chapter-num">06 · QUOTES</span>
-                  <strong>Memory Wall</strong>
-                  <small>Ten lines we will keep forever</small>
-                </button>
-                <button class="chapter-card jump-btn" type="button" data-target="7">
-                  <span class="chapter-num">07 · ESSAYS</span>
-                  <strong>5-Memory Vault</strong>
-                  <small>Long-form reflections from school days</small>
-                </button>
-                <button class="chapter-card jump-btn" type="button" data-target="8">
-                  <span class="chapter-num">08 · EPILOGUE</span>
-                  <strong>Not The End</strong>
-                  <small>Closing note for Batch 2025–26</small>
-                </button>
+              <div id="allPhotosQuickGrid" class="quick-media-masonry"></div>
+            </div>
+          </article>
+
+          <!-- PAGE 4: VIDEOS (Android Cinema Gallery: Video Albums + All Clips) -->
+          <article class="page" data-page="4" id="videosPage">
+            <div class="section-head">
+              <div>
+                <div class="eyebrow">Chapter 04 · Video Archive</div>
+                <h2>Videos & Albums</h2>
               </div>
+              <div class="section-actions">
+                <button id="quickUploadVideoBtn" class="primary-btn small" type="button">＋ Add Videos</button>
+                <button class="tonal-btn small" type="button" data-new-folder="video">＋ New Album</button>
+              </div>
+            </div>
+
+            <div class="gallery-block">
+              <div class="gallery-subhead">
+                <div>
+                  <h3>Video Albums</h3>
+                  <small>Organize event clips, upload videos from your device, and set custom covers.</small>
+                </div>
+              </div>
+              <div id="videoFolders" class="folders-grid"></div>
+            </div>
+
+            <div class="gallery-block">
+              <div class="gallery-subhead">
+                <div>
+                  <h3>All Videos</h3>
+                  <small id="allVideosCountLabel">Loading videos...</small>
+                </div>
+              </div>
+              <div id="allVideosQuickGrid" class="quick-video-grid"></div>
+            </div>
+          </article>
+
+          <!-- PAGE 5: MEMORIES OF THE DAY -->
+          <article class="page" data-page="5" id="memoryDayPage">
+            <div class="section-head memory-day-head">
+              <div>
+                <div class="eyebrow">Chapter 05 · Daily Curation</div>
+                <h2>Memories of the Day</h2>
+              </div>
+              <div class="memory-day-actions">
+                <button id="memoryDayAdd" class="primary-btn small" type="button">＋ Pick Photos</button>
+                <button id="memoryDayRandom" class="mini-btn" type="button">🎲 Shuffle 5</button>
+              </div>
+            </div>
+            <section id="memoryDaySection" class="memory-day-section memory-day-page" aria-label="Memories of the day">
+              <div id="memoryDayGrid" class="memory-day-grid"><div class="memory-day-loading">Loading memories...</div></div>
             </section>
-          </div>
-        </article>
+          </article>
 
-        <!-- PAGE 1: PEOPLE -->
-        <article class="page" data-page="1" id="peoplePage">
-          <div class="section-head">
-            <div>
-              <div class="eyebrow">Chapter 01 · Our People</div>
-              <h2>The Legends</h2>
-            </div>
-            <div class="section-actions">
-              <input id="peopleFilterInput" class="inline-search" type="search" placeholder="Filter by name or nickname..." aria-label="Filter profiles" />
-              <div id="peopleCounter" class="counter">11 Profiles</div>
-              <button id="addProfileBtn" class="primary-btn small" type="button">＋ Add Profile</button>
-            </div>
-          </div>
-          <div id="peopleGrid" class="people-grid"></div>
-        </article>
-
-        <!-- PAGE 2: JOURNEY TIMELINE -->
-        <article class="page" data-page="2" id="timelinePage">
-          <div class="section-head">
-            <div>
-              <div class="eyebrow">Chapter 02 · Our Journey</div>
-              <h2>From Classmates to Memories</h2>
-            </div>
-            <button id="addJourneyBtn" class="primary-btn small" type="button">＋ Add Journey Memory</button>
-          </div>
-          <div class="journey-intro">Some journeys are not measured by distance. Ours was measured in classroom laughter, unplanned moments, trips, fun, small arguments and the people who made ordinary school days feel special.</div>
-          <div id="journeyTimeline" class="timeline"></div>
-        </article>
-
-        <!-- PAGE 3: PHOTOS -->
-        <article class="page" data-page="3" id="photosPage">
-          <div class="section-head">
-            <div>
-              <div class="eyebrow">Chapter 03 · Photo Archive</div>
-              <h2>Photos & Folders</h2>
-            </div>
-            <div class="section-actions">
-              <button id="quickUploadPhotoBtn" class="secondary-btn small" type="button">＋ Upload Photos</button>
-              <button class="primary-btn small" type="button" data-new-folder="photo">＋ New Folder</button>
-            </div>
-          </div>
-          <div class="gallery-block">
-            <div class="gallery-subhead">
+          <!-- PAGE 6: MEMORY WALL -->
+          <article class="page" data-page="6" id="wallPage">
+            <div class="section-head">
               <div>
-                <h3>All Batch Photos</h3>
-                <small id="allPhotosCountLabel">Loading photos...</small>
-              </div>
-              <button id="playAllPhotosSlideshow" class="mini-btn" type="button">▶ Play Slideshow</button>
-            </div>
-            <div id="allPhotosQuickGrid" class="quick-media-masonry"></div>
-          </div>
-          <div class="gallery-block">
-            <div class="gallery-subhead">
-              <div>
-                <h3>Photo Folders</h3>
-                <small>Create folders, add photos from your device, or set custom folder covers.</small>
+                <div class="eyebrow">Chapter 06 · Memory Wall</div>
+                <h2>Lines We Will Keep</h2>
               </div>
             </div>
-            <div id="photoFolders" class="folders-grid"></div>
-          </div>
-        </article>
+            <div class="wall-grid">
+              <blockquote class="quote-card">“The best stories always started with — ‘Yaar, ek idea hai…’ 😄”</blockquote>
+              <blockquote class="quote-card">“Some days become memories before we even realise it. 📸”</blockquote>
+              <blockquote class="quote-card">“The OG Legends — not perfect, but definitely unforgettable. 👑”</blockquote>
+              <blockquote class="quote-card">“The classroom changed. The people moved on. The memories stayed. ❤️”</blockquote>
+              <blockquote class="quote-card">“One photo can bring back a whole day in a second. ✨”</blockquote>
+              <blockquote class="quote-card">“We carried books to school and came back with stories. 🎒”</blockquote>
+              <blockquote class="quote-card">“The ordinary days were the ones that became special. 🌟”</blockquote>
+              <blockquote class="quote-card">“We didn’t know we were making memories — we were just having fun. 😂❤️”</blockquote>
+              <blockquote class="quote-card">“The batch ended, but the memories will always be ours. 🎓”</blockquote>
+              <blockquote class="quote-card">“Distance can change the routine, not the memories we share. 🤝❤️”</blockquote>
+            </div>
+          </article>
 
-        <!-- PAGE 4: VIDEOS -->
-        <article class="page" data-page="4" id="videosPage">
-          <div class="section-head">
-            <div>
-              <div class="eyebrow">Chapter 04 · Video Archive</div>
-              <h2>Videos & Folders</h2>
-            </div>
-            <div class="section-actions">
-              <button id="quickUploadVideoBtn" class="secondary-btn small" type="button">＋ Upload Videos</button>
-              <button class="primary-btn small" type="button" data-new-folder="video">＋ New Folder</button>
-            </div>
-          </div>
-          <div class="gallery-block">
-            <div class="gallery-subhead">
-              <div>
-                <h3>All Batch Videos</h3>
-                <small id="allVideosCountLabel">Loading videos...</small>
+          <!-- PAGE 7: 5-MEMORY VAULT -->
+          <article class="page" data-page="7" id="randomPage">
+            <div class="random-pro">
+              <div class="random-kicker"><span>Chapter 07 · 5-Memory Vault</span><span>👑 The OG Legends</span></div>
+              <h2>Five Memories, One Moment</h2>
+              <p class="random-intro">Open a curated batch of five reflections from our school chapter. Tap anytime to reveal all five or return to your previous chapter.</p>
+              <div id="randomBatch" class="random-batch"></div>
+              <div class="random-actions">
+                <button id="randomBtn" class="primary-btn" type="button">✨ Open 5 Memories</button>
+                <button id="randomBack" class="mini-btn" type="button" hidden>← Back to Previous Chapter</button>
               </div>
             </div>
-            <div id="allVideosQuickGrid" class="quick-video-grid"></div>
-          </div>
-          <div class="gallery-block">
-            <div class="gallery-subhead">
-              <div>
-                <h3>Video Folders</h3>
-                <small>Organize event clips, upload videos from your device, and customize covers.</small>
+          </article>
+
+          <!-- PAGE 8: EPILOGUE -->
+          <article class="page" data-page="8" id="finalPage">
+            <div class="final-card">
+              <img src="assets/common.jpg" alt="The OG Legends group portrait" referrerpolicy="no-referrer" />
+              <div class="final-copy">
+                <div class="eyebrow">Chapter 08 · Not The End</div>
+                <h2>The OG Legends ❤️</h2>
+                <div class="final-message">
+                  <p>We may never get the exact same classroom, the same benches, the same routine, or those random moments back in the same way. But the laughter, the jokes, the small arguments, the trips, the photos, and the videos will always be part of a chapter that was only ours.</p>
+                  <p>Time will move on. We will go to different places, meet new people, and build new stories. Still, one old photo, one familiar name, or one moment can bring back an entire era in a second. That is why these memories matter — they remind us that we were here, together, for one unforgettable chapter.</p>
+                  <p>This is not a goodbye. It is just the last page of this archive. The real story lives in every photo, every video, and every memory we still carry with us. Never the end of The OG Legends. ❤️♾️</p>
+                </div>
+                <div class="credit">Made with memories by Rehan Akhtar · Batch 2025–26</div>
               </div>
             </div>
-            <div id="videoFolders" class="folders-grid"></div>
-          </div>
-        </article>
+          </article>
+        </section>
+      </div>
 
-        <!-- PAGE 5: MEMORIES OF THE DAY -->
-        <article class="page" data-page="5" id="memoryDayPage">
-          <div class="section-head memory-day-head">
-            <div>
-              <div class="eyebrow">Chapter 05 · Daily Curation</div>
-              <h2>Memories of the Day</h2>
-            </div>
-            <div class="memory-day-actions">
-              <button id="memoryDayAdd" class="primary-btn small" type="button">＋ Pick Photos</button>
-              <button id="memoryDayRandom" class="mini-btn" type="button">🎲 Shuffle Today’s 5</button>
-            </div>
-          </div>
-          <section id="memoryDaySection" class="memory-day-section memory-day-page" aria-label="Memories of the day">
-            <div id="memoryDayGrid" class="memory-day-grid"><div class="memory-day-loading">Loading memories...</div></div>
-          </section>
-        </article>
+      <!-- MOBILE ANDROID MATERIAL 3 BOTTOM NAVIGATION BAR (5 Primary Tabs) -->
+      <nav class="android-bottom-nav" aria-label="Mobile bottom navigation">
+        <button class="bnav-item active" type="button" data-nav-page="0">
+          <span class="bnav-pill"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+          <span>Home</span>
+        </button>
+        <button class="bnav-item" type="button" data-nav-page="3">
+          <span class="bnav-pill"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg></span>
+          <span>Photos</span>
+        </button>
+        <button class="bnav-item" type="button" data-nav-page="4">
+          <span class="bnav-pill"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg></span>
+          <span>Videos</span>
+        </button>
+        <button class="bnav-item" type="button" data-nav-page="1">
+          <span class="bnav-pill"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+          <span>Legends</span>
+        </button>
+        <button id="bottomChatsBtn" class="bnav-item" type="button">
+          <span class="bnav-pill">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span id="bottomChatBadge" class="bnav-badge" hidden>0</span>
+          </span>
+          <span>Chats</span>
+        </button>
+      </nav>
 
-        <!-- PAGE 6: MEMORY WALL -->
-        <article class="page" data-page="6" id="wallPage">
-          <div class="section-head">
-            <div>
-              <div class="eyebrow">Chapter 06 · Memory Wall</div>
-              <h2>Lines We Will Keep</h2>
-            </div>
-          </div>
-          <div class="wall-grid">
-            <blockquote class="quote-card">“The best stories always started with — ‘Yaar, ek idea hai…’ 😄”</blockquote>
-            <blockquote class="quote-card">“Some days become memories before we even realise it. 📸”</blockquote>
-            <blockquote class="quote-card">“The OG Legends — not perfect, but definitely unforgettable. 👑”</blockquote>
-            <blockquote class="quote-card">“The classroom changed. The people moved on. The memories stayed. ❤️”</blockquote>
-            <blockquote class="quote-card">“One photo can bring back a whole day in a second. ✨”</blockquote>
-            <blockquote class="quote-card">“We carried books to school and came back with stories. 🎒”</blockquote>
-            <blockquote class="quote-card">“The ordinary days were the ones that became special. 🌟”</blockquote>
-            <blockquote class="quote-card">“We didn’t know we were making memories — we were just having fun. 😂❤️”</blockquote>
-            <blockquote class="quote-card">“The batch ended, but the memories will always be ours. 🎓”</blockquote>
-            <blockquote class="quote-card">“Distance can change the routine, not the memories we share. 🤝❤️”</blockquote>
-          </div>
-        </article>
-
-        <!-- PAGE 7: 5-MEMORY VAULT -->
-        <article class="page" data-page="7" id="randomPage">
-          <div class="random-pro">
-            <div class="random-kicker"><span>Chapter 07 · 5-Memory Vault</span><span>👑 The OG Legends</span></div>
-            <h2>Five Memories, One Moment</h2>
-            <p class="random-intro">Open a curated batch of five reflections from our school chapter. Tap anytime to reveal all five or return to your previous chapter.</p>
-            <div id="randomBatch" class="random-batch"></div>
-            <div class="random-actions">
-              <button id="randomBtn" class="primary-btn" type="button">✨ Open 5 Memories</button>
-              <button id="randomBack" class="mini-btn" type="button" hidden>← Back to Previous Chapter</button>
-            </div>
-          </div>
-        </article>
-
-        <!-- PAGE 8: EPILOGUE -->
-        <article class="page" data-page="8" id="finalPage">
-          <div class="final-card">
-            <img src="assets/common.jpg" alt="The OG Legends group portrait" referrerpolicy="no-referrer" />
-            <div class="final-copy">
-              <div class="eyebrow">Chapter 08 · Not The End</div>
-              <h2>The OG Legends ❤️</h2>
-              <div class="final-message">
-                <p>We may never get the exact same classroom, the same benches, the same routine, or those random moments back in the same way. But the laughter, the jokes, the small arguments, the trips, the photos, and the videos will always be part of a chapter that was only ours.</p>
-                <p>Time will move on. We will go to different places, meet new people, and build new stories. Still, one old photo, one familiar name, or one song can bring back an entire era in a second. That is why these memories matter — they remind us that we were here, together, for one unforgettable chapter.</p>
-                <p>This is not a goodbye. It is just the last page of this archive. The real story lives in every photo, every video, and every memory we still carry with us. Never the end of The OG Legends. ❤️♾️</p>
-              </div>
-              <div class="credit">Made with memories by Rehan Akhtar · Batch 2025–26</div>
-            </div>
-          </div>
-        </article>
-      </section>
-
-      <footer class="bottom-nav">
-        <button id="prevBtn" class="page-step" type="button">← Prev</button>
-        <div id="pageDots" class="page-dots"></div>
-        <select id="chapterJumpSelect" class="chapter-jump-select" aria-label="Jump to chapter">
-          <option value="0">01 · Home</option>
-          <option value="1">02 · Legends</option>
-          <option value="2">03 · Journey</option>
-          <option value="3">04 · Photos</option>
-          <option value="4">05 · Videos</option>
-          <option value="5">06 · Today’s Picks</option>
-          <option value="6">07 · Memory Wall</option>
-          <option value="7">08 · 5-Memory Vault</option>
-          <option value="8">09 · Not The End</option>
-        </select>
-        <button id="nextBtn" class="page-step" type="button">Next →</button>
-      </footer>
+      <!-- MOBILE ANDROID FLOATING ACTION BUTTON -->
+      <button id="mainFab" class="android-fab" type="button" aria-label="Add photos, videos, or memories" title="Add Photo / Video / Memory">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
     </main>
   </div>
 
   <div id="appToast" class="app-toast" role="status" aria-live="polite" hidden></div>
-  <audio id="bgMusic" loop preload="none"></audio>
+
+  <!-- ANDROID ADD MEDIA / CREATE BOTTOM SHEET -->
+  <dialog id="addSheetDialog" class="sheet-modal">
+    <div class="sheet-handle" aria-hidden="true"></div>
+    <button class="close-modal" type="button" data-close aria-label="Close">✕</button>
+    <div class="eyebrow">Quick Upload & Create</div>
+    <h3>Add to Memories</h3>
+    <div class="sheet-folder-row">
+      <label for="uploadTargetFolder">Save uploaded media to album</label>
+      <select id="uploadTargetFolder" class="persona-select"></select>
+    </div>
+    <div class="sheet-action-grid">
+      <button id="sheetAddPhotoBtn" class="sheet-tile accent-photo" type="button">
+        <span class="sheet-tile-icon">📸</span>
+        <strong>Add Photos</strong>
+        <small>Pick one or multiple images</small>
+      </button>
+      <button id="sheetAddVideoBtn" class="sheet-tile accent-video" type="button">
+        <span class="sheet-tile-icon">🎬</span>
+        <strong>Add Videos</strong>
+        <small>Upload MP4 or clips from device</small>
+      </button>
+      <button id="sheetNewPhotoFolderBtn" class="sheet-tile" type="button">
+        <span class="sheet-tile-icon">📁</span>
+        <strong>Photo Album</strong>
+        <small>Create an image folder</small>
+      </button>
+      <button id="sheetNewVideoFolderBtn" class="sheet-tile" type="button">
+        <span class="sheet-tile-icon">🎞️</span>
+        <strong>Video Album</strong>
+        <small>Create a video folder</small>
+      </button>
+      <button id="sheetAddJourneyBtn" class="sheet-tile" type="button">
+        <span class="sheet-tile-icon">📖</span>
+        <strong>Journey Story</strong>
+        <small>Add date, note & media</small>
+      </button>
+      <button id="sheetAddProfileBtn" class="sheet-tile" type="button">
+        <span class="sheet-tile-icon">👤</span>
+        <strong>Add Legend</strong>
+        <small>Add a classmate profile</small>
+      </button>
+    </div>
+  </dialog>
 
   <!-- PROFILE DETAIL -->
   <dialog id="profileDialog" class="modal"><button class="close-modal" type="button" data-close aria-label="Close">✕</button><div id="profileDialogBody"></div></dialog>
@@ -355,11 +519,11 @@
   <dialog id="newFolderDialog" class="modal">
     <button class="close-modal" type="button" data-close aria-label="Close">✕</button>
     <form id="newFolderForm" class="modal-form">
-      <div class="eyebrow">New Folder</div>
-      <h3 id="newFolderTitle">Create Folder</h3>
-      <input id="folderName" maxlength="40" placeholder="Folder Name" required />
+      <div class="eyebrow">New Album</div>
+      <h3 id="newFolderTitle">Create Album</h3>
+      <input id="folderName" maxlength="40" placeholder="Album Name" required />
       <textarea id="folderNote" maxlength="120" placeholder="Short note (optional)"></textarea>
-      <button class="primary-btn" type="submit">Create Folder</button>
+      <button class="primary-btn" type="submit">Create Album</button>
     </form>
   </dialog>
 
@@ -382,7 +546,7 @@
     <button class="close-modal" type="button" data-close aria-label="Close">✕</button>
     <div class="eyebrow">Memories of the Day</div>
     <h3>Choose Photos</h3>
-    <p class="memory-day-picker-note">Tap any photo below to pin it to Today’s Picks.</p>
+    <p class="memory-day-picker-note">Tap any photo below to pin it to Today’s Spotlight.</p>
     <div id="memoryDayPickerGrid" class="memory-day-picker-grid"></div>
   </dialog>
 
@@ -446,7 +610,7 @@
     <div class="dialog-actions"><button id="saveLetterBtn" class="primary-btn small" type="button">Save Letter</button></div>
   </dialog>
 
-  <!-- BATCH MESSAGES DIALOG (Zero Login / Zero ID Creation) -->
+  <!-- BATCH MESSAGES DIALOG -->
   <dialog id="messagesDialog" class="modal msg-modal">
     <div class="msg-shell">
       <header class="msg-topbar">
@@ -472,7 +636,6 @@
       </div>
 
       <div class="msg-workspace">
-        <!-- Sidebar / List Panel -->
         <aside id="msgListPane" class="msg-list-pane">
           <div class="msg-list-tools">
             <input id="msgSearchInput" class="msg-search" type="search" placeholder="Search legends, groups, or boards..." autocomplete="off" />
@@ -481,7 +644,6 @@
           <div id="msgListHost" class="msg-list-host"></div>
         </aside>
 
-        <!-- Active Thread View -->
         <section id="msgThreadPane" class="msg-thread-pane">
           <div id="msgEmptyPlaceholder" class="msg-thread-empty">
             <div>
@@ -558,7 +720,31 @@
   <dialog id="toolsDialog" class="modal v7-modal">
     <button class="close-modal" type="button" data-close aria-label="Close">✕</button>
     <div class="eyebrow">Archive Controls</div>
-    <h3>Settings & Backup</h3>
+    <h3>Theme & Settings</h3>
+    <div class="theme-picker-section">
+      <div class="theme-picker-head">
+        <strong>App Theme Palette</strong>
+        <small>Fraunces Serif · Outfit Sans</small>
+      </div>
+      <div id="themePicker" class="theme-picker-grid" role="radiogroup" aria-label="Choose color theme">
+        <button class="theme-swatch-btn active" type="button" data-theme-choice="obsidian-gold">
+          <span class="swatch-dot" style="--sw-bg:#0a0b0f;--sw-ac:#f4c152"></span>
+          <span>Obsidian Gold</span>
+        </button>
+        <button class="theme-swatch-btn" type="button" data-theme-choice="midnight-emerald">
+          <span class="swatch-dot" style="--sw-bg:#070d0c;--sw-ac:#4ae3b5"></span>
+          <span>Emerald Night</span>
+        </button>
+        <button class="theme-swatch-btn" type="button" data-theme-choice="cobalt-studio">
+          <span class="swatch-dot" style="--sw-bg:#090c14;--sw-ac:#82b6ff"></span>
+          <span>Cobalt Studio</span>
+        </button>
+        <button class="theme-swatch-btn" type="button" data-theme-choice="warm-parchment">
+          <span class="swatch-dot" style="--sw-bg:#f6f4ee;--sw-ac:#b4690e"></span>
+          <span>Warm Parchment</span>
+        </button>
+      </div>
+    </div>
     <div class="tool-grid">
       <button id="toolsSearchBtn" class="tool-card" type="button"><b>🔎 Search</b><small>Find memories & chats</small></button>
       <button id="toolsFavBtn" class="tool-card" type="button"><b>♥ Favourites</b><small>Saved photos & videos</small></button>
@@ -570,7 +756,7 @@
     <div id="restoreList" class="restore-list" hidden></div>
   </dialog>
 
-  <script src="js/media-manifest.js?v=11.0.0"></script>
-  <script src="js/app.js?v=11.0.0"></script>
+  <script src="js/media-manifest.js?v=14.0.0"></script>
+  <script src="js/app.js?v=14.0.0"></script>
 </body>
 </html>
