@@ -50,18 +50,82 @@ applyTheme(localStorage.getItem('og_theme') || 'obsidian-gold', false);
 
 let currentPage = 0;
 const RANDOM_PAGE_IDX = pageEls.findIndex((p) => p.id === 'randomPage');
-
-let internalNav = false;
 let randomBatchShown = false;
 
-function openNavDrawer() {
+let isApplyingHistory = false;
+let lastModalClosedAt = 0;
+let currentHistState = { ogApp: true, ogDepth: 0, page: 0, drawer: false, modals: [], msgThread: false };
+const histStack = [currentHistState];
+
+function pushHistState(partial) {
+  const next = {
+    ...currentHistState,
+    ...partial,
+    ogApp: true,
+    ogDepth: currentHistState.ogDepth + 1
+  };
+  histStack.length = currentHistState.ogDepth + 1;
+  histStack.push(next);
+  currentHistState = next;
+  history.pushState(next, '', location.href);
+}
+
+function replaceHistState(partial) {
+  const next = {
+    ...currentHistState,
+    ...partial,
+    ogApp: true
+  };
+  histStack[currentHistState.ogDepth] = next;
+  currentHistState = next;
+  history.replaceState(next, '', location.href);
+}
+
+function openNavDrawerUI() {
   $('appNavDrawer')?.classList.add('open');
   if ($('drawerBackdrop')) $('drawerBackdrop').hidden = false;
 }
 
-function closeNavDrawer() {
+function closeNavDrawerUI() {
   $('appNavDrawer')?.classList.remove('open');
   if ($('drawerBackdrop')) $('drawerBackdrop').hidden = true;
+}
+
+function openNavDrawer() {
+  if ($('appNavDrawer')?.classList.contains('open')) return;
+  openNavDrawerUI();
+  if (!isApplyingHistory) {
+    pushHistState({ drawer: true });
+  }
+}
+
+function closeNavDrawer(fromHistory = false) {
+  const wasOpen = $('appNavDrawer')?.classList.contains('open');
+  closeNavDrawerUI();
+  if (!fromHistory && !isApplyingHistory && wasOpen && currentHistState.drawer && currentHistState.ogDepth > 0) {
+    history.back();
+  }
+}
+
+function openDialog(dlg) {
+  if (!dlg || dlg.open) return;
+  dlg.showModal();
+  if (isApplyingHistory) return;
+  const openIds = [...document.querySelectorAll('dialog[open]')].map((d) => d.id);
+  const justReplacedModal = Date.now() - lastModalClosedAt < 80 && currentHistState.modals.length >= openIds.length;
+  if (justReplacedModal) {
+    replaceHistState({
+      drawer: false,
+      modals: openIds,
+      msgThread: openIds.includes('messagesDialog') ? currentHistState.msgThread : false
+    });
+  } else {
+    pushHistState({
+      drawer: false,
+      modals: openIds,
+      msgThread: openIds.includes('messagesDialog') ? currentHistState.msgThread : false
+    });
+  }
 }
 
 function resetRandomBatch() {
@@ -75,7 +139,7 @@ function resetRandomBatch() {
   if ($('randomBack')) $('randomBack').hidden = true;
 }
 
-function showPage(i, push = true, persist = true) {
+function syncPageUI(i, persist = true) {
   const was = currentPage;
   currentPage = Math.max(0, Math.min(i, pageEls.length - 1));
   pageEls.forEach((p, idx) => p.classList.toggle('active', idx === currentPage));
@@ -83,21 +147,59 @@ function showPage(i, push = true, persist = true) {
   bottomNavItems.forEach((btn) => btn.classList.toggle('active', Number(btn.dataset.navPage) === currentPage));
   if ($('appBarTitle')) $('appBarTitle').textContent = PAGE_TITLES[currentPage] || 'The OG Legends';
   if ($('topBackBtn')) $('topBackBtn').hidden = currentPage === 0;
-  closeNavDrawer();
+  closeNavDrawerUI();
   const active = pageEls[currentPage];
   if (active) active.scrollTop = 0;
   if (currentPage === RANDOM_PAGE_IDX && was !== RANDOM_PAGE_IDX) resetRandomBatch();
   if (persist) localStorage.setItem('og_last_page', String(currentPage));
-  if (push && !internalNav) history.pushState({ ogPage: currentPage }, '', location.href);
+}
+
+function showPage(i, persist = true) {
+  const target = Math.max(0, Math.min(i, pageEls.length - 1));
+  const wasDrawerOpen = currentHistState.drawer;
+  closeNavDrawerUI();
+
+  if (isApplyingHistory) {
+    syncPageUI(target, persist);
+    return;
+  }
+
+  if (wasDrawerOpen) {
+    if (target === currentPage && !currentHistState.modals.length) {
+      if (currentHistState.ogDepth > 0) history.back();
+      return;
+    }
+    replaceHistState({ page: target, drawer: false, modals: [], msgThread: false });
+    syncPageUI(target, persist);
+    return;
+  }
+
+  const hasOpenModals = currentHistState.modals.length > 0;
+  if (target === currentPage && !hasOpenModals) return;
+
+  if (Date.now() - lastModalClosedAt < 80 && hasOpenModals) {
+    replaceHistState({ page: target, drawer: false, modals: [], msgThread: false });
+  } else {
+    pushHistState({ page: target, drawer: false, modals: [], msgThread: false });
+  }
+  syncPageUI(target, persist);
+}
+
+function goBackInApp() {
+  if (currentHistState.ogDepth > 0) {
+    history.back();
+  } else if (currentPage > 0) {
+    showPage(0);
+  }
 }
 
 $('brandHomeBtn')?.addEventListener('click', () => showPage(0));
-$('topBackBtn')?.addEventListener('click', () => showPage(0));
+$('topBackBtn')?.addEventListener('click', goBackInApp);
 $('enterMemoriesBtn')?.addEventListener('click', () => showPage(1));
-$('heroMessagesBtn')?.addEventListener('click', () => { closeNavDrawer(); openMessagesDialog(); });
-$('bottomChatsBtn')?.addEventListener('click', () => { closeNavDrawer(); openMessagesDialog(); });
+$('heroMessagesBtn')?.addEventListener('click', () => { closeNavDrawerUI(); openMessagesDialog(); });
+$('bottomChatsBtn')?.addEventListener('click', () => { closeNavDrawerUI(); openMessagesDialog(); });
 $('homeOpenMsgCard')?.addEventListener('click', () => openMessagesDialog());
-$('homeFavBtn')?.addEventListener('click', () => openFavouritesDialog());
+$('homeJourneyBtn')?.addEventListener('click', () => showPage(2));
 $('homeAddPhotoBtn')?.addEventListener('click', async () => {
   if (await addMedia('photo')) showPage(3);
 });
@@ -111,23 +213,23 @@ $('homeAddVideoBtn')?.addEventListener('click', async () => {
 
 document.querySelectorAll('.jump-btn').forEach((b) => {
   b.addEventListener('click', () => {
-    closeNavDrawer();
+    closeNavDrawerUI();
     showPage(+b.dataset.target);
   });
 });
 
 // Android Add Media & Chapters Bottom Sheet
 function openAddSheet() {
-  $('addSheetDialog')?.showModal();
+  openDialog($('addSheetDialog'));
 }
 
 $('mainFab')?.addEventListener('click', openAddSheet);
-$('railFabBtn')?.addEventListener('click', () => { closeNavDrawer(); openAddSheet(); });
+$('railFabBtn')?.addEventListener('click', () => { closeNavDrawerUI(); openAddSheet(); });
 $('menuDrawerBtn')?.addEventListener('click', openNavDrawer);
-$('closeDrawerBtn')?.addEventListener('click', closeNavDrawer);
-$('drawerBackdrop')?.addEventListener('click', closeNavDrawer);
+$('closeDrawerBtn')?.addEventListener('click', () => closeNavDrawer(false));
+$('drawerBackdrop')?.addEventListener('click', () => closeNavDrawer(false));
 $('drawerThemeBtn')?.addEventListener('click', () => {
-  closeNavDrawer();
+  closeNavDrawerUI();
   $('toolsBtn')?.click();
 });
 
@@ -143,39 +245,136 @@ $('sheetAddVideoBtn')?.addEventListener('click', async () => {
 
 $('sheetAddJourneyBtn')?.addEventListener('click', () => {
   $('addSheetDialog')?.close();
-  $('newJourneyDialog').showModal();
+  openDialog($('newJourneyDialog'));
 });
 
 $('sheetAddProfileBtn')?.addEventListener('click', () => {
   $('addSheetDialog')?.close();
-  $('newProfileDialog').showModal();
+  openDialog($('newProfileDialog'));
 });
 
+// Sync every <dialog> with mobile Back button, Escape key, and backdrop tap
+document.querySelectorAll('dialog').forEach((dlg) => {
+  dlg.addEventListener('cancel', (e) => {
+    e.preventDefault();
+    if (dlg.id === 'messagesDialog' && $('msgThreadPane')?.classList.contains('mobile-show')) {
+      if (currentHistState.msgThread && currentHistState.ogDepth > 0) {
+        history.back();
+      } else {
+        $('msgThreadPane')?.classList.remove('mobile-show');
+        $('msgListPane')?.classList.remove('mobile-hide');
+      }
+      return;
+    }
+    dlg.close();
+  });
+
+  if (dlg.id !== 'mediaViewerDialog') {
+    dlg.addEventListener('click', (e) => {
+      if (e.target !== dlg) return;
+      const rect = dlg.getBoundingClientRect();
+      const clickedOutside =
+        e.clientX !== 0 &&
+        (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom);
+      if (clickedOutside) dlg.close();
+    });
+  }
+
+  dlg.addEventListener('close', () => {
+    if (isApplyingHistory) return;
+    lastModalClosedAt = Date.now();
+    queueMicrotask(() => {
+      if (isApplyingHistory) return;
+      const openIds = [...document.querySelectorAll('dialog[open]')].map((d) => d.id);
+      if (
+        openIds.length === currentHistState.modals.length &&
+        openIds.every((id, idx) => currentHistState.modals[idx] === id)
+      ) {
+        return;
+      }
+      if (currentHistState.modals.length === 0 && openIds.length === 0) return;
+
+      let targetDepth = currentHistState.ogDepth - 1;
+      while (targetDepth > 0) {
+        const candidate = histStack[targetDepth];
+        if (
+          candidate &&
+          candidate.modals.length === openIds.length &&
+          candidate.modals.every((id, idx) => candidate.modals[idx] === id) &&
+          (!candidate.msgThread || openIds.includes('messagesDialog'))
+        ) {
+          break;
+        }
+        targetDepth--;
+      }
+      const delta = currentHistState.ogDepth - targetDepth;
+      if (delta > 0) {
+        history.go(-delta);
+      }
+    });
+  });
+});
+
+// Initialize History Stack (Home at depth 0; restored sub-page at depth 1 so Back returns to Home)
 const savedStartPage = parseInt(localStorage.getItem('og_last_page') || '0', 10);
-showPage(Number.isFinite(savedStartPage) ? savedStartPage : 0, false, false);
-history.replaceState({ ogPage: currentPage }, '', location.href);
+const initialPage = Number.isFinite(savedStartPage) ? Math.max(0, Math.min(savedStartPage, pageEls.length - 1)) : 0;
+currentHistState = { ogApp: true, ogDepth: 0, page: 0, drawer: false, modals: [], msgThread: false };
+histStack[0] = currentHistState;
+history.replaceState(currentHistState, '', location.href);
+if (initialPage > 0) {
+  pushHistState({ page: initialPage, drawer: false, modals: [], msgThread: false });
+}
+syncPageUI(initialPage, false);
+
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && $('appNavDrawer')?.classList.contains('open')) closeNavDrawer();
+  if (e.key === 'Escape' && $('appNavDrawer')?.classList.contains('open')) {
+    closeNavDrawer(false);
+  }
 });
 
-window.addEventListener('popstate', () => {
-  if ($('appNavDrawer')?.classList.contains('open')) {
-    closeNavDrawer();
-    history.pushState({ ogPage: currentPage }, '', location.href);
-    return;
-  }
-  const open = [...document.querySelectorAll('dialog[open]')].pop();
-  if (open) {
-    open.close();
-    history.pushState({ ogPage: currentPage }, '', location.href);
-    return;
-  }
-  if (currentPage > 0) {
-    internalNav = true;
-    showPage(currentPage - 1, false);
-    internalNav = false;
-  } else {
-    history.pushState({ ogPage: 0 }, '', location.href);
+window.addEventListener('popstate', (e) => {
+  const state = e.state;
+  if (!state || !state.ogApp) return;
+
+  isApplyingHistory = true;
+  try {
+    currentHistState = state;
+    histStack[state.ogDepth] = state;
+
+    if (state.drawer) openNavDrawerUI();
+    else closeNavDrawerUI();
+
+    const desired = state.modals || [];
+    const openDialogs = [...document.querySelectorAll('dialog[open]')];
+    for (let idx = openDialogs.length - 1; idx >= 0; idx--) {
+      const d = openDialogs[idx];
+      if (!desired.includes(d.id)) d.close();
+    }
+    for (const id of desired) {
+      const d = $(id);
+      if (d && !d.open) {
+        try { d.showModal(); } catch {}
+      }
+    }
+
+    if (desired.includes('messagesDialog')) {
+      if (state.msgThread && activeThread) {
+        $('msgThreadPane')?.classList.add('mobile-show');
+        $('msgListPane')?.classList.add('mobile-hide');
+      } else {
+        $('msgThreadPane')?.classList.remove('mobile-show');
+        $('msgListPane')?.classList.remove('mobile-hide');
+      }
+    } else {
+      $('msgThreadPane')?.classList.remove('mobile-show');
+      $('msgListPane')?.classList.remove('mobile-hide');
+    }
+
+    if (typeof state.page === 'number' && state.page !== currentPage) {
+      syncPageUI(state.page, true);
+    }
+  } finally {
+    isApplyingHistory = false;
   }
 });
 
@@ -216,6 +415,7 @@ function escapeHtml(v) {
     .replace(/'/g, '&#039;');
 }
 function waitDB() {
+  if (DB) return Promise.resolve();
   return new Promise((r) => {
     const t = setInterval(() => {
       if (DB) { clearInterval(t); r(); }
@@ -334,7 +534,7 @@ function openProfile(i) {
       </div>
     </div>
     <div class="memory-box"><strong>Memory Note</strong><p>${escapeHtml(p.memory)}</p></div>`;
-  $('profileDialog').showModal();
+  openDialog($('profileDialog'));
   $('openProfileChatBtn').onclick = () => {
     $('profileDialog').close();
     openMessagesDialog('chats', p.n);
@@ -359,7 +559,7 @@ function openProfile(i) {
   };
 }
 
-$('addProfileBtn').onclick = () => $('newProfileDialog').showModal();
+$('addProfileBtn').onclick = () => openDialog($('newProfileDialog'));
 $('newProfileForm').onsubmit = async (e) => {
   e.preventDefault();
   const file = $('profileImageInput').files[0] || null;
@@ -507,31 +707,64 @@ async function getAllCombinedMedia(type) {
   return [...built, ...local];
 }
 
-async function removeGalleryMediaItem(item, type) {
-  if (!confirm(`Remove this ${type} from your gallery?`)) return;
-  if (item.builtin) {
-    await recycleItem('hiddenMedia', item.id, item);
-    await put('hiddenMedia', { id: item.id });
-  } else {
-    await recycleItem('media', item.id, item);
-    await del('media', item.id);
+
+
+const selectionState = {
+  photo: { active: false, ids: new Set() },
+  video: { active: false, ids: new Set() }
+};
+
+function updateSelectionBarUI(type) {
+  const st = selectionState[type];
+  const bar = $(type === 'photo' ? 'photoSelectBar' : 'videoSelectBar');
+  const countEl = $(type === 'photo' ? 'photoSelectCount' : 'videoSelectCount');
+  const delBtn = $(type === 'photo' ? 'deleteSelectedPhotosBtn' : 'deleteSelectedVideosBtn');
+  const toggleBtn = $(type === 'photo' ? 'selectPhotosBtn' : 'selectVideosBtn');
+  if (bar) bar.hidden = !st.active;
+  if (countEl) countEl.textContent = `${st.ids.size} selected`;
+  if (delBtn) delBtn.disabled = st.ids.size === 0;
+  if (toggleBtn) toggleBtn.textContent = st.active ? 'Cancel' : 'Select';
+}
+
+function setSelectionMode(type, active) {
+  selectionState[type].active = active;
+  if (!active) selectionState[type].ids.clear();
+  updateSelectionBarUI(type);
+  renderQuickGalleries();
+}
+
+async function deleteMediaItems(items, type) {
+  if (!items.length) return;
+  for (const item of items) {
+    if (item.builtin) {
+      await recycleItem('hiddenMedia', item.id, item);
+      await put('hiddenMedia', { id: item.id });
+    } else {
+      await recycleItem('media', item.id, item);
+      await del('media', item.id);
+    }
   }
   await renderQuickGalleries();
   await updateV7Home();
-  showToast(`${type === 'photo' ? 'Photo' : 'Video'} removed (recoverable in Restore Center)`);
+  const label = items.length === 1 ? (type === 'photo' ? 'Photo' : 'Video') : `${items.length} ${type}s`;
+  showToast(`${label} deleted (recoverable in Restore Center)`);
 }
 
 // Direct Photo & Video Galleries
 async function renderQuickGalleries() {
   if (!DB) return;
-  const favs = new Set((await getAll('favorites')).map((x) => x.id));
 
   // Photos masonry
   const photosHost = $('allPhotosQuickGrid');
   if (photosHost) {
     const photos = await getAllCombinedMedia('photo');
+    const st = selectionState.photo;
+    photosHost.classList.toggle('is-selecting', st.active);
+    updateSelectionBarUI('photo');
     if ($('allPhotosCountLabel')) {
-      $('allPhotosCountLabel').textContent = `${photos.length} ${photos.length === 1 ? 'photo' : 'photos'} · Tap any image to view, zoom, or start slideshow`;
+      $('allPhotosCountLabel').textContent = st.active
+        ? `Tap photos to select for deletion · ${st.ids.size} selected`
+        : `${photos.length} ${photos.length === 1 ? 'photo' : 'photos'} · Tap any image to view, zoom, or delete`;
     }
     photosHost.innerHTML = '';
     if (!photos.length) {
@@ -540,27 +773,22 @@ async function renderQuickGalleries() {
       photos.forEach((item, index) => {
         const src = getViewerSrc(item);
         const card = document.createElement('div');
-        card.className = 'quick-media-card';
-        const isFav = favs.has(item.id);
+        const isSelected = st.active && st.ids.has(item.id);
+        card.className = 'quick-media-card' + (isSelected ? ' selected' : '');
         card.innerHTML = `
+          ${st.active ? `<span class="quick-select-badge" aria-hidden="true">${isSelected ? '✓' : ''}</span>` : ''}
           <img src="${src}" alt="${escapeHtml(item.name || 'Memory photo')}" loading="lazy" referrerpolicy="no-referrer" onerror="this.src='assets/common.jpg'">
           <div class="quick-media-caption">
             <span>${escapeHtml(item.name || 'Batch Photo')}</span>
-            <div class="quick-card-actions">
-              <button class="quick-fav-btn ${isFav ? 'active' : ''}" type="button" title="Toggle Favourite">${isFav ? '♥' : '♡'}</button>
-              <button class="quick-del-btn" type="button" title="Remove photo" aria-label="Remove photo">✕</button>
-            </div>
           </div>`;
-        card.querySelector('img').onclick = () => openViewer(photos, index, 'photo');
-        card.querySelector('.quick-fav-btn').onclick = async (e) => {
-          e.stopPropagation();
-          await toggleFavouriteItem(item, 'photo');
-          await renderQuickGalleries();
-          await updateV7Home();
-        };
-        card.querySelector('.quick-del-btn').onclick = async (e) => {
-          e.stopPropagation();
-          await removeGalleryMediaItem(item, 'photo');
+        card.onclick = () => {
+          if (st.active) {
+            if (st.ids.has(item.id)) st.ids.delete(item.id);
+            else st.ids.add(item.id);
+            renderQuickGalleries();
+          } else {
+            openViewer(photos, index, 'photo');
+          }
         };
         photosHost.appendChild(card);
       });
@@ -571,8 +799,13 @@ async function renderQuickGalleries() {
   const videosHost = $('allVideosQuickGrid');
   if (videosHost) {
     const videos = await getAllCombinedMedia('video');
+    const st = selectionState.video;
+    videosHost.classList.toggle('is-selecting', st.active);
+    updateSelectionBarUI('video');
     if ($('allVideosCountLabel')) {
-      $('allVideosCountLabel').textContent = `${videos.length} ${videos.length === 1 ? 'video' : 'videos'} · Tap to watch in full player`;
+      $('allVideosCountLabel').textContent = st.active
+        ? `Tap videos to select for deletion · ${st.ids.size} selected`
+        : `${videos.length} ${videos.length === 1 ? 'video' : 'videos'} · Tap to watch in full player`;
     }
     videosHost.innerHTML = '';
     if (!videos.length) {
@@ -581,9 +814,10 @@ async function renderQuickGalleries() {
       videos.forEach((item, index) => {
         const src = getViewerSrc(item);
         const card = document.createElement('article');
-        card.className = 'quick-video-card';
-        const isFav = favs.has(item.id);
+        const isSelected = st.active && st.ids.has(item.id);
+        card.className = 'quick-video-card' + (isSelected ? ' selected' : '');
         card.innerHTML = `
+          ${st.active ? `<span class="quick-select-badge" aria-hidden="true">${isSelected ? '✓' : ''}</span>` : ''}
           <div class="quick-video-thumb">
             <video src="${src}" muted playsinline preload="metadata"></video>
             <button class="quick-play-overlay" type="button" aria-label="Play ${escapeHtml(item.name || 'Video')}">▶</button>
@@ -593,27 +827,45 @@ async function renderQuickGalleries() {
               <strong>${escapeHtml(item.name || 'Batch Video')}</strong>
               <small>${item.builtin ? 'Archive Montage' : 'Device Upload'}</small>
             </div>
-            <div class="quick-card-actions">
-              <button class="quick-fav-btn ${isFav ? 'active' : ''}" type="button" title="Toggle Favourite">${isFav ? '♥' : '♡'}</button>
-              <button class="quick-del-btn" type="button" title="Remove video" aria-label="Remove video">✕</button>
-            </div>
           </div>`;
-        card.querySelector('.quick-video-thumb').onclick = () => openViewer(videos, index, 'video');
-        card.querySelector('.quick-fav-btn').onclick = async (e) => {
-          e.stopPropagation();
-          await toggleFavouriteItem(item, 'video');
-          await renderQuickGalleries();
-          await updateV7Home();
-        };
-        card.querySelector('.quick-del-btn').onclick = async (e) => {
-          e.stopPropagation();
-          await removeGalleryMediaItem(item, 'video');
+        card.onclick = () => {
+          if (st.active) {
+            if (st.ids.has(item.id)) st.ids.delete(item.id);
+            else st.ids.add(item.id);
+            renderQuickGalleries();
+          } else {
+            openViewer(videos, index, 'video');
+          }
         };
         videosHost.appendChild(card);
       });
     }
   }
 }
+
+$('selectPhotosBtn')?.addEventListener('click', () => setSelectionMode('photo', !selectionState.photo.active));
+$('cancelSelectPhotosBtn')?.addEventListener('click', () => setSelectionMode('photo', false));
+$('deleteSelectedPhotosBtn')?.addEventListener('click', async () => {
+  const photos = await getAllCombinedMedia('photo');
+  const chosen = photos.filter((x) => selectionState.photo.ids.has(x.id));
+  if (!chosen.length) return;
+  if (!confirm(`Delete ${chosen.length} selected ${chosen.length === 1 ? 'photo' : 'photos'}?`)) return;
+  selectionState.photo.active = false;
+  selectionState.photo.ids.clear();
+  await deleteMediaItems(chosen, 'photo');
+});
+
+$('selectVideosBtn')?.addEventListener('click', () => setSelectionMode('video', !selectionState.video.active));
+$('cancelSelectVideosBtn')?.addEventListener('click', () => setSelectionMode('video', false));
+$('deleteSelectedVideosBtn')?.addEventListener('click', async () => {
+  const videos = await getAllCombinedMedia('video');
+  const chosen = videos.filter((x) => selectionState.video.ids.has(x.id));
+  if (!chosen.length) return;
+  if (!confirm(`Delete ${chosen.length} selected ${chosen.length === 1 ? 'video' : 'videos'}?`)) return;
+  selectionState.video.active = false;
+  selectionState.video.ids.clear();
+  await deleteMediaItems(chosen, 'video');
+});
 
 $('quickUploadPhotoBtn')?.addEventListener('click', () => addMedia('photo'));
 $('quickUploadVideoBtn')?.addEventListener('click', () => addMedia('video'));
@@ -636,7 +888,7 @@ function openViewer(items, index, type) {
   currentViewerType = type;
   viewerScale = 1;
   renderViewer();
-  $('mediaViewerDialog').showModal();
+  openDialog($('mediaViewerDialog'));
 }
 
 function getViewerSrc(item) {
@@ -807,7 +1059,7 @@ async function renderJourney() {
   updateV7Home();
 }
 
-$('addJourneyBtn').onclick = () => $('newJourneyDialog').showModal();
+$('addJourneyBtn').onclick = () => openDialog($('newJourneyDialog'));
 $('newJourneyForm').onsubmit = async (e) => {
   e.preventDefault();
   const file = $('journeyMedia').files[0] || null;
@@ -855,14 +1107,14 @@ function showFiveMemories() {
   host.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 $('randomBtn').onclick = showFiveMemories;
-$('randomBack').onclick = () => showPage(Math.max(0, currentPage - 1));
+$('randomBack').onclick = goBackInApp;
 
-// Memories of the Day, Favourites, Search, Letters, Backup & Restore
+// Memories of the Day, Search, Letters, Backup & Restore
 let activeLetterProfile = null;
 let memoryDayItems = [];
 const V7_STORES = [
   'profiles', 'folders', 'media', 'journeys', 'hiddenMedia',
-  'favorites', 'mediaMeta', 'letters', 'recycle',
+  'mediaMeta', 'letters', 'recycle',
   'messages', 'groups', 'groupMessages', 'channels', 'channelPosts'
 ];
 
@@ -1005,7 +1257,7 @@ async function openMemoryDayPicker() {
     };
     grid.appendChild(b);
   });
-  dlg.showModal();
+  openDialog(dlg);
 }
 
 async function randomizeMemoryDay() {
@@ -1022,8 +1274,8 @@ async function updateV7Home() {
   const hidden = new Set((await getAll('hiddenMedia')).map((x) => x.id));
   const p = (window.BUILTIN_MEDIA.photos || []).filter((_, i) => !hidden.has(`builtin-photos-b${i}`)).length;
   const v = (window.BUILTIN_MEDIA.videos || []).filter((_, i) => !hidden.has(`builtin-videos-b${i}`)).length;
-  const [local, profiles, journeys, favs, msgs, grpMsgs, chPosts] = await Promise.all([
-    getAll('media'), getAll('profiles'), getAll('journeys'), getAll('favorites'),
+  const [local, profiles, journeys, msgs, grpMsgs, chPosts] = await Promise.all([
+    getAll('media'), getAll('profiles'), getAll('journeys'),
     getAll('messages'), getAll('groupMessages'), getAll('channelPosts')
   ]);
   const lp = local.filter((x) => x.type === 'photo').length;
@@ -1035,29 +1287,9 @@ async function updateV7Home() {
       <div class="stat-item"><b>${v + lv}</b><span>Videos</span></div>
       <div class="stat-item"><b>${profiles.length}</b><span>Legends</span></div>
       <div class="stat-item"><b>${journeys.length}</b><span>Journeys</span></div>
-      <div class="stat-item"><b>${favs.length}</b><span>Favourites</span></div>
       <div class="stat-item"><b>${totalMsgs}</b><span>Messages</span></div>`;
   }
   await renderMemoryDay();
-}
-
-async function toggleFavouriteItem(item, type) {
-  const favs = await getAll('favorites');
-  if (favs.some((x) => x.id === item.id)) {
-    await del('favorites', item.id);
-    showToast('Removed from Favourites');
-  } else {
-    await put('favorites', {
-      id: item.id,
-      type,
-      name: item.name || '',
-      src: item.builtin ? item.src : null,
-      folderId: item.folderId || null,
-      builtin: !!item.builtin,
-      created: Date.now()
-    });
-    showToast('Saved to Favourites ♥');
-  }
 }
 
 async function getMeta(id) {
@@ -1068,24 +1300,26 @@ async function refreshViewerV7() {
   const item = currentViewerItems[currentViewerIndex];
   if (!item || !DB) return;
   const meta = await getMeta(item.id);
-  const favs = await getAll('favorites');
-  const isFav = favs.some((x) => x.id === item.id);
-  if ($('viewerFavourite')) {
-    $('viewerFavourite').textContent = isFav ? '♥' : '♡';
-    $('viewerFavourite').classList.toggle('active', isFav);
-  }
   if ($('viewerMetaLine')) {
     $('viewerMetaLine').textContent = [meta?.date, meta?.caption].filter(Boolean).join(' • ') || (item.builtin ? 'Batch 2025–26 Archive' : 'Device Upload');
   }
 }
 
-$('viewerFavourite').onclick = async () => {
+$('viewerDelete').onclick = async () => {
   const item = currentViewerItems[currentViewerIndex];
   if (!item) return;
-  await toggleFavouriteItem(item, currentViewerType);
-  await refreshViewerV7();
-  await renderQuickGalleries();
-  await updateV7Home();
+  if (!confirm(`Delete this ${currentViewerType} from your gallery?`)) return;
+  stopSlideshow();
+  await deleteMediaItems([item], currentViewerType);
+  currentViewerItems.splice(currentViewerIndex, 1);
+  if (!currentViewerItems.length) {
+    $('mediaViewerDialog')?.close();
+    return;
+  }
+  if (currentViewerIndex >= currentViewerItems.length) {
+    currentViewerIndex = currentViewerItems.length - 1;
+  }
+  renderViewer();
 };
 
 $('viewerInfo').onclick = async () => {
@@ -1095,7 +1329,7 @@ $('viewerInfo').onclick = async () => {
   $('metaDate').value = m?.date || '';
   $('metaCaption').value = m?.caption || '';
   $('metaDialog').dataset.mediaId = item.id;
-  $('metaDialog').showModal();
+  openDialog($('metaDialog'));
 };
 
 $('metaForm').onsubmit = async (e) => {
@@ -1175,7 +1409,7 @@ async function openFriendLetter(p) {
   const l = all.find((x) => x.id === p.id);
   $('letterTitle').textContent = `Letter to ${p.n}`;
   $('letterText').value = l?.text || defaultLetter(p);
-  $('letterDialog').showModal();
+  openDialog($('letterDialog'));
 }
 $('saveLetterBtn').onclick = async () => {
   if (!activeLetterProfile) return;
@@ -1374,15 +1608,15 @@ async function markMessagesSeen() {
 }
 
 async function openMessagesDialog(tab = null, directTarget = null) {
-  await waitDB();
-  syncSenderDropdown();
   if (tab) activeMsgTab = tab;
   setActiveMsgTabUI();
   pendingMsgMedia = null;
   if ($('msgAttachmentBar')) $('msgAttachmentBar').hidden = true;
   if ($('msgMediaInput')) $('msgMediaInput').value = '';
-  closeNavDrawer();
-  $('messagesDialog').showModal();
+  closeNavDrawerUI();
+  openDialog($('messagesDialog'));
+  await waitDB();
+  syncSenderDropdown();
   await markMessagesSeen();
   await renderMessageList();
 
@@ -1433,8 +1667,12 @@ document.querySelectorAll('.msg-tab').forEach((btn) => {
 
 $('msgSearchInput')?.addEventListener('input', renderMessageList);
 $('msgBackToListBtn')?.addEventListener('click', () => {
-  $('msgThreadPane')?.classList.remove('mobile-show');
-  $('msgListPane')?.classList.remove('mobile-hide');
+  if (currentHistState.msgThread && currentHistState.ogDepth > 0) {
+    history.back();
+  } else {
+    $('msgThreadPane')?.classList.remove('mobile-show');
+    $('msgListPane')?.classList.remove('mobile-hide');
+  }
 });
 
 $('msgCreateActionBtn')?.addEventListener('click', () => {
@@ -1447,9 +1685,9 @@ $('msgCreateActionBtn')?.addEventListener('click', () => {
       label.innerHTML = `<input type="checkbox" value="${escapeHtml(p.n)}" checked /><span>${escapeHtml(p.n)} <small>(${escapeHtml(p.nick)})</small></span>`;
       list.appendChild(label);
     });
-    $('createGroupDialog').showModal();
+    openDialog($('createGroupDialog'));
   } else if (activeMsgTab === 'channels') {
-    $('createChannelDialog').showModal();
+    openDialog($('createChannelDialog'));
   }
 });
 
@@ -1588,11 +1826,15 @@ async function renderMessageList() {
 }
 
 async function openChatThread(thread) {
+  const wasInThread = $('msgThreadPane')?.classList.contains('mobile-show');
   activeThread = thread;
   $('msgEmptyPlaceholder').hidden = true;
   $('msgActiveThread').hidden = false;
   $('msgThreadPane')?.classList.add('mobile-show');
   $('msgListPane')?.classList.add('mobile-hide');
+  if (!isApplyingHistory && !wasInThread && $('messagesDialog')?.open) {
+    pushHistState({ msgThread: true });
+  }
   await renderMessageList();
   await renderActiveThread();
 }
@@ -1794,7 +2036,7 @@ $('msgClearThreadBtn')?.addEventListener('click', async () => {
 function openSearchDialog() {
   $('searchInput').value = '';
   $('searchResults').innerHTML = '<div class="empty-state">Type to search names, nicknames, captions, photos, videos, or messages</div>';
-  $('searchDialog').showModal();
+  openDialog($('searchDialog'));
   setTimeout(() => $('searchInput').focus(), 80);
 }
 $('searchBtn')?.addEventListener('click', openSearchDialog);
@@ -1872,20 +2114,24 @@ $('searchInput')?.addEventListener('input', async () => {
     b.type = 'button';
     b.innerHTML = `<b>${escapeHtml(r.title)}</b><small>${escapeHtml(r.sub || '')}</small>`;
     b.onclick = async () => {
-      $('searchDialog').close();
       if (r.kind === 'profile') {
         const arr = await getAll('profiles');
         activeProfiles = arr.sort((a, b2) => (a.order ?? 9999) - (b2.order ?? 9999));
+        $('searchDialog').close();
         openProfile(activeProfiles.findIndex((x) => x.id === r.id));
       } else if (r.kind === 'journey') {
+        $('searchDialog').close();
         showPage(2);
         setTimeout(() => document.querySelector(`[data-journey-id="${r.id}"]`)?.scrollIntoView({ behavior: 'smooth' }), 100);
       } else if (r.kind === 'dm') {
+        $('searchDialog').close();
         openMessagesDialog('chats', r.peer);
       } else if (r.kind === 'groupMsg') {
+        $('searchDialog').close();
         openMessagesDialog('groups');
       } else {
         const item = await resolveMedia(r.id);
+        $('searchDialog').close();
         if (item) openViewer([item], 0, item.type);
       }
     };
@@ -1893,36 +2139,7 @@ $('searchInput')?.addEventListener('input', async () => {
   });
 });
 
-// Favourites
-async function openFavouritesDialog() {
-  await renderFavourites();
-  $('favouritesDialog').showModal();
-}
-$('favBtn')?.addEventListener('click', openFavouritesDialog);
-$('toolsFavBtn')?.addEventListener('click', () => { $('toolsDialog')?.close(); openFavouritesDialog(); });
-
-async function renderFavourites() {
-  const host = $('favouritesGrid');
-  const favs = await getAll('favorites');
-  host.innerHTML = '';
-  if (!favs.length) {
-    host.innerHTML = '<div class="empty-state">No favourites yet — tap ♡ on any photo or video.</div>';
-    return;
-  }
-  for (const f of favs) {
-    const item = await resolveMedia(f.id);
-    if (!item) { await del('favorites', f.id); continue; }
-    const card = document.createElement('button');
-    card.className = 'fav-card';
-    card.type = 'button';
-    const src = getViewerSrc(item);
-    card.innerHTML = item.type === 'photo'
-      ? `<img src="${src}" alt="${escapeHtml(item.name || '')}" referrerpolicy="no-referrer" onerror="this.src='assets/common.jpg'"><span>${escapeHtml(item.name || 'Memory')}</span>`
-      : `<video src="${src}" muted preload="metadata"></video><span>${escapeHtml(item.name || 'Video')}</span>`;
-    card.onclick = () => { $('favouritesDialog').close(); openViewer([item], 0, item.type); };
-    host.appendChild(card);
-  }
-}
+$('toolsAddBtn')?.addEventListener('click', () => { $('toolsDialog')?.close(); openAddSheet(); });
 
 // Settings, Theme Switcher, Backup & Restore Center
 $('themePicker')?.addEventListener('click', (e) => {
@@ -1933,7 +2150,7 @@ $('themePicker')?.addEventListener('click', (e) => {
 $('toolsBtn').onclick = () => {
   $('restoreList').hidden = true;
   applyTheme(document.documentElement.dataset.theme || 'obsidian-gold', false);
-  $('toolsDialog').showModal();
+  openDialog($('toolsDialog'));
 };
 $('restoreBtn').onclick = renderRestoreCenter;
 
