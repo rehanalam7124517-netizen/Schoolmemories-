@@ -8,9 +8,5 @@ window.BUILTIN_MEDIA = {
     "media/photos/06_Playground_Cricket_Match.jpg",
     "media/photos/07_Batch_2025_26_Archive.jpg"
   ],
-  "videos": [
-    "media/videos/01_Batch_2025_26_Highlights.mp4",
-    "media/videos/02_Kushinagar_Trip_And_Match.mp4",
-    "media/videos/03_Classroom_And_Farewell.mp4"
-  ]
+  "videos": []
 };

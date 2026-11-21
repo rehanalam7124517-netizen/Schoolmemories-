@@ -655,10 +655,6 @@ async function hydrateBuiltins() {
     const found = await discoverDirectory('media/photos/', PHOTO_EXT);
     if (found.length) window.BUILTIN_MEDIA.photos = found;
   }
-  if (!window.BUILTIN_MEDIA.videos?.length) {
-    const found = await discoverDirectory('media/videos/', VIDEO_EXT);
-    if (found.length) window.BUILTIN_MEDIA.videos = found;
-  }
 }
 
 // IndexedDB stores (upgrading v14 -> v15 smoothly, ensuring message stores exist)
