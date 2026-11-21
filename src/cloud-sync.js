@@ -1,7 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import {
-  getFirestore,
+  initializeFirestore,
   doc,
   getDocFromServer,
   setDoc,
@@ -16,12 +16,16 @@ import {
 import firebaseConfig from '../firebase-applet-config.json';
 
 const BATCH_KEY = 'mtps-og-2025-26';
-const MAX_INLINE_DATA_CHARS = 720000;
+const MAX_INLINE_DATA_CHARS = 760000;
 const CHUNK_CHAR_SIZE = 450000;
-const MAX_VIDEO_SYNC_BYTES = 12 * 1024 * 1024;
+const MAX_VIDEO_SYNC_BYTES = 25 * 1024 * 1024;
 
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+export const db = initializeFirestore(
+  app,
+  { experimentalAutoDetectLongPolling: true },
+  firebaseConfig.firestoreDatabaseId
+);
 export const auth = getAuth(app);
 
 export const OperationType = {
@@ -81,15 +85,19 @@ function blobToDataUrl(blob) {
 
 function dataUrlToBlob(dataUrl, fallbackType = 'application/octet-stream') {
   if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.includes(',')) return null;
-  const [head, body] = dataUrl.split(',');
-  const mime = (head.match(/data:([^;]+)/) || [])[1] || fallbackType;
-  const bin = atob(body);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return new Blob([bytes], { type: mime });
+  try {
+    const [head, body] = dataUrl.split(',');
+    const mime = (head.match(/data:([^;]+)/) || [])[1] || fallbackType;
+    const bin = atob(body);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new Blob([bytes], { type: mime });
+  } catch {
+    return null;
+  }
 }
 
-async function compressImageToDataUrl(fileOrBlob, maxSide = 1280, maxChars = 480000) {
+async function compressImageToDataUrl(fileOrBlob, maxSide = 1280, maxChars = 540000) {
   if (!fileOrBlob) return '';
   if (!String(fileOrBlob.type || '').startsWith('image/')) {
     return blobToDataUrl(fileOrBlob);
@@ -105,7 +113,7 @@ async function compressImageToDataUrl(fileOrBlob, maxSide = 1280, maxChars = 480
     const natW = img.naturalWidth || 1;
     const natH = img.naturalHeight || 1;
     let scale = Math.min(1, maxSide / Math.max(natW, natH));
-    const qualities = [0.8, 0.68, 0.56, 0.44];
+    const qualities = [0.82, 0.7, 0.58, 0.46];
     for (let attempt = 0; attempt < qualities.length; attempt++) {
       const w = Math.max(1, Math.round(natW * scale));
       const h = Math.max(1, Math.round(natH * scale));
@@ -118,9 +126,14 @@ async function compressImageToDataUrl(fileOrBlob, maxSide = 1280, maxChars = 480
       if (out.length <= maxChars || attempt === qualities.length - 1) {
         return out;
       }
-      scale *= 0.8;
+      scale *= 0.78;
     }
     return '';
+  } catch {
+    // Fallback for uncommon image formats if small enough inline
+    const raw = await blobToDataUrl(fileOrBlob);
+    if (raw.length <= MAX_INLINE_DATA_CHARS) return raw;
+    throw new Error('FILE_TOO_LARGE_FOR_CLOUD');
   } finally {
     URL.revokeObjectURL(objUrl);
   }
@@ -130,9 +143,10 @@ async function encodeMediaForCloud(id, blob, mimeType, isImageMaxSide = 1280) {
   if (!blob) return { inlineData: '', chunked: false, chunkCount: 0, mimeType: mimeType || '' };
   const resolvedType = mimeType || blob.type || 'application/octet-stream';
   if (resolvedType.startsWith('image/')) {
-    const dataUrl = await compressImageToDataUrl(blob, isImageMaxSide, 520000);
+    const dataUrl = await compressImageToDataUrl(blob, isImageMaxSide, 560000);
     if (dataUrl.length <= MAX_INLINE_DATA_CHARS) {
-      return { inlineData: dataUrl, chunked: false, chunkCount: 0, mimeType: 'image/jpeg' };
+      const actualMime = (dataUrl.match(/^data:([^;]+)/) || [])[1] || 'image/jpeg';
+      return { inlineData: dataUrl, chunked: false, chunkCount: 0, mimeType: actualMime };
     }
   }
   if (blob.size > MAX_VIDEO_SYNC_BYTES) {
@@ -142,11 +156,13 @@ async function encodeMediaForCloud(id, blob, mimeType, isImageMaxSide = 1280) {
   if (dataUrl.length <= MAX_INLINE_DATA_CHARS) {
     return { inlineData: dataUrl, chunked: false, chunkCount: 0, mimeType: resolvedType };
   }
-  // Split into ordered 450KB chunks in mediaChunks collection
   const safeMediaId = sanitizeId(id);
   const totalChunks = Math.ceil(dataUrl.length / CHUNK_CHAR_SIZE);
+  if (totalChunks > 120) {
+    throw new Error('FILE_TOO_LARGE_FOR_CLOUD');
+  }
   const created = Date.now();
-  const batchSize = 5;
+  const batchSize = 2;
   for (let start = 0; start < totalChunks; start += batchSize) {
     const batch = writeBatch(db);
     const end = Math.min(totalChunks, start + batchSize);
@@ -191,10 +207,16 @@ async function resolveCloudBlob(id, inlineData, chunked, mimeType, chunkCount = 
         .filter((s) => s.exists())
         .map((s) => s.data())
         .sort((a, b) => (a.index || 0) - (b.index || 0));
-      if (parts.length !== chunkCount) return null;
+      if (parts.length !== chunkCount) {
+        chunkDownloadCache.delete(safeMediaId);
+        return null;
+      }
       const fullDataUrl = parts.map((p) => p.data || '').join('');
-      return dataUrlToBlob(fullDataUrl, mimeType);
+      const blob = dataUrlToBlob(fullDataUrl, mimeType);
+      if (!blob) chunkDownloadCache.delete(safeMediaId);
+      return blob;
     } catch (error) {
+      chunkDownloadCache.delete(safeMediaId);
       handleFirestoreError(error, OperationType.GET, 'mediaChunks');
       return null;
     }
@@ -212,11 +234,14 @@ function stopSync() {
 
 function subscribeCollection(colName, onData) {
   const q = query(collection(db, colName), where('batchKey', '==', BATCH_KEY));
+  let queue = Promise.resolve();
   const unsub = onSnapshot(
     q,
     (snapshot) => {
       const rows = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-      onData(rows, snapshot);
+      queue = queue
+        .then(() => Promise.resolve(onData(rows, snapshot)))
+        .catch((err) => console.warn(`[OGCloud] ${colName} handler error:`, err));
     },
     (error) => {
       try {
@@ -249,7 +274,7 @@ async function patchDoc(colName, docId, fields, fallbackFullPayload = null) {
     await updateDoc(doc(db, colName, id), fields);
     return true;
   } catch (error) {
-    if (error?.code === 'not-found' && fallbackFullPayload) {
+    if ((error?.code === 'not-found' || String(error?.message || '').includes('No document to update')) && fallbackFullPayload) {
       return upsertDoc(colName, id, fallbackFullPayload, OperationType.WRITE);
     }
     handleFirestoreError(error, OperationType.UPDATE, path);
@@ -259,6 +284,7 @@ async function patchDoc(colName, docId, fields, fallbackFullPayload = null) {
 
 window.OGCloud = {
   BATCH_KEY,
+  MAX_VIDEO_SYNC_BYTES,
   dataUrlToBlob,
   resolveCloudBlob,
   stopSync,
@@ -288,11 +314,13 @@ window.OGCloud = {
         mimeType: msg.mediaType || ''
       };
     }
+    const created = Number(msg.created || Date.now());
+    const updated = Math.max(created, Number(msg.updated || created));
     const payload = {
       id,
       batchKey: BATCH_KEY,
       groupId: String(msg.groupId || 'grp-og-legends').slice(0, 64),
-      sender: String(msg.sender || 'Legend').slice(0, 80),
+      sender: String(msg.sender || 'Legend').slice(0, 80) || 'Legend',
       text: String(msg.text || '').slice(0, 4000),
       mediaData: mediaInfo.inlineData || '',
       mediaType: String(mediaInfo.mimeType || '').slice(0, 80),
@@ -307,8 +335,8 @@ window.OGCloud = {
           }
         : null,
       reactions: msg.reactions && typeof msg.reactions === 'object' ? msg.reactions : {},
-      created: Number(msg.created || Date.now()),
-      updated: Number(msg.updated || msg.created || Date.now()),
+      created,
+      updated,
       deleted: Boolean(msg.deleted)
     };
     return upsertDoc('groupMessages', id, payload, OperationType.CREATE);
@@ -317,37 +345,44 @@ window.OGCloud = {
   async updateMessageReactions(msg, reactions) {
     const msgId = typeof msg === 'string' ? msg : msg.id;
     const nextReactions = reactions && typeof reactions === 'object' ? reactions : {};
-    const fallback = typeof msg === 'object' && msg ? { ...msg, reactions: nextReactions, updated: Date.now() } : null;
-    if (fallback) {
-      fallback.batchKey = BATCH_KEY;
-      fallback.groupId = String(fallback.groupId || 'grp-og-legends').slice(0, 64);
-      fallback.text = String(fallback.text || '').slice(0, 4000);
-      fallback.deleted = Boolean(fallback.deleted);
-      fallback.created = Number(fallback.created || Date.now());
-      delete fallback.mediaBlob;
-    }
+    const nowTs = Date.now();
+    const created = Number((typeof msg === 'object' && msg?.created) || nowTs);
+    const updated = Math.max(created, nowTs);
+    const fallback = typeof msg === 'object' && msg ? {
+      id: sanitizeId(msgId),
+      batchKey: BATCH_KEY,
+      groupId: String(msg.groupId || 'grp-og-legends').slice(0, 64),
+      sender: String(msg.sender || 'Legend').slice(0, 80) || 'Legend',
+      text: String(msg.text || '').slice(0, 4000),
+      reactions: nextReactions,
+      created,
+      updated,
+      deleted: Boolean(msg.deleted)
+    } : null;
     return patchDoc('groupMessages', msgId, {
       reactions: nextReactions,
-      updated: Date.now()
+      updated
     }, fallback);
   },
 
   async markMessageDeleted(msg) {
     const msgId = typeof msg === 'string' ? msg : msg.id;
     const nowTs = Date.now();
+    const created = Number((typeof msg === 'object' && msg?.created) || nowTs);
+    const updated = Math.max(created, nowTs);
     const fallback = typeof msg === 'object' && msg ? {
       id: sanitizeId(msgId),
       batchKey: BATCH_KEY,
       groupId: String(msg.groupId || 'grp-og-legends').slice(0, 64),
-      sender: String(msg.sender || 'Legend').slice(0, 80),
+      sender: String(msg.sender || 'Legend').slice(0, 80) || 'Legend',
       text: String(msg.text || '').slice(0, 4000),
-      created: Number(msg.created || nowTs),
-      updated: nowTs,
+      created,
+      updated,
       deleted: true
     } : null;
     return patchDoc('groupMessages', msgId, {
       deleted: true,
-      updated: nowTs
+      updated
     }, fallback);
   },
 
@@ -357,29 +392,43 @@ window.OGCloud = {
     if (item.blob && !item.dataUrl && !item.chunked) {
       mediaInfo = await encodeMediaForCloud(id, item.blob, item.blob.type, 1280);
     }
+    const created = Number(item.created || Date.now());
+    const updated = Math.max(created, Number(item.updated || created));
     const payload = {
       id,
       batchKey: BATCH_KEY,
       folderId: String(item.folderId || (item.type === 'video' ? 'builtin-videos' : 'builtin-photos')).slice(0, 64),
       type: item.type === 'video' ? 'video' : 'photo',
-      name: String(item.name || 'Batch Memory').slice(0, 200),
+      name: String(item.name || 'Batch Memory').slice(0, 200) || 'Batch Memory',
       mimeType: String(mediaInfo.mimeType || '').slice(0, 80),
       dataUrl: mediaInfo.inlineData || '',
       chunked: Boolean(mediaInfo.chunked),
       chunkCount: Number(mediaInfo.chunkCount || 0),
       addedBy: String(item.addedBy || 'Legend').slice(0, 80),
-      created: Number(item.created || Date.now()),
-      updated: Number(item.updated || item.created || Date.now()),
+      created,
+      updated,
       deleted: Boolean(item.deleted)
     };
     return upsertDoc('mediaItems', id, payload, OperationType.CREATE);
   },
 
-  async markMediaDeleted(mediaId, deleted = true) {
+  async markMediaDeleted(itemOrId, deleted = true) {
+    const mediaId = typeof itemOrId === 'string' ? itemOrId : itemOrId?.id;
+    const nowTs = Date.now();
+    const fallback = typeof itemOrId === 'object' && itemOrId ? {
+      id: sanitizeId(mediaId),
+      batchKey: BATCH_KEY,
+      folderId: String(itemOrId.folderId || (itemOrId.type === 'video' ? 'builtin-videos' : 'builtin-photos')).slice(0, 64),
+      type: itemOrId.type === 'video' ? 'video' : 'photo',
+      name: String(itemOrId.name || 'Batch Memory').slice(0, 200),
+      created: Number(itemOrId.created || nowTs),
+      updated: Math.max(Number(itemOrId.created || nowTs), nowTs),
+      deleted: Boolean(deleted)
+    } : null;
     return patchDoc('mediaItems', mediaId, {
       deleted: Boolean(deleted),
-      updated: Date.now()
-    });
+      updated: nowTs
+    }, fallback);
   },
 
   async pushProfile(p) {
@@ -393,7 +442,7 @@ window.OGCloud = {
       batchKey: BATCH_KEY,
       builtin: Boolean(p.builtin),
       order: Number(p.order ?? 999),
-      n: String(p.n || 'Legend').slice(0, 80),
+      n: String(p.n || 'Legend').slice(0, 80) || 'Legend',
       nick: String(p.nick || '').slice(0, 80),
       title: String(p.title || '').slice(0, 100),
       nature: String(p.nature || '').slice(0, 80),
@@ -401,18 +450,36 @@ window.OGCloud = {
       memory: String(p.memory || '').slice(0, 3000),
       image: String(p.image || 'assets/common.jpg').slice(0, 300),
       imageData,
-      profileVer: Number(p.profileVer || 2),
+      profileVer: Number(p.profileVer || 3),
       updated: Number(p.updated || Date.now()),
       deleted: Boolean(p.deleted)
     };
     return upsertDoc('profiles', id, payload, OperationType.WRITE);
   },
 
-  async markProfileDeleted(profileId, deleted = true) {
+  async markProfileDeleted(profileOrId, deleted = true) {
+    const profileId = typeof profileOrId === 'string' ? profileOrId : profileOrId?.id;
+    const nowTs = Date.now();
+    const fallback = typeof profileOrId === 'object' && profileOrId ? {
+      id: sanitizeId(profileId),
+      batchKey: BATCH_KEY,
+      builtin: Boolean(profileOrId.builtin),
+      order: Number(profileOrId.order ?? 999),
+      n: String(profileOrId.n || 'Legend').slice(0, 80),
+      nick: String(profileOrId.nick || '').slice(0, 80),
+      title: String(profileOrId.title || '').slice(0, 100),
+      nature: String(profileOrId.nature || '').slice(0, 80),
+      special: String(profileOrId.special || '').slice(0, 100),
+      memory: String(profileOrId.memory || '').slice(0, 3000),
+      image: String(profileOrId.image || 'assets/common.jpg').slice(0, 300),
+      profileVer: Number(profileOrId.profileVer || 3),
+      updated: nowTs,
+      deleted: Boolean(deleted)
+    } : null;
     return patchDoc('profiles', profileId, {
       deleted: Boolean(deleted),
-      updated: Date.now()
-    });
+      updated: nowTs
+    }, fallback);
   },
 
   async pushJourney(j) {
@@ -427,9 +494,9 @@ window.OGCloud = {
     const payload = {
       id,
       batchKey: BATCH_KEY,
-      date: String(j.date || '').slice(0, 100),
-      title: String(j.title || '').slice(0, 160),
-      message: String(j.message || '').slice(0, 4000),
+      date: String(j.date || '').slice(0, 100) || 'Memory',
+      title: String(j.title || '').slice(0, 160) || 'Journey Story',
+      message: String(j.message || '').slice(0, 4000) || 'School memory',
       order: Number(j.order || Date.now()),
       builtin: Boolean(j.builtin),
       mediaData,
@@ -440,11 +507,24 @@ window.OGCloud = {
     return upsertDoc('journeys', id, payload, OperationType.WRITE);
   },
 
-  async markJourneyDeleted(journeyId, deleted = true) {
+  async markJourneyDeleted(journeyOrId, deleted = true) {
+    const journeyId = typeof journeyOrId === 'string' ? journeyOrId : journeyOrId?.id;
+    const nowTs = Date.now();
+    const fallback = typeof journeyOrId === 'object' && journeyOrId ? {
+      id: sanitizeId(journeyId),
+      batchKey: BATCH_KEY,
+      date: String(journeyOrId.date || '').slice(0, 100) || 'Memory',
+      title: String(journeyOrId.title || '').slice(0, 160) || 'Journey Story',
+      message: String(journeyOrId.message || '').slice(0, 4000) || 'School memory',
+      order: Number(journeyOrId.order || nowTs),
+      builtin: Boolean(journeyOrId.builtin),
+      updated: nowTs,
+      deleted: Boolean(deleted)
+    } : null;
     return patchDoc('journeys', journeyId, {
       deleted: Boolean(deleted),
-      updated: Date.now()
-    });
+      updated: nowTs
+    }, fallback);
   },
 
   async pushMediaMeta(m) {

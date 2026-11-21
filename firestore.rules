@@ -59,7 +59,7 @@ service cloud.firestore {
         || data.reactions == null
         || (
           data.reactions is map
-          && data.reactions.keys().size() <= 8
+          && data.reactions.keys().size() <= 16
         );
     }
 
@@ -75,7 +75,7 @@ service cloud.firestore {
         && data.groupId is string && data.groupId == 'grp-og-legends'
         && data.sender is string && data.sender.size() >= 1 && data.sender.size() <= 80
         && data.text is string && data.text.size() <= 4000
-        && isOptString(data, 'mediaData', 780000)
+        && isOptString(data, 'mediaData', 850000)
         && isOptString(data, 'mediaType', 80)
         && isOptString(data, 'mediaName', 200)
         && isOptBool(data, 'chunked')
@@ -100,7 +100,7 @@ service cloud.firestore {
         && data.type is string && (data.type == 'photo' || data.type == 'video')
         && data.name is string && data.name.size() >= 1 && data.name.size() <= 200
         && isOptString(data, 'mimeType', 80)
-        && isOptString(data, 'dataUrl', 780000)
+        && isOptString(data, 'dataUrl', 850000)
         && isOptBool(data, 'chunked')
         && isOptNumber(data, 'chunkCount')
         && isOptString(data, 'addedBy', 80)
@@ -115,7 +115,7 @@ service cloud.firestore {
         && data.id == docId
         && isBatchMemberPayload(data)
         && data.mediaId is string && isValidId(data.mediaId)
-        && data.index is number && data.index >= 0 && data.index <= 64
+        && data.index is number && data.index >= 0 && data.index <= 120
         && data.data is string && data.data.size() >= 1 && data.data.size() <= 650000
         && data.created is number && data.created > 0;
     }
@@ -138,7 +138,7 @@ service cloud.firestore {
         && isOptString(data, 'special', 100)
         && isOptString(data, 'memory', 3000)
         && isOptString(data, 'image', 300)
-        && isOptString(data, 'imageData', 650000)
+        && isOptString(data, 'imageData', 750000)
         && isOptNumber(data, 'profileVer')
         && data.updated is number && data.updated > 0
         && data.deleted is bool;
@@ -157,7 +157,7 @@ service cloud.firestore {
         && data.message is string && data.message.size() >= 1 && data.message.size() <= 4000
         && data.order is number
         && isOptBool(data, 'builtin')
-        && isOptString(data, 'mediaData', 780000)
+        && isOptString(data, 'mediaData', 850000)
         && isOptString(data, 'mediaType', 80)
         && data.updated is number && data.updated > 0
         && data.deleted is bool;
@@ -232,7 +232,11 @@ service cloud.firestore {
                     && incoming().id == existing().id
                     && incoming().batchKey == existing().batchKey
                     && incoming().created == existing().created
-                    && incoming().diff(existing()).affectedKeys().hasOnly(['deleted', 'updated', 'name']);
+                    && incoming().type == existing().type
+                    && incoming().diff(existing()).affectedKeys().hasOnly([
+                      'deleted', 'updated', 'name', 'mimeType', 'dataUrl',
+                      'chunked', 'chunkCount', 'addedBy', 'folderId'
+                    ]);
       allow delete: if isValidId(mediaId) && isBatchMemberPayload(existing());
     }
 
@@ -256,7 +260,7 @@ service cloud.firestore {
                     && incoming().batchKey == existing().batchKey
                     && incoming().diff(existing()).affectedKeys().hasOnly([
                       'n', 'nick', 'title', 'nature', 'special', 'memory',
-                      'image', 'imageData', 'profileVer', 'updated', 'deleted', 'order'
+                      'image', 'imageData', 'profileVer', 'updated', 'deleted', 'order', 'builtin'
                     ]);
       allow delete: if isValidId(profileId) && isBatchMemberPayload(existing());
     }
@@ -271,7 +275,8 @@ service cloud.firestore {
                     && incoming().id == existing().id
                     && incoming().batchKey == existing().batchKey
                     && incoming().diff(existing()).affectedKeys().hasOnly([
-                      'date', 'title', 'message', 'mediaData', 'mediaType', 'updated', 'deleted', 'order'
+                      'date', 'title', 'message', 'mediaData', 'mediaType',
+                      'updated', 'deleted', 'order', 'builtin'
                     ]);
       allow delete: if isValidId(journeyId) && isBatchMemberPayload(existing());
     }

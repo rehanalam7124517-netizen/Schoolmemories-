@@ -13,8 +13,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,500&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <script type="module" crossorigin src="./assets/index-9o19Pkej.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-BpW4YJZ-.css">
+  <script type="module" crossorigin src="./assets/index-CfaVF8k_.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-B3JhDGxc.css">
 </head>
 <body>
   <div id="app">
@@ -127,6 +127,21 @@
           <!-- PAGE 0: HOME FEED (Android App Home Screen) -->
           <article class="page active" data-page="0" id="homePage">
             <div class="home-stack">
+              <!-- Upfront Permissions Prompt (Notifications & Media Access) -->
+              <section id="permBanner" class="perm-banner" aria-live="polite" hidden>
+                <div class="perm-banner-icon" aria-hidden="true">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" fill="currentColor" fill-opacity="0.16"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                </div>
+                <div class="perm-banner-copy">
+                  <strong>Turn on Live Batch Notifications</strong>
+                  <small id="permBannerDesc">Get instant alerts on every new message, photo, video, journey, or Legend update.</small>
+                </div>
+                <div class="perm-banner-actions">
+                  <button id="permAllowBtn" class="primary-btn small" type="button">Allow</button>
+                  <button id="permDismissBtn" class="mini-btn" type="button">Later</button>
+                </div>
+              </section>
+
               <!-- Featured Batch Banner (Photo on top, intro below) -->
               <section class="hero-card">
                 <div class="hero-photo-wrap">
@@ -726,6 +741,11 @@
                     <b>Restore Center</b>
                     <small>Recover deleted items</small>
                   </button>
+                  <button id="toolsPermBtn" class="tool-card tool-card-wide" type="button">
+                    <span class="tool-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" fill="currentColor" fill-opacity="0.16"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
+                    <b>Live Notifications & Permissions</b>
+                    <small id="toolsPermStatus">Checking permission status...</small>
+                  </button>
                 </div>
                 <div id="restoreList" class="restore-list" hidden></div>
               </div>
@@ -815,7 +835,7 @@
 
   <div id="appToast" class="app-toast" role="status" aria-live="polite" hidden></div>
 
-  <script src="js/media-manifest.js?v=15.5.0"></script>
-  <script src="js/app.js?v=15.5.0"></script>
+  <script src="js/media-manifest.js?v=15.7.0"></script>
+  <script src="js/app.js?v=15.7.0"></script>
 </body>
 </html>

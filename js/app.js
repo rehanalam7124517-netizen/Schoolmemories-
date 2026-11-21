@@ -11,7 +11,7 @@ const PEOPLE = [
   { n: 'Krishna', nick: 'Maharaj', title: 'The Maharaj', nature: 'Cool', special: 'Royal Presence', memory: 'Maharaj — the name itself said everything. That calm presence and those shared classroom moments made him unforgettable.' },
   { n: 'Hemant', nick: 'Sustmal', title: 'The Sustmal', nature: 'Laid-back', special: 'Sleepyhead', memory: 'Sustmal — the unhurried vibe and quiet humour are what set Hemant apart. Some memories do not need noise to be remembered.' },
   { n: 'Depanshu', nick: 'Nautanki', title: 'The Nautanki', nature: 'Dramatic', special: 'Drama King', memory: 'Nautanki — the theatrics and humour never failed to keep the whole group entertained. Those scenes are ones we will always smile back on.' },
-  { n: 'Sahin Praveen', nick: 'Sahin', title: 'The Graceful One', nature: 'Kind & Cheerful', special: 'Brightest Smile', memory: 'One of the sweetest and most genuine souls in our batch. Always polite, warm-hearted, and ready with a smile that could brighten any ordinary classroom afternoon. The shared laughs and group memories with Sahin Praveen will always hold a special place in our story.' }
+  { n: 'Sahin', nick: 'Selfish One', title: 'The Graceful One', nature: 'Kind & Cheerful', special: 'Brightest Smile', memory: 'One of the sweetest and most genuine souls in our batch. Always polite, warm-hearted, and ready with a smile that could brighten any ordinary classroom afternoon. The shared laughs and group memories with Sahin will always hold a special place in our story.' }
 ];
 
 const $ = (id) => document.getElementById(id);
@@ -399,6 +399,216 @@ function showToast(msg) {
   }, 2400);
 }
 
+// =========================================================================
+// PERMISSIONS & LIVE NOTIFICATIONS (ANDROID APK BRIDGE + WEB NOTIFICATIONS)
+// =========================================================================
+const selfCreatedIds = new Map();
+function markSelfCreated(id, updatedTs = null) {
+  const now = Date.now();
+  for (const [k, exp] of selfCreatedIds.entries()) {
+    if (exp < now) selfCreatedIds.delete(k);
+  }
+  const ttl = now + 5 * 60 * 1000;
+  if (id) selfCreatedIds.set(String(id), ttl);
+  if (id && updatedTs) selfCreatedIds.set(`${id}:${updatedTs}`, ttl);
+}
+function isSelfCreated(id, updatedTs = null) {
+  const key = String(id || '');
+  const exp = selfCreatedIds.get(key);
+  if (exp && exp >= Date.now()) return true;
+  if (updatedTs) {
+    const expUpd = selfCreatedIds.get(`${key}:${updatedTs}`);
+    if (expUpd && expUpd >= Date.now()) return true;
+  }
+  return false;
+}
+
+function isNativeAndroid() {
+  return Boolean(window.OGNativeBridge && typeof window.OGNativeBridge.isNativeApp === 'function' && window.OGNativeBridge.isNativeApp());
+}
+function areAlertsEnabled() {
+  return localStorage.getItem('og_notifs_enabled') !== '0';
+}
+function getPermissionStatus() {
+  if (isNativeAndroid()) {
+    const notifGranted = Boolean(window.OGNativeBridge.hasNotificationPermission?.());
+    const mediaGranted = Boolean(window.OGNativeBridge.hasMediaPermission?.());
+    return { native: true, notifGranted, mediaGranted, denied: !notifGranted, defaultState: !notifGranted };
+  }
+  if ('Notification' in window) {
+    const perm = Notification.permission;
+    return {
+      native: false,
+      notifGranted: perm === 'granted',
+      mediaGranted: true,
+      denied: perm === 'denied',
+      defaultState: perm === 'default'
+    };
+  }
+  return { native: false, notifGranted: false, mediaGranted: true, denied: false, defaultState: false };
+}
+
+function syncPermissionUI() {
+  const status = getPermissionStatus();
+  const enabled = areAlertsEnabled();
+  const banner = $('permBanner');
+  if (banner) {
+    if (!enabled) {
+      banner.hidden = true;
+    } else if (status.native) {
+      banner.hidden = status.notifGranted && status.mediaGranted;
+      if ($('permBannerDesc')) {
+        $('permBannerDesc').textContent = !status.notifGranted && !status.mediaGranted
+          ? 'Allow Notifications & Photos/Videos access for instant batch alerts and uploads.'
+          : (!status.notifGranted
+            ? 'Allow Notifications permission to get instant message, photo & video alerts.'
+            : 'Allow Photos & Videos access so you can upload memories smoothly.');
+      }
+    } else {
+      const dismissed = localStorage.getItem('og_perm_banner_dismissed') === '1';
+      banner.hidden = status.notifGranted || status.denied || !status.defaultState || dismissed;
+    }
+  }
+
+  const toolsStatus = $('toolsPermStatus');
+  if (toolsStatus) {
+    if (!enabled) {
+      toolsStatus.textContent = 'Live alerts muted · Tap to turn back on';
+    } else if (status.native) {
+      if (status.notifGranted && status.mediaGranted) {
+        toolsStatus.textContent = 'Notifications & Media Active · Tap to mute';
+      } else if (!status.notifGranted && !status.mediaGranted) {
+        toolsStatus.textContent = 'Notifications & Media permission needed · Tap to Allow';
+      } else if (!status.notifGranted) {
+        toolsStatus.textContent = 'Notifications permission needed · Tap to Allow';
+      } else {
+        toolsStatus.textContent = 'Photos & Videos access needed · Tap to Allow';
+      }
+    } else if (!('Notification' in window)) {
+      toolsStatus.textContent = 'In-app live alerts active';
+    } else if (status.notifGranted) {
+      toolsStatus.textContent = 'Browser notifications Active · Tap to mute';
+    } else if (status.denied) {
+      toolsStatus.textContent = 'Blocked in browser settings · Tap to check';
+    } else {
+      toolsStatus.textContent = 'Tap to Allow live message, photo & video alerts';
+    }
+  }
+}
+
+async function requestAppPermissions(quiet = false) {
+  localStorage.setItem('og_notifs_enabled', '1');
+  localStorage.removeItem('og_perm_banner_dismissed');
+  if (isNativeAndroid()) {
+    try {
+      window.OGNativeBridge.requestAllPermissions();
+      setTimeout(syncPermissionUI, 700);
+      if (!quiet) showToast('Checking Android Notifications & Media permissions...');
+    } catch {}
+    syncPermissionUI();
+    return true;
+  }
+  if (!('Notification' in window)) {
+    syncPermissionUI();
+    if (!quiet) showToast('In-app live alerts enabled');
+    return false;
+  }
+  if (Notification.permission === 'granted') {
+    syncPermissionUI();
+    if (!quiet) showToast('Live notifications are already active');
+    return true;
+  }
+  if (Notification.permission === 'denied') {
+    syncPermissionUI();
+    if (!quiet) showToast('Allow notifications in your browser site settings');
+    return false;
+  }
+  try {
+    const result = await Notification.requestPermission();
+    syncPermissionUI();
+    if (result === 'granted') {
+      if (!quiet) showToast('Live notifications enabled for everyone!');
+      return true;
+    }
+    if (!quiet) showToast('You can enable notifications anytime in Settings');
+    return false;
+  } catch {
+    syncPermissionUI();
+    return false;
+  }
+}
+
+function maybePromptPermissionOnce() {
+  if (!areAlertsEnabled() || isNativeAndroid()) return;
+  if ('Notification' in window && Notification.permission === 'default' && !localStorage.getItem('og_perm_auto_asked')) {
+    localStorage.setItem('og_perm_auto_asked', '1');
+    requestAppPermissions(true);
+  }
+}
+
+window.__ogOpenNotificationTarget = function (pageIdx) {
+  const idx = Number(pageIdx);
+  if (!Number.isFinite(idx)) return;
+  if (idx === PAGE.MESSAGES) {
+    openMessagesDialog();
+  } else if (idx >= 0 && idx < pageEls.length) {
+    showPage(idx);
+  }
+};
+
+function notifyBatchEvent({ title, body, targetPage = PAGE.HOME, tag = 'og-live', toastText = null }) {
+  if (!areAlertsEnabled()) return;
+  const cleanTitle = String(title || 'The OG Legends').slice(0, 80);
+  const cleanBody = String(body || '').slice(0, 180);
+
+  if (isNativeAndroid()) {
+    try {
+      window.OGNativeBridge.notify(cleanTitle, cleanBody, Number(targetPage), String(tag || 'og-live'));
+    } catch {}
+  } else if ('Notification' in window && Notification.permission === 'granted') {
+    try {
+      const n = new Notification(cleanTitle, {
+        body: cleanBody,
+        icon: 'assets/og-logo.png',
+        badge: 'assets/og-logo.png',
+        tag: String(tag || 'og-live')
+      });
+      n.onclick = () => {
+        try { window.focus(); } catch {}
+        window.__ogOpenNotificationTarget(targetPage);
+        n.close();
+      };
+    } catch {}
+  }
+
+  if (document.visibilityState === 'visible' && currentPage !== targetPage) {
+    showToast(toastText || `${cleanTitle}: ${cleanBody}`);
+  }
+}
+
+$('permAllowBtn')?.addEventListener('click', () => requestAppPermissions(false));
+$('permDismissBtn')?.addEventListener('click', () => {
+  localStorage.setItem('og_perm_banner_dismissed', '1');
+  if ($('permBanner')) $('permBanner').hidden = true;
+});
+$('toolsPermBtn')?.addEventListener('click', async () => {
+  const status = getPermissionStatus();
+  if (!areAlertsEnabled()) {
+    await requestAppPermissions(false);
+    return;
+  }
+  if (status.notifGranted && status.mediaGranted) {
+    localStorage.setItem('og_notifs_enabled', '0');
+    syncPermissionUI();
+    showToast('Live notifications muted');
+    return;
+  }
+  await requestAppPermissions(false);
+});
+window.addEventListener('ogpermissions:updated', syncPermissionUI);
+document.addEventListener('DOMContentLoaded', syncPermissionUI);
+setTimeout(syncPermissionUI, 150);
+
 const inlineConfirmTimers = new WeakMap();
 function resetConfirmTap(btn) {
   if (!btn) return;
@@ -470,7 +680,7 @@ let activeProfiles = [];
 function profileImageSrc(p) {
   return p?.imageBlob ? URL.createObjectURL(p.imageBlob) : (p?.image || 'assets/common.jpg');
 }
-const PROFILE_SEED_VER = 2;
+const PROFILE_SEED_VER = 3;
 async function seedProfiles() {
   const saved = await getAll('profiles');
   for (let i = 0; i < PEOPLE.length; i++) {
@@ -478,7 +688,7 @@ async function seedProfiles() {
     const existing = saved.find((x) => x.id === id);
     if (!localStorage.getItem('deleted_' + id)) {
       if (!existing) {
-        await put('profiles', { ...PEOPLE[i], id, builtin: true, order: i, image: 'assets/common.jpg', profileVer: PROFILE_SEED_VER });
+        await put('profiles', { ...PEOPLE[i], id, builtin: true, order: i, image: 'assets/common.jpg', profileVer: PROFILE_SEED_VER, updated: Date.now() });
       } else if (HAS_SMALLCAPS.test(existing.n || '') || (existing.profileVer || 0) < PROFILE_SEED_VER) {
         await put('profiles', {
           ...existing,
@@ -487,7 +697,8 @@ async function seedProfiles() {
           builtin: true,
           order: existing.order ?? i,
           image: existing.image || 'assets/common.jpg',
-          profileVer: PROFILE_SEED_VER
+          profileVer: PROFILE_SEED_VER,
+          updated: Date.now()
         });
       }
     }
@@ -577,12 +788,13 @@ function renderProfileDetailBody(p) {
     if (!file) return;
     p.imageBlob = file;
     p.updated = Date.now();
+    markSelfCreated(p.id, p.updated);
     await put('profiles', p);
     await renderPeople();
     const updated = activeProfiles.find((x) => x.id === p.id) || p;
     renderProfileDetailBody(updated);
-    showToast('Profile photo updated');
-    window.OGCloud?.pushProfile(p).catch(() => {});
+    showToast('Profile photo updated & syncing...');
+    queueCloudOp('profile:' + p.id, () => window.OGCloud.pushProfile(p), 'Profile photo sync retry scheduled');
   };
   $('deleteProfileBtn').onclick = async () => {
     if (!confirmTap($('deleteProfileBtn'), 'Tap again to delete')) return;
@@ -591,7 +803,7 @@ function renderProfileDetailBody(p) {
     if (p.builtin) localStorage.setItem('deleted_' + p.id, '1');
     await renderPeople();
     showToast(`${p.n} deleted (recoverable in Restore Center)`);
-    window.OGCloud?.markProfileDeleted(p.id, true).catch(() => {});
+    queueCloudOp('profile-del:' + p.id, () => window.OGCloud.markProfileDeleted(p, true));
     finishSubscreenTo(PAGE.LEGENDS);
   };
 }
@@ -622,11 +834,13 @@ $('newProfileForm').onsubmit = async (e) => {
     updated: Date.now()
   };
   if (file) p.imageBlob = file;
+  markSelfCreated(p.id, p.updated);
+  maybePromptPermissionOnce();
   await put('profiles', p);
   e.target.reset();
   await renderPeople();
   showToast(`Added ${p.n} to The Legends`);
-  window.OGCloud?.pushProfile(p).catch(() => {});
+  queueCloudOp('profile:' + p.id, () => window.OGCloud.pushProfile(p));
   finishSubscreenTo(PAGE.LEGENDS);
 };
 
@@ -778,11 +992,11 @@ async function deleteMediaItems(items, type) {
     if (item.builtin) {
       await recycleItem('hiddenMedia', item.id, item);
       await put('hiddenMedia', { id: item.id });
-      window.OGCloud?.setHiddenMedia(item.id, true).catch(() => {});
+      queueCloudOp('hidden:' + item.id, () => window.OGCloud.setHiddenMedia(item.id, true));
     } else {
       await recycleItem('media', item.id, item);
       await del('media', item.id);
-      window.OGCloud?.markMediaDeleted(item.id, true).catch(() => {});
+      queueCloudOp('media-del:' + item.id, () => window.OGCloud.markMediaDeleted(item, true));
     }
   }
   await renderQuickGalleries();
@@ -1035,21 +1249,25 @@ async function addMedia(type) {
       created: Date.now(),
       updated: Date.now()
     };
+    markSelfCreated(item.id, item.updated);
     await put('media', item);
     createdList.push(item);
   }
+  maybePromptPermissionOnce();
   await renderQuickGalleries();
   await updateV7Home();
   showToast(`Added ${files.length} ${type}${files.length > 1 ? 's' : ''} — syncing online...`);
-  if (window.OGCloud) {
-    Promise.all(createdList.map((it) => window.OGCloud.pushMediaItem(it)))
-      .then(() => showToast(`${files.length} ${type}${files.length > 1 ? 's' : ''} synced to everyone!`))
-      .catch((err) => {
-        if (err?.message === 'FILE_TOO_LARGE_FOR_CLOUD') {
-          showToast('Saved on device (video max 12 MB for online sync)');
-        }
-      });
-  }
+  Promise.all(
+    createdList.map((it) => queueCloudOp('media:' + it.id, () => window.OGCloud.pushMediaItem(it)))
+  )
+    .then(() => showToast(`${files.length} ${type}${files.length > 1 ? 's' : ''} synced to everyone!`))
+    .catch((err) => {
+      if (err?.message === 'FILE_TOO_LARGE_FOR_CLOUD') {
+        showToast('Saved on device (video max 25 MB for online sync)');
+      } else {
+        showToast('Saved locally — will auto-sync when online');
+      }
+    });
   return files.length;
 }
 
@@ -1105,7 +1323,7 @@ async function renderJourney() {
       renderJourney();
       updateV7Home();
       showToast('Journey memory deleted');
-      window.OGCloud?.markJourneyDeleted(j.id, true).catch(() => {});
+      queueCloudOp('journey-del:' + j.id, () => window.OGCloud.markJourneyDeleted(j, true));
     };
     host.appendChild(c);
   });
@@ -1129,11 +1347,13 @@ $('newJourneyForm').onsubmit = async (e) => {
     j.mediaBlob = file;
     j.mediaType = file.type;
   }
+  markSelfCreated(j.id, j.updated);
+  maybePromptPermissionOnce();
   await put('journeys', j);
   e.target.reset();
   await renderJourney();
   showToast('Added memory to Our Journey');
-  window.OGCloud?.pushJourney(j).catch(() => {});
+  queueCloudOp('journey:' + j.id, () => window.OGCloud.pushJourney(j));
   finishSubscreenTo(PAGE.JOURNEY);
 };
 
@@ -1213,7 +1433,8 @@ function saveMemoryDayIds(ids, pushCloud = true) {
   const clean = [...new Set(ids)];
   localStorage.setItem('og-memory-day-items', JSON.stringify(clean));
   if (pushCloud) {
-    window.OGCloud?.pushMemoryOfDay(clean).catch(() => {});
+    markSelfCreated('appState:memoryOfDay', Date.now());
+    queueCloudOp('appState:memoryOfDay', () => window.OGCloud.pushMemoryOfDay(clean));
   }
 }
 function dailyDefaultIds(all) {
@@ -1401,11 +1622,12 @@ $('metaForm').onsubmit = async (e) => {
     caption: $('metaCaption').value.trim(),
     updated: Date.now()
   };
+  markSelfCreated(meta.id, meta.updated);
   await put('mediaMeta', meta);
   await refreshViewerV7();
   await updateV7Home();
   showToast('Caption & date saved');
-  window.OGCloud?.pushMediaMeta(meta).catch(() => {});
+  queueCloudOp('meta:' + meta.id, () => window.OGCloud.pushMediaMeta(meta));
   goBackInApp();
 };
 
@@ -1475,9 +1697,10 @@ async function openFriendLetter(p) {
 $('saveLetterBtn').onclick = async () => {
   if (!activeLetterProfile) return;
   const letter = { id: activeLetterProfile.id, text: $('letterText').value, updated: Date.now() };
+  markSelfCreated(letter.id, letter.updated);
   await put('letters', letter);
   showToast(`Letter saved for ${activeLetterProfile.n}`);
-  window.OGCloud?.pushLetter(letter).catch(() => {});
+  queueCloudOp('letter:' + letter.id, () => window.OGCloud.pushLetter(letter));
   goBackInApp();
 };
 
@@ -1649,7 +1872,7 @@ async function seedSocialMessages() {
     await put('groupMessages', {
       id: 'gm-3',
       groupId: SHARED_GROUP_ID,
-      sender: 'Sahin Praveen',
+      sender: 'Sahin',
       text: 'This batch keepsake feels so warm ❤️ So good seeing everyone here together!',
       created: now - 1900000
     });
@@ -1824,7 +2047,7 @@ async function renderGroupChat({ preserveScroll = false } = {}) {
       await renderGroupChat({ preserveScroll: true });
       await updateV7Home();
       showToast('Message deleted');
-      window.OGCloud?.markMessageDeleted(m).catch(() => {});
+      queueCloudOp('gm-del:' + m.id, () => window.OGCloud.markMessageDeleted(m));
     };
     row.querySelectorAll('.chat-react-chip').forEach((chip) => {
       chip.onclick = async () => {
@@ -1838,9 +2061,10 @@ async function renderGroupChat({ preserveScroll = false } = {}) {
         else delete nextReactions[emoji];
         m.reactions = nextReactions;
         m.updated = Date.now();
+        markSelfCreated(m.id, m.updated);
         await put('groupMessages', m);
         await renderGroupChat({ preserveScroll: true });
-        window.OGCloud?.updateMessageReactions(m, nextReactions).catch(() => {});
+        queueCloudOp('gm-react:' + m.id, () => window.OGCloud.updateMessageReactions(m, nextReactions));
       };
     });
     if (m.mediaBlob && !m.mediaType?.startsWith('video')) {
@@ -1904,6 +2128,8 @@ $('msgComposeForm')?.addEventListener('submit', async (e) => {
     msg.mediaName = pendingMsgMedia.name;
   }
 
+  markSelfCreated(msg.id, msg.updated);
+  maybePromptPermissionOnce();
   await put('groupMessages', msg);
   $('msgTextInput').value = '';
   clearPendingAttachment();
@@ -1913,9 +2139,11 @@ $('msgComposeForm')?.addEventListener('submit', async (e) => {
   await renderGroupChat();
   await updateV7Home();
   $('msgTextInput')?.focus();
-  window.OGCloud?.pushMessage(msg).catch((err) => {
+  queueCloudOp('gm:' + msg.id, () => window.OGCloud.pushMessage(msg)).catch((err) => {
     if (err?.message === 'FILE_TOO_LARGE_FOR_CLOUD') {
-      showToast('Media saved on device (max 12 MB for online sync)');
+      showToast('Media saved on device (max 25 MB for online sync)');
+    } else {
+      showToast('Message queued — will sync online automatically');
     }
   });
 });
@@ -1941,7 +2169,7 @@ $('msgClearThreadBtn')?.addEventListener('click', async () => {
   const targets = all.filter((x) => x.groupId === SHARED_GROUP_ID);
   for (const m of targets) {
     await del('groupMessages', m.id);
-    window.OGCloud?.markMessageDeleted(m).catch(() => {});
+    queueCloudOp('gm-del:' + m.id, () => window.OGCloud.markMessageDeleted(m));
   }
   clearReplyTarget();
   await markMessagesSeen();
@@ -2058,6 +2286,7 @@ $('themePicker')?.addEventListener('click', (e) => {
 $('toolsBtn').onclick = () => {
   $('restoreList').hidden = true;
   applyTheme(document.documentElement.dataset.theme || 'obsidian-gold', false);
+  syncPermissionUI();
   showPage(PAGE.TOOLS);
 };
 $('restoreBtn').onclick = renderRestoreCenter;
@@ -2083,17 +2312,23 @@ async function renderRestoreCenter() {
     row.innerHTML = `<span>${escapeHtml(r.kind)} · ${escapeHtml(r.data?.name || r.data?.n || r.data?.title || r.originalId)}</span><button class="mini-btn" type="button">Restore</button>`;
     row.querySelector('button').onclick = async () => {
       if (r.kind === 'profile') {
-        await put('profiles', r.data);
-        window.OGCloud?.pushProfile({ ...r.data, deleted: false, updated: Date.now() }).catch(() => {});
+        const restored = { ...r.data, deleted: false, updated: Date.now() };
+        markSelfCreated(restored.id, restored.updated);
+        await put('profiles', restored);
+        queueCloudOp('profile:' + restored.id, () => window.OGCloud.pushProfile(restored));
       } else if (r.kind === 'journey') {
-        await put('journeys', r.data);
-        window.OGCloud?.pushJourney({ ...r.data, deleted: false, updated: Date.now() }).catch(() => {});
+        const restored = { ...r.data, deleted: false, updated: Date.now() };
+        markSelfCreated(restored.id, restored.updated);
+        await put('journeys', restored);
+        queueCloudOp('journey:' + restored.id, () => window.OGCloud.pushJourney(restored));
       } else if (r.kind === 'media') {
-        await put('media', r.data);
-        window.OGCloud?.pushMediaItem({ ...r.data, deleted: false, updated: Date.now() }).catch(() => {});
+        const restored = { ...r.data, deleted: false, updated: Date.now() };
+        markSelfCreated(restored.id, restored.updated);
+        await put('media', restored);
+        queueCloudOp('media:' + restored.id, () => window.OGCloud.pushMediaItem(restored));
       } else if (r.kind === 'hiddenMedia') {
         await del('hiddenMedia', r.originalId);
-        window.OGCloud?.setHiddenMedia(r.originalId, false).catch(() => {});
+        queueCloudOp('hidden:' + r.originalId, () => window.OGCloud.setHiddenMedia(r.originalId, false));
       }
       localStorage.removeItem('deleted_' + r.originalId);
       await del('recycle', r.id);
@@ -2111,7 +2346,7 @@ async function renderRestoreCenter() {
     row.innerHTML = `<span>Hidden media · ${escapeHtml(h.id)}</span><button class="mini-btn" type="button">Restore</button>`;
     row.querySelector('button').onclick = async () => {
       await del('hiddenMedia', h.id);
-      window.OGCloud?.setHiddenMedia(h.id, false).catch(() => {});
+      queueCloudOp('hidden:' + h.id, () => window.OGCloud.setHiddenMedia(h.id, false));
       await renderRestoreCenter();
       await renderQuickGalleries();
       await updateV7Home();
@@ -2221,28 +2456,92 @@ let cloudSyncStarted = false;
 let cloudBootSeededMessages = false;
 let cloudBootSeededProfiles = false;
 let cloudBootSeededJourneys = false;
+const cloudHydrated = {
+  groupMessages: false,
+  mediaItems: false,
+  profiles: false,
+  journeys: false,
+  letters: false,
+  appState: false
+};
 const uploadedMissingIds = new Set();
+const pendingCloudOps = new Map();
+let retryTimer = null;
+
+function queueCloudOp(key, fn) {
+  if (!window.OGCloud) {
+    pendingCloudOps.set(key, fn);
+    return Promise.resolve(false);
+  }
+  return Promise.resolve()
+    .then(() => fn())
+    .then((ok) => {
+      pendingCloudOps.delete(key);
+      return ok;
+    })
+    .catch((err) => {
+      if (err?.message === 'FILE_TOO_LARGE_FOR_CLOUD') {
+        pendingCloudOps.delete(key);
+        throw err;
+      }
+      pendingCloudOps.set(key, fn);
+      scheduleCloudRetry();
+      console.warn('[OGCloud] Queued for retry:', key, err?.message || err);
+      return false;
+    });
+}
+
+function scheduleCloudRetry() {
+  if (retryTimer) return;
+  retryTimer = setTimeout(() => {
+    retryTimer = null;
+    flushPendingCloudOps();
+  }, 6000);
+}
+
+async function flushPendingCloudOps() {
+  if (!window.OGCloud || !pendingCloudOps.size) return;
+  const entries = [...pendingCloudOps.entries()];
+  for (const [key, fn] of entries) {
+    try {
+      await fn();
+      pendingCloudOps.delete(key);
+    } catch (err) {
+      if (err?.message === 'FILE_TOO_LARGE_FOR_CLOUD') {
+        pendingCloudOps.delete(key);
+      } else {
+        scheduleCloudRetry();
+      }
+    }
+  }
+}
 
 function initCloudSyncOnce() {
   if (cloudSyncStarted || !DB || !window.OGCloud) return;
   cloudSyncStarted = true;
   const cloud = window.OGCloud;
 
+  flushPendingCloudOps();
+
   cloud.startRealtimeSync({
     async onGroupMessages(rows) {
       if (!rows.length && !cloudBootSeededMessages) {
         cloudBootSeededMessages = true;
+        cloudHydrated.groupMessages = true;
         const locals = (await getAll('groupMessages')).filter((m) => m.groupId === SHARED_GROUP_ID);
         for (const m of locals) {
-          cloud.pushMessage(m).catch(() => {});
+          queueCloudOp('gm:' + m.id, () => cloud.pushMessage(m)).catch(() => {});
         }
         return;
       }
       cloudBootSeededMessages = true;
+      const wasHydrated = cloudHydrated.groupMessages;
+      cloudHydrated.groupMessages = true;
       const locals = await getAll('groupMessages');
       const localMap = new Map(locals.map((x) => [x.id, x]));
       const cloudIds = new Set(rows.map((r) => r.id));
       let changed = false;
+      const incomingOtherMsgs = [];
 
       for (const r of rows) {
         const cur = localMap.get(r.id);
@@ -2253,14 +2552,15 @@ function initCloudSyncOnce() {
           }
           continue;
         }
-        const needBlob = !cur?.mediaBlob && (r.mediaData || r.chunked);
+        const needBlob = !cur?.mediaBlob && Boolean(r.mediaData || r.chunked);
         const isNewer = !cur || Number(r.updated || 0) > Number(cur.updated || 0);
         if (isNewer || needBlob) {
-          let mediaBlob = cur?.mediaBlob || null;
-          if (!mediaBlob && (r.mediaData || r.chunked)) {
-            mediaBlob = await cloud.resolveCloudBlob(r.id, r.mediaData, r.chunked, r.mediaType, r.chunkCount);
+          const isStaticSeed = /^gm-[1-5]$/.test(r.id);
+          if (!cur && wasHydrated && !isStaticSeed && !isSelfCreated(r.id)) {
+            incomingOtherMsgs.push(r);
           }
-          const rec = {
+          // Save text immediately so new messages pop in right away like WhatsApp/Instagram
+          const baseRec = {
             id: r.id,
             groupId: r.groupId || SHARED_GROUP_ID,
             sender: r.sender || 'Legend',
@@ -2270,21 +2570,35 @@ function initCloudSyncOnce() {
             replyTo: r.replyTo || null,
             reactions: r.reactions || {}
           };
-          if (mediaBlob) {
-            rec.mediaBlob = mediaBlob;
-            rec.mediaType = r.mediaType || mediaBlob.type;
-            rec.mediaName = r.mediaName || 'Shared media';
+          if (cur?.mediaBlob) {
+            baseRec.mediaBlob = cur.mediaBlob;
+            baseRec.mediaType = cur.mediaType || r.mediaType || cur.mediaBlob.type;
+            baseRec.mediaName = cur.mediaName || r.mediaName || 'Shared media';
           }
-          await put('groupMessages', rec);
+          await put('groupMessages', baseRec);
           changed = true;
+
+          if (!cur?.mediaBlob && (r.mediaData || r.chunked)) {
+            const mediaBlob = await cloud.resolveCloudBlob(r.id, r.mediaData, r.chunked, r.mediaType, r.chunkCount);
+            if (mediaBlob) {
+              baseRec.mediaBlob = mediaBlob;
+              baseRec.mediaType = r.mediaType || mediaBlob.type;
+              baseRec.mediaName = r.mediaName || 'Shared media';
+              await put('groupMessages', baseRec);
+              changed = true;
+            }
+          }
         }
       }
 
-      // Push any local messages not yet in cloud
+      // Push any user-created local messages not yet in cloud (ignore static gm-1..gm-5 seeds)
       for (const m of locals) {
-        if (m.groupId === SHARED_GROUP_ID && !cloudIds.has(m.id) && !uploadedMissingIds.has('gm:' + m.id)) {
+        const isStaticSeed = /^gm-[1-5]$/.test(m.id);
+        if (!isStaticSeed && m.groupId === SHARED_GROUP_ID && !cloudIds.has(m.id) && !uploadedMissingIds.has('gm:' + m.id)) {
           uploadedMissingIds.add('gm:' + m.id);
-          cloud.pushMessage(m).catch(() => {});
+          queueCloudOp('gm:' + m.id, () => cloud.pushMessage(m)).catch(() => {
+            uploadedMissingIds.delete('gm:' + m.id);
+          });
         }
       }
 
@@ -2295,14 +2609,32 @@ function initCloudSyncOnce() {
           await markMessagesSeen();
           await renderGroupChat();
         }
+        if (incomingOtherMsgs.length && (currentPage !== PAGE.MESSAGES || document.hidden)) {
+          const latest = incomingOtherMsgs.sort((a, b) => Number(a.created || 0) - Number(b.created || 0)).pop();
+          const hasMedia = Boolean(latest.mediaData || latest.chunked);
+          const mediaAction = latest.mediaType?.startsWith('video') ? 'sent a video' : 'sent a photo';
+          const body = hasMedia
+            ? (latest.text ? `${mediaAction}: ${latest.text}` : `${mediaAction} in Batch Group`)
+            : (latest.text || 'Sent a new message');
+          notifyBatchEvent({
+            title: `💬 ${latest.sender || 'Legend'} (Batch Group)`,
+            body,
+            targetPage: PAGE.MESSAGES,
+            tag: 'gm-' + latest.id,
+            toastText: `💬 ${latest.sender || 'Legend'}: ${body.slice(0, 46)}`
+          });
+        }
       }
     },
 
     async onMediaItems(rows) {
+      const wasHydrated = cloudHydrated.mediaItems;
+      cloudHydrated.mediaItems = true;
       const locals = await getAll('media');
       const localMap = new Map(locals.map((x) => [x.id, x]));
       const cloudIds = new Set(rows.map((r) => r.id));
       let changed = false;
+      const incomingNewMedia = [];
 
       for (const r of rows) {
         const cur = localMap.get(r.id);
@@ -2313,7 +2645,7 @@ function initCloudSyncOnce() {
           }
           continue;
         }
-        const needBlob = !cur?.blob && (r.dataUrl || r.chunked);
+        const needBlob = !cur?.blob && Boolean(r.dataUrl || r.chunked);
         const isNewer = !cur || Number(r.updated || 0) > Number(cur.updated || 0);
         if (isNewer || needBlob) {
           const blob = cur?.blob || await cloud.resolveCloudBlob(r.id, r.dataUrl, r.chunked, r.mimeType, r.chunkCount);
@@ -2329,6 +2661,9 @@ function initCloudSyncOnce() {
               updated: Number(r.updated || r.created || Date.now())
             });
             changed = true;
+            if (!cur && wasHydrated && !isSelfCreated(r.id)) {
+              incomingNewMedia.push(r);
+            }
           }
         }
       }
@@ -2337,29 +2672,60 @@ function initCloudSyncOnce() {
       for (const m of locals) {
         if (!cloudIds.has(m.id) && !uploadedMissingIds.has('media:' + m.id)) {
           uploadedMissingIds.add('media:' + m.id);
-          cloud.pushMediaItem(m).catch(() => {});
+          queueCloudOp('media:' + m.id, () => cloud.pushMediaItem(m)).catch(() => {
+            uploadedMissingIds.delete('media:' + m.id);
+          });
         }
       }
 
       if (changed) {
         await renderQuickGalleries();
         await updateV7Home();
+        if (currentPage === PAGE.MEMORY_DAY) await renderMemoryDay();
+        if (incomingNewMedia.length) {
+          if (incomingNewMedia.length === 1) {
+            const item = incomingNewMedia[0];
+            const isVid = item.type === 'video';
+            notifyBatchEvent({
+              title: isVid ? '🎬 New Video Added' : '📸 New Photo Added',
+              body: `${item.addedBy || 'A Legend'} added "${formatMediaTitle(item.name)}"`,
+              targetPage: isVid ? PAGE.VIDEOS : PAGE.PHOTOS,
+              tag: 'media-' + item.id
+            });
+          } else {
+            const hasVid = incomingNewMedia.some((x) => x.type === 'video');
+            const hasPhoto = incomingNewMedia.some((x) => x.type !== 'video');
+            const who = incomingNewMedia[0].addedBy || 'A Legend';
+            const kindLabel = hasPhoto && hasVid ? 'photos & videos' : (hasVid ? 'videos' : 'photos');
+            notifyBatchEvent({
+              title: `📸 ${incomingNewMedia.length} New ${kindLabel} Added`,
+              body: `${who} shared ${incomingNewMedia.length} ${kindLabel} in Gallery`,
+              targetPage: hasVid && !hasPhoto ? PAGE.VIDEOS : PAGE.PHOTOS,
+              tag: 'media-batch-' + Date.now()
+            });
+          }
+        }
       }
     },
 
     async onProfiles(rows) {
       if (!rows.length && !cloudBootSeededProfiles) {
         cloudBootSeededProfiles = true;
+        cloudHydrated.profiles = true;
         const locals = await getAll('profiles');
         for (const p of locals) {
-          cloud.pushProfile({ ...p, updated: p.updated || Date.now(), deleted: false }).catch(() => {});
+          queueCloudOp('profile:' + p.id, () => cloud.pushProfile({ ...p, updated: p.updated || Date.now(), deleted: false }));
         }
         return;
       }
       cloudBootSeededProfiles = true;
+      const wasHydrated = cloudHydrated.profiles;
+      cloudHydrated.profiles = true;
       const locals = await getAll('profiles');
       const localMap = new Map(locals.map((x) => [x.id, x]));
+      const cloudMap = new Map(rows.map((r) => [r.id, r]));
       let changed = false;
+      const incomingProfiles = [];
 
       for (const r of rows) {
         const cur = localMap.get(r.id);
@@ -2371,9 +2737,14 @@ function initCloudSyncOnce() {
           }
           continue;
         }
-        const needBlob = !cur?.imageBlob && r.imageData;
-        const isNewer = !cur || Number(r.updated || 0) > Number(cur.updated || 0);
-        if (isNewer || needBlob) {
+        const needBlob = !cur?.imageBlob && Boolean(r.imageData);
+        const higherVer = Number(r.profileVer || 0) > Number(cur?.profileVer || 0);
+        const sameVerNewer = Number(r.profileVer || 0) >= Number(cur?.profileVer || 0) && Number(r.updated || 0) > Number(cur?.updated || 0);
+        if (!cur || higherVer || sameVerNewer || needBlob) {
+          const isRemoteChange = wasHydrated && !isSelfCreated(r.id, r.updated);
+          if (isRemoteChange && (!cur || sameVerNewer)) {
+            incomingProfiles.push({ kind: cur ? 'update' : 'new', row: r });
+          }
           const imageBlob = r.imageData ? cloud.dataUrlToBlob(r.imageData, 'image/jpeg') : (cur?.imageBlob || null);
           const rec = {
             id: r.id,
@@ -2386,7 +2757,7 @@ function initCloudSyncOnce() {
             special: r.special || '',
             memory: r.memory || '',
             image: r.image || 'assets/common.jpg',
-            profileVer: Number(r.profileVer || 2),
+            profileVer: Number(r.profileVer || 3),
             updated: Number(r.updated || Date.now())
           };
           if (imageBlob) rec.imageBlob = imageBlob;
@@ -2394,24 +2765,51 @@ function initCloudSyncOnce() {
           changed = true;
         }
       }
+
+      // Push any local-only or newer profile updates to Firestore
+      for (const p of locals) {
+        const remote = cloudMap.get(p.id);
+        const localNewer = !remote || (Number(p.profileVer || 0) > Number(remote.profileVer || 0)) || (Number(p.updated || 0) > Number(remote.updated || 0) && !remote.deleted);
+        if (localNewer && !uploadedMissingIds.has('profile:' + p.id + ':' + (p.updated || 0))) {
+          uploadedMissingIds.add('profile:' + p.id + ':' + (p.updated || 0));
+          queueCloudOp('profile:' + p.id, () => cloud.pushProfile({ ...p, updated: p.updated || Date.now(), deleted: false }));
+        }
+      }
+
       if (changed) {
         await renderPeople();
+        if (incomingProfiles.length) {
+          const latest = incomingProfiles[incomingProfiles.length - 1];
+          notifyBatchEvent({
+            title: latest.kind === 'new' ? '👑 New Legend Added' : '✨ Legend Profile Updated',
+            body: latest.kind === 'new'
+              ? `${latest.row.n}${latest.row.nick ? ` (${latest.row.nick})` : ''} joined The Legends`
+              : `${latest.row.n}'s profile or photo was updated`,
+            targetPage: PAGE.LEGENDS,
+            tag: 'prof-' + latest.row.id
+          });
+        }
       }
     },
 
     async onJourneys(rows) {
       if (!rows.length && !cloudBootSeededJourneys) {
         cloudBootSeededJourneys = true;
+        cloudHydrated.journeys = true;
         const locals = await getAll('journeys');
         for (const j of locals) {
-          cloud.pushJourney({ ...j, updated: j.updated || Date.now(), deleted: false }).catch(() => {});
+          queueCloudOp('journey:' + j.id, () => cloud.pushJourney({ ...j, updated: j.updated || Date.now(), deleted: false }));
         }
         return;
       }
       cloudBootSeededJourneys = true;
+      const wasHydrated = cloudHydrated.journeys;
+      cloudHydrated.journeys = true;
       const locals = await getAll('journeys');
       const localMap = new Map(locals.map((x) => [x.id, x]));
+      const cloudMap = new Map(rows.map((r) => [r.id, r]));
       let changed = false;
+      const incomingJourneys = [];
 
       for (const r of rows) {
         const cur = localMap.get(r.id);
@@ -2423,9 +2821,12 @@ function initCloudSyncOnce() {
           }
           continue;
         }
-        const needBlob = !cur?.mediaBlob && r.mediaData;
+        const needBlob = !cur?.mediaBlob && Boolean(r.mediaData);
         const isNewer = !cur || Number(r.updated || 0) > Number(cur.updated || 0);
         if (isNewer || needBlob) {
+          if (!cur && wasHydrated && !isSelfCreated(r.id, r.updated)) {
+            incomingJourneys.push(r);
+          }
           const mediaBlob = r.mediaData ? cloud.dataUrlToBlob(r.mediaData, r.mediaType) : (cur?.mediaBlob || null);
           const rec = {
             id: r.id,
@@ -2444,14 +2845,33 @@ function initCloudSyncOnce() {
           changed = true;
         }
       }
+
+      for (const j of locals) {
+        const remote = cloudMap.get(j.id);
+        if ((!remote || Number(j.updated || 0) > Number(remote.updated || 0)) && !remote?.deleted && !uploadedMissingIds.has('journey:' + j.id)) {
+          uploadedMissingIds.add('journey:' + j.id);
+          queueCloudOp('journey:' + j.id, () => cloud.pushJourney({ ...j, updated: j.updated || Date.now(), deleted: false }));
+        }
+      }
+
       if (changed) {
         await renderJourney();
+        if (incomingJourneys.length) {
+          const latest = incomingJourneys[incomingJourneys.length - 1];
+          notifyBatchEvent({
+            title: '📖 New Journey Memory',
+            body: `${latest.title || 'New Story'}${latest.date ? ` · ${latest.date}` : ''}`,
+            targetPage: PAGE.JOURNEY,
+            tag: 'jrn-' + latest.id
+          });
+        }
       }
     },
 
     async onMediaMeta(rows) {
       const locals = await getAll('mediaMeta');
       const localMap = new Map(locals.map((x) => [x.id, x]));
+      const cloudMap = new Map(rows.map((r) => [r.id, r]));
       let changed = false;
       for (const r of rows) {
         const cur = localMap.get(r.id);
@@ -2460,17 +2880,48 @@ function initCloudSyncOnce() {
           changed = true;
         }
       }
+      for (const m of locals) {
+        const remote = cloudMap.get(m.id);
+        if ((!remote || Number(m.updated || 0) > Number(remote.updated || 0)) && !uploadedMissingIds.has('meta:' + m.id)) {
+          uploadedMissingIds.add('meta:' + m.id);
+          queueCloudOp('meta:' + m.id, () => cloud.pushMediaMeta(m));
+        }
+      }
       if (changed) await refreshViewerV7();
     },
 
     async onLetters(rows) {
+      const wasHydrated = cloudHydrated.letters;
+      cloudHydrated.letters = true;
       const locals = await getAll('letters');
       const localMap = new Map(locals.map((x) => [x.id, x]));
+      const cloudMap = new Map(rows.map((r) => [r.id, r]));
+      const updatedLetters = [];
       for (const r of rows) {
         const cur = localMap.get(r.id);
         if (!cur || Number(r.updated || 0) > Number(cur.updated || 0)) {
           await put('letters', { id: r.id, text: r.text || '', updated: Number(r.updated || Date.now()) });
+          if (wasHydrated && !isSelfCreated(r.id, r.updated)) {
+            updatedLetters.push(r);
+          }
         }
+      }
+      for (const l of locals) {
+        const remote = cloudMap.get(l.id);
+        if ((!remote || Number(l.updated || 0) > Number(remote.updated || 0)) && !uploadedMissingIds.has('letter:' + l.id)) {
+          uploadedMissingIds.add('letter:' + l.id);
+          queueCloudOp('letter:' + l.id, () => cloud.pushLetter(l));
+        }
+      }
+      if (updatedLetters.length) {
+        const latest = updatedLetters[updatedLetters.length - 1];
+        const profName = activeProfiles.find((x) => x.id === latest.id)?.n || 'a Legend';
+        notifyBatchEvent({
+          title: '✉️ Friend Letter Updated',
+          body: `A letter memory was updated for ${profName}`,
+          targetPage: PAGE.LEGENDS,
+          tag: 'let-' + latest.id
+        });
       }
     },
 
@@ -2494,6 +2945,8 @@ function initCloudSyncOnce() {
     },
 
     async onAppState(rows) {
+      const wasHydrated = cloudHydrated.appState;
+      cloudHydrated.appState = true;
       const mod = rows.find((r) => r.id === 'memoryOfDay');
       if (mod && Array.isArray(mod.ids) && mod.ids.length) {
         const current = JSON.stringify(memoryDaySavedIds());
@@ -2501,6 +2954,14 @@ function initCloudSyncOnce() {
         if (current !== incoming) {
           saveMemoryDayIds(mod.ids, false);
           await renderMemoryDay();
+          if (wasHydrated && !isSelfCreated('appState:memoryOfDay')) {
+            notifyBatchEvent({
+              title: '🌟 Memories of the Day',
+              body: 'Today’s 5 spotlight memories were refreshed!',
+              targetPage: PAGE.MEMORY_DAY,
+              tag: 'app-mod'
+            });
+          }
         }
       }
     }
@@ -2508,5 +2969,10 @@ function initCloudSyncOnce() {
 }
 
 window.addEventListener('ogcloud:ready', initCloudSyncOnce);
+window.addEventListener('online', flushPendingCloudOps);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') flushPendingCloudOps();
+});
+
 
 
