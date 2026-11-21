@@ -3,310 +3,329 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function signedIn() {
-      return request.auth != null;
+    // Global safety net: deny by default
+    match /{document=**} {
+      allow read, write: if false;
     }
 
-    function isAdmin() {
-      return signedIn()
-        && request.auth.uid == "U9D7P7hhukauNmUpLL6STrWtuma2";
+    // Core validation helpers
+    function incoming() {
+      return request.resource.data;
     }
 
-    function isOwner(uid) {
-      return signedIn() && request.auth.uid == uid;
+    function existing() {
+      return resource.data;
     }
 
-    function reelOwner(reelId) {
-      return signedIn()
-        && get(/databases/$(database)/documents/reels/$(reelId)).data.ownerId == request.auth.uid;
+    function isValidId(id) {
+      return id is string
+        && id.size() >= 1
+        && id.size() <= 128
+        && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
-    function postOwner(postId) {
-      return signedIn()
-        && get(/databases/$(database)/documents/posts/$(postId)).data.ownerId == request.auth.uid;
+    function isBatchMemberPayload(data) {
+      return data.batchKey is string
+        && data.batchKey == 'mtps-og-2025-26';
     }
 
-    function isChatMember(chatId) {
-      return signedIn()
-        && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
+    function isOptString(data, field, maxLen) {
+      return !(field in data) || (data[field] is string && data[field].size() <= maxLen);
     }
 
-    function isGroupMember(groupId) {
-      return signedIn()
-        && request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.members;
+    function isOptBool(data, field) {
+      return !(field in data) || data[field] is bool;
     }
 
-    function isGroupAdmin(groupId) {
-      return signedIn()
-        && (
-          isAdmin()
-          || request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.admins
+    function isOptNumber(data, field) {
+      return !(field in data) || (data[field] is number);
+    }
+
+    function isValidReplyMap(data) {
+      return !('replyTo' in data)
+        || data.replyTo == null
+        || (
+          data.replyTo is map
+          && data.replyTo.keys().hasAll(['id', 'sender', 'snippet'])
+          && data.replyTo.keys().hasOnly(['id', 'sender', 'snippet'])
+          && data.replyTo.id is string && data.replyTo.id.size() <= 128
+          && data.replyTo.sender is string && data.replyTo.sender.size() <= 80
+          && data.replyTo.snippet is string && data.replyTo.snippet.size() <= 400
         );
     }
 
-    function leavesOnlySelf() {
-      return signedIn()
-        && request.auth.uid in resource.data.members
-        && !(request.auth.uid in request.resource.data.members)
-        && resource.data.members.toSet().difference(request.resource.data.members.toSet()).hasOnly([request.auth.uid])
-        && request.resource.data.members.toSet().difference(resource.data.members.toSet()).size() == 0
-        && resource.data.admins.toSet().difference(request.resource.data.admins.toSet()).hasOnly([request.auth.uid])
-        && request.resource.data.admins.toSet().difference(resource.data.admins.toSet()).size() == 0
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'members','memberUsernames','admins','adminUsernames','updated'
-        ]);
+    function isValidReactionsMap(data) {
+      return !('reactions' in data)
+        || data.reactions == null
+        || (
+          data.reactions is map
+          && data.reactions.keys().size() <= 8
+        );
     }
 
-    // USERS / PROFILES
-    match /users/{uid} {
-      allow read: if signedIn();
-      allow create: if isOwner(uid) && request.resource.data.uid == uid;
-      allow update: if isAdmin() || (isOwner(uid) && request.resource.data.uid == uid);
-      allow delete: if isAdmin() || isOwner(uid);
+    function isValidGroupMessage(data, docId) {
+      return data.keys().hasAll(['id', 'batchKey', 'groupId', 'sender', 'text', 'created', 'updated', 'deleted'])
+        && data.keys().hasOnly([
+          'id', 'batchKey', 'groupId', 'sender', 'text',
+          'mediaData', 'mediaType', 'mediaName', 'chunked', 'chunkCount',
+          'replyTo', 'reactions', 'created', 'updated', 'deleted'
+        ])
+        && data.id == docId
+        && isBatchMemberPayload(data)
+        && data.groupId is string && data.groupId == 'grp-og-legends'
+        && data.sender is string && data.sender.size() >= 1 && data.sender.size() <= 80
+        && data.text is string && data.text.size() <= 4000
+        && isOptString(data, 'mediaData', 780000)
+        && isOptString(data, 'mediaType', 80)
+        && isOptString(data, 'mediaName', 200)
+        && isOptBool(data, 'chunked')
+        && isOptNumber(data, 'chunkCount')
+        && isValidReplyMap(data)
+        && isValidReactionsMap(data)
+        && data.created is number && data.created > 0
+        && data.updated is number && data.updated >= data.created
+        && data.deleted is bool;
     }
 
-    // UNIQUE USERNAME -> UID MAP
-    match /usernames/{username} {
-      allow read: if signedIn();
-      allow create: if signedIn()
-                    && request.resource.data.uid == request.auth.uid
-                    && request.resource.data.username == username;
-      allow update: if signedIn()
-                    && resource.data.uid == request.auth.uid
-                    && request.resource.data.uid == request.auth.uid
-                    && request.resource.data.username == username;
-      allow delete: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+    function isValidMediaItem(data, docId) {
+      return data.keys().hasAll(['id', 'batchKey', 'folderId', 'type', 'name', 'created', 'updated', 'deleted'])
+        && data.keys().hasOnly([
+          'id', 'batchKey', 'folderId', 'type', 'name',
+          'mimeType', 'dataUrl', 'chunked', 'chunkCount',
+          'addedBy', 'created', 'updated', 'deleted'
+        ])
+        && data.id == docId
+        && isBatchMemberPayload(data)
+        && data.folderId is string && data.folderId.size() >= 1 && data.folderId.size() <= 64
+        && data.type is string && (data.type == 'photo' || data.type == 'video')
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 200
+        && isOptString(data, 'mimeType', 80)
+        && isOptString(data, 'dataUrl', 780000)
+        && isOptBool(data, 'chunked')
+        && isOptNumber(data, 'chunkCount')
+        && isOptString(data, 'addedBy', 80)
+        && data.created is number && data.created > 0
+        && data.updated is number && data.updated >= data.created
+        && data.deleted is bool;
     }
 
-    // FOLLOW / UNFOLLOW
-    match /follows/{followId} {
-      allow read: if signedIn();
-      allow create: if signedIn()
-                    && request.resource.data.followerId == request.auth.uid
-                    && request.resource.data.targetId != request.auth.uid;
+    function isValidMediaChunk(data, docId) {
+      return data.keys().hasAll(['id', 'batchKey', 'mediaId', 'index', 'data', 'created'])
+        && data.keys().hasOnly(['id', 'batchKey', 'mediaId', 'index', 'data', 'created'])
+        && data.id == docId
+        && isBatchMemberPayload(data)
+        && data.mediaId is string && isValidId(data.mediaId)
+        && data.index is number && data.index >= 0 && data.index <= 64
+        && data.data is string && data.data.size() >= 1 && data.data.size() <= 650000
+        && data.created is number && data.created > 0;
+    }
+
+    function isValidProfile(data, docId) {
+      return data.keys().hasAll(['id', 'batchKey', 'n', 'order', 'updated', 'deleted'])
+        && data.keys().hasOnly([
+          'id', 'batchKey', 'builtin', 'order', 'n', 'nick', 'title',
+          'nature', 'special', 'memory', 'image', 'imageData',
+          'profileVer', 'updated', 'deleted'
+        ])
+        && data.id == docId
+        && isBatchMemberPayload(data)
+        && data.n is string && data.n.size() >= 1 && data.n.size() <= 80
+        && data.order is number
+        && isOptBool(data, 'builtin')
+        && isOptString(data, 'nick', 80)
+        && isOptString(data, 'title', 100)
+        && isOptString(data, 'nature', 80)
+        && isOptString(data, 'special', 100)
+        && isOptString(data, 'memory', 3000)
+        && isOptString(data, 'image', 300)
+        && isOptString(data, 'imageData', 650000)
+        && isOptNumber(data, 'profileVer')
+        && data.updated is number && data.updated > 0
+        && data.deleted is bool;
+    }
+
+    function isValidJourney(data, docId) {
+      return data.keys().hasAll(['id', 'batchKey', 'date', 'title', 'message', 'order', 'updated', 'deleted'])
+        && data.keys().hasOnly([
+          'id', 'batchKey', 'date', 'title', 'message',
+          'order', 'builtin', 'mediaData', 'mediaType', 'updated', 'deleted'
+        ])
+        && data.id == docId
+        && isBatchMemberPayload(data)
+        && data.date is string && data.date.size() >= 1 && data.date.size() <= 100
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 160
+        && data.message is string && data.message.size() >= 1 && data.message.size() <= 4000
+        && data.order is number
+        && isOptBool(data, 'builtin')
+        && isOptString(data, 'mediaData', 780000)
+        && isOptString(data, 'mediaType', 80)
+        && data.updated is number && data.updated > 0
+        && data.deleted is bool;
+    }
+
+    function isValidMediaMeta(data, docId) {
+      return data.keys().hasAll(['id', 'batchKey', 'date', 'caption', 'updated'])
+        && data.keys().hasOnly(['id', 'batchKey', 'date', 'caption', 'updated'])
+        && data.id == docId
+        && isBatchMemberPayload(data)
+        && data.date is string && data.date.size() <= 120
+        && data.caption is string && data.caption.size() <= 500
+        && data.updated is number && data.updated > 0;
+    }
+
+    function isValidLetter(data, docId) {
+      return data.keys().hasAll(['id', 'batchKey', 'text', 'updated'])
+        && data.keys().hasOnly(['id', 'batchKey', 'text', 'updated'])
+        && data.id == docId
+        && isBatchMemberPayload(data)
+        && data.text is string && data.text.size() <= 8000
+        && data.updated is number && data.updated > 0;
+    }
+
+    function isValidHiddenMedia(data, docId) {
+      return data.keys().hasAll(['id', 'batchKey', 'hidden', 'updated'])
+        && data.keys().hasOnly(['id', 'batchKey', 'hidden', 'updated'])
+        && data.id == docId
+        && isBatchMemberPayload(data)
+        && data.hidden is bool
+        && data.updated is number && data.updated > 0;
+    }
+
+    function isValidAppState(data, docId) {
+      return data.keys().hasAll(['id', 'batchKey', 'ids', 'updated'])
+        && data.keys().hasOnly(['id', 'batchKey', 'ids', 'updated'])
+        && data.id == docId
+        && isBatchMemberPayload(data)
+        && data.ids is list
+        && data.ids.size() <= 30
+        && (data.ids.size() == 0 || data.ids[0] is string)
+        && data.updated is number && data.updated > 0;
+    }
+
+    // Startup connectivity test doc
+    match /test/{docId} {
+      allow get: if docId == 'connection';
+      allow list, write: if false;
+    }
+
+    // Shared Batch Group Messages
+    match /groupMessages/{messageId} {
+      allow get: if isValidId(messageId) && isBatchMemberPayload(existing());
+      allow list: if isBatchMemberPayload(existing());
+      allow create: if isValidId(messageId) && isValidGroupMessage(incoming(), messageId);
+      allow update: if isValidId(messageId)
+                    && isValidGroupMessage(incoming(), messageId)
+                    && incoming().id == existing().id
+                    && incoming().batchKey == existing().batchKey
+                    && incoming().created == existing().created
+                    && incoming().diff(existing()).affectedKeys().hasOnly(['reactions', 'updated', 'deleted', 'text']);
+      allow delete: if isValidId(messageId) && isBatchMemberPayload(existing());
+    }
+
+    // Shared Photos & Videos
+    match /mediaItems/{mediaId} {
+      allow get: if isValidId(mediaId) && isBatchMemberPayload(existing());
+      allow list: if isBatchMemberPayload(existing());
+      allow create: if isValidId(mediaId) && isValidMediaItem(incoming(), mediaId);
+      allow update: if isValidId(mediaId)
+                    && isValidMediaItem(incoming(), mediaId)
+                    && incoming().id == existing().id
+                    && incoming().batchKey == existing().batchKey
+                    && incoming().created == existing().created
+                    && incoming().diff(existing()).affectedKeys().hasOnly(['deleted', 'updated', 'name']);
+      allow delete: if isValidId(mediaId) && isBatchMemberPayload(existing());
+    }
+
+    // Chunked media slices for shared videos
+    match /mediaChunks/{chunkId} {
+      allow get: if isValidId(chunkId) && isBatchMemberPayload(existing());
+      allow list: if isBatchMemberPayload(existing());
+      allow create: if isValidId(chunkId) && isValidMediaChunk(incoming(), chunkId);
       allow update: if false;
-      allow delete: if isAdmin() || (signedIn() && resource.data.followerId == request.auth.uid);
+      allow delete: if isValidId(chunkId) && isBatchMemberPayload(existing());
     }
 
-    // REELS
-    match /reels/{reelId} {
-      allow read: if signedIn();
-      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update: if isAdmin() || reelOwner(reelId);
-      allow delete: if isAdmin() || reelOwner(reelId);
-
-      match /likes/{uid} {
-        allow read: if signedIn();
-        allow create: if isOwner(uid);
-        allow update: if false;
-        allow delete: if isAdmin() || isOwner(uid) || reelOwner(reelId);
-      }
-
-      match /comments/{commentId} {
-        allow read: if signedIn();
-        allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
-        allow update: if isAdmin() || (signedIn() && resource.data.ownerId == request.auth.uid);
-        allow delete: if isAdmin()
-                      || (signedIn() && resource.data.ownerId == request.auth.uid)
-                      || reelOwner(reelId);
-
-        match /likes/{uid} {
-          allow read: if signedIn();
-          allow create: if isOwner(uid);
-          allow update: if false;
-          allow delete: if isAdmin() || isOwner(uid) || reelOwner(reelId);
-        }
-
-        match /replies/{replyId} {
-          allow read: if signedIn();
-          allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
-          allow update: if isAdmin() || (signedIn() && resource.data.ownerId == request.auth.uid);
-          allow delete: if isAdmin()
-                        || (signedIn() && resource.data.ownerId == request.auth.uid)
-                        || reelOwner(reelId);
-
-          match /likes/{uid} {
-            allow read: if signedIn();
-            allow create: if isOwner(uid);
-            allow update: if false;
-            allow delete: if isAdmin() || isOwner(uid) || reelOwner(reelId);
-          }
-        }
-      }
-    }
-
-    // POSTS
-    match /posts/{postId} {
-      allow read: if signedIn();
-      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update: if isAdmin() || postOwner(postId);
-      allow delete: if isAdmin() || postOwner(postId);
-
-      match /likes/{uid} {
-        allow read: if signedIn();
-        allow create: if isOwner(uid);
-        allow update: if false;
-        allow delete: if isAdmin() || isOwner(uid) || postOwner(postId);
-      }
-
-      match /comments/{commentId} {
-        allow read: if signedIn();
-        allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
-        allow update: if isAdmin() || (signedIn() && resource.data.ownerId == request.auth.uid);
-        allow delete: if isAdmin()
-                      || (signedIn() && resource.data.ownerId == request.auth.uid)
-                      || postOwner(postId);
-
-        match /likes/{uid} {
-          allow read: if signedIn();
-          allow create: if isOwner(uid);
-          allow update: if false;
-          allow delete: if isAdmin() || isOwner(uid) || postOwner(postId);
-        }
-
-        match /replies/{replyId} {
-          allow read: if signedIn();
-          allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
-          allow update: if isAdmin() || (signedIn() && resource.data.ownerId == request.auth.uid);
-          allow delete: if isAdmin()
-                        || (signedIn() && resource.data.ownerId == request.auth.uid)
-                        || postOwner(postId);
-
-          match /likes/{uid} {
-            allow read: if signedIn();
-            allow create: if isOwner(uid);
-            allow update: if false;
-            allow delete: if isAdmin() || isOwner(uid) || postOwner(postId);
-          }
-        }
-      }
-    }
-
-    // ACTIVITY / NOTIFICATIONS
-    match /activities/{activityId} {
-      allow read: if isAdmin() || (signedIn() && resource.data.recipientId == request.auth.uid);
-      allow create: if signedIn()
-                    && request.resource.data.actorId == request.auth.uid
-                    && request.resource.data.recipientId != request.auth.uid;
-      allow update: if isAdmin() || (signedIn() && resource.data.recipientId == request.auth.uid);
-      allow delete: if isAdmin() || (signedIn() && resource.data.recipientId == request.auth.uid);
-    }
-
-    // DIRECT CHATS
-    match /chats/{chatId} {
-      allow read: if signedIn() && request.auth.uid in resource.data.members;
-      allow create: if signedIn()
-                    && request.resource.data.creatorId == request.auth.uid
-                    && request.auth.uid in request.resource.data.members;
-      allow update: if signedIn()
-                    && request.auth.uid in resource.data.members
-                    && request.resource.data.members == resource.data.members
-                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-                      'members','memberUsernames','lastMessage','lastMessageAt',
-                      'lastMessageSenderId','lastRead','clearedAt','updated'
+    // Shared Legends Profiles
+    match /profiles/{profileId} {
+      allow get: if isValidId(profileId) && isBatchMemberPayload(existing());
+      allow list: if isBatchMemberPayload(existing());
+      allow create: if isValidId(profileId) && isValidProfile(incoming(), profileId);
+      allow update: if isValidId(profileId)
+                    && isValidProfile(incoming(), profileId)
+                    && incoming().id == existing().id
+                    && incoming().batchKey == existing().batchKey
+                    && incoming().diff(existing()).affectedKeys().hasOnly([
+                      'n', 'nick', 'title', 'nature', 'special', 'memory',
+                      'image', 'imageData', 'profileVer', 'updated', 'deleted', 'order'
                     ]);
-      allow delete: if isAdmin() || (signedIn() && resource.data.creatorId == request.auth.uid);
-
-      match /messages/{messageId} {
-        allow read: if isChatMember(chatId);
-        allow create: if isChatMember(chatId) && request.resource.data.senderId == request.auth.uid;
-        allow update: if isAdmin() || (isChatMember(chatId) && resource.data.senderId == request.auth.uid);
-        allow delete: if isAdmin() || (isChatMember(chatId) && resource.data.senderId == request.auth.uid);
-      }
+      allow delete: if isValidId(profileId) && isBatchMemberPayload(existing());
     }
 
-    // GROUPS
-    match /groups/{groupId} {
-      allow read: if isAdmin() || (signedIn() && request.auth.uid in resource.data.members);
-      allow create: if signedIn()
-                    && request.resource.data.creatorId == request.auth.uid
-                    && request.auth.uid in request.resource.data.members
-                    && request.auth.uid in request.resource.data.admins;
-      allow update: if isAdmin()
-                    || (signedIn() && request.auth.uid in resource.data.admins)
-                    || leavesOnlySelf();
-      allow delete: if isAdmin() || (signedIn() && resource.data.creatorId == request.auth.uid);
-
-      match /messages/{messageId} {
-        allow read: if isGroupMember(groupId) || isAdmin();
-        allow create: if isGroupMember(groupId) && request.resource.data.senderId == request.auth.uid;
-        allow update: if isAdmin()
-                      || (isGroupMember(groupId) && resource.data.senderId == request.auth.uid);
-        allow delete: if isAdmin()
-                      || isGroupAdmin(groupId)
-                      || (isGroupMember(groupId) && resource.data.senderId == request.auth.uid);
-      }
-    }
-
-    // CHANNELS — only verified website admin creates/edits/deletes channels/posts
-    match /channels/{channelId} {
-      allow read: if signedIn();
-      allow create, update, delete: if isAdmin();
-
-      match /followers/{uid} {
-        allow read: if signedIn();
-        allow create: if isOwner(uid);
-        allow update: if false;
-        allow delete: if isAdmin() || isOwner(uid);
-      }
-
-      match /posts/{postId} {
-        allow read: if signedIn();
-        allow create, update, delete: if isAdmin();
-
-        match /likes/{uid} {
-          allow read: if signedIn();
-          allow create: if isOwner(uid);
-          allow update: if false;
-          allow delete: if isAdmin() || isOwner(uid);
-        }
-      }
-    }
-
-    // PER-USER SEEN REELS
-    match /seenReels/{uid}/items/{reelId} {
-      allow read, create, update, delete: if isOwner(uid);
-    }
-
-    // STORIES — active for 24h in the UI; owner controls their own story
-    match /stories/{storyId} {
-      allow read: if signedIn();
-      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if isAdmin() || (signedIn() && resource.data.ownerId == request.auth.uid);
-    }
-
-    // HIGHLIGHTS — permanent profile story saves
-    match /highlights/{highlightId} {
-      allow read: if signedIn();
-      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if isAdmin() || (signedIn() && resource.data.ownerId == request.auth.uid);
-    }
-
-    // SCHOOL MEMORIES — all logged-in users view; verified admin modifies
-    match /memories/{memoryId} {
-      allow read: if signedIn();
-      allow create, update, delete: if isAdmin();
-    }
-    match /memoryFolders/{folderId} {
-      allow read: if signedIn();
-      allow create, update, delete: if isAdmin();
-    }
-    match /memoryOfDay/{memoryId} {
-      allow read: if signedIn();
-      allow create, update, delete: if isAdmin();
-    }
+    // Shared Journeys
     match /journeys/{journeyId} {
-      allow read: if signedIn();
-      allow create, update, delete: if isAdmin();
-    }
-    match /memoryProfiles/{profileId} {
-      allow read: if signedIn();
-      allow create, update, delete: if isAdmin();
+      allow get: if isValidId(journeyId) && isBatchMemberPayload(existing());
+      allow list: if isBatchMemberPayload(existing());
+      allow create: if isValidId(journeyId) && isValidJourney(incoming(), journeyId);
+      allow update: if isValidId(journeyId)
+                    && isValidJourney(incoming(), journeyId)
+                    && incoming().id == existing().id
+                    && incoming().batchKey == existing().batchKey
+                    && incoming().diff(existing()).affectedKeys().hasOnly([
+                      'date', 'title', 'message', 'mediaData', 'mediaType', 'updated', 'deleted', 'order'
+                    ]);
+      allow delete: if isValidId(journeyId) && isBatchMemberPayload(existing());
     }
 
-    // DEFAULT DENY
-    match /{document=**} {
-      allow read, write: if false;
+    // Shared Media Metadata (dates & captions)
+    match /mediaMeta/{metaId} {
+      allow get: if isValidId(metaId) && isBatchMemberPayload(existing());
+      allow list: if isBatchMemberPayload(existing());
+      allow create: if isValidId(metaId) && isValidMediaMeta(incoming(), metaId);
+      allow update: if isValidId(metaId)
+                    && isValidMediaMeta(incoming(), metaId)
+                    && incoming().id == existing().id
+                    && incoming().batchKey == existing().batchKey
+                    && incoming().diff(existing()).affectedKeys().hasOnly(['date', 'caption', 'updated']);
+      allow delete: if isValidId(metaId) && isBatchMemberPayload(existing());
+    }
+
+    // Shared Friend Letters
+    match /letters/{letterId} {
+      allow get: if isValidId(letterId) && isBatchMemberPayload(existing());
+      allow list: if isBatchMemberPayload(existing());
+      allow create: if isValidId(letterId) && isValidLetter(incoming(), letterId);
+      allow update: if isValidId(letterId)
+                    && isValidLetter(incoming(), letterId)
+                    && incoming().id == existing().id
+                    && incoming().batchKey == existing().batchKey
+                    && incoming().diff(existing()).affectedKeys().hasOnly(['text', 'updated']);
+      allow delete: if isValidId(letterId) && isBatchMemberPayload(existing());
+    }
+
+    // Hidden / Restored Built-in Media Flags
+    match /hiddenMedia/{mediaId} {
+      allow get: if isValidId(mediaId) && isBatchMemberPayload(existing());
+      allow list: if isBatchMemberPayload(existing());
+      allow create: if isValidId(mediaId) && isValidHiddenMedia(incoming(), mediaId);
+      allow update: if isValidId(mediaId)
+                    && isValidHiddenMedia(incoming(), mediaId)
+                    && incoming().id == existing().id
+                    && incoming().batchKey == existing().batchKey
+                    && incoming().diff(existing()).affectedKeys().hasOnly(['hidden', 'updated']);
+      allow delete: if isValidId(mediaId) && isBatchMemberPayload(existing());
+    }
+
+    // Shared App State (e.g. Memories of the Day)
+    match /appState/{stateId} {
+      allow get: if isValidId(stateId) && isBatchMemberPayload(existing());
+      allow list: if isBatchMemberPayload(existing());
+      allow create: if isValidId(stateId) && isValidAppState(incoming(), stateId);
+      allow update: if isValidId(stateId)
+                    && isValidAppState(incoming(), stateId)
+                    && incoming().id == existing().id
+                    && incoming().batchKey == existing().batchKey
+                    && incoming().diff(existing()).affectedKeys().hasOnly(['ids', 'updated']);
+      allow delete: if isValidId(stateId) && isBatchMemberPayload(existing());
     }
   }
 }

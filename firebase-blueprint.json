@@ -1,0 +1,191 @@
+{
+  "entities": {
+    "GroupMessage": {
+      "title": "GroupMessage",
+      "description": "Shared Batch Group chat message synced across all phones.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 128 },
+        "batchKey": { "type": "string", "maxLength": 32 },
+        "groupId": { "type": "string", "maxLength": 64 },
+        "sender": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "text": { "type": "string", "maxLength": 4000 },
+        "mediaData": { "type": "string", "maxLength": 780000 },
+        "mediaType": { "type": "string", "maxLength": 80 },
+        "mediaName": { "type": "string", "maxLength": 200 },
+        "chunked": { "type": "boolean" },
+        "chunkCount": { "type": "number" },
+        "replyTo": { "type": "object" },
+        "reactions": { "type": "object" },
+        "created": { "type": "number" },
+        "updated": { "type": "number" },
+        "deleted": { "type": "boolean" }
+      },
+      "required": ["id", "batchKey", "groupId", "sender", "text", "created", "updated", "deleted"]
+    },
+    "MediaItem": {
+      "title": "MediaItem",
+      "description": "Uploaded batch photo or video synced across all phones.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 128 },
+        "batchKey": { "type": "string", "maxLength": 32 },
+        "folderId": { "type": "string", "maxLength": 64 },
+        "type": { "type": "string", "enum": ["photo", "video"] },
+        "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "mimeType": { "type": "string", "maxLength": 80 },
+        "dataUrl": { "type": "string", "maxLength": 780000 },
+        "chunked": { "type": "boolean" },
+        "chunkCount": { "type": "number" },
+        "addedBy": { "type": "string", "maxLength": 80 },
+        "created": { "type": "number" },
+        "updated": { "type": "number" },
+        "deleted": { "type": "boolean" }
+      },
+      "required": ["id", "batchKey", "folderId", "type", "name", "created", "updated", "deleted"]
+    },
+    "MediaChunk": {
+      "title": "MediaChunk",
+      "description": "Ordered base64 slice for larger synced videos.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 128 },
+        "batchKey": { "type": "string", "maxLength": 32 },
+        "mediaId": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 128 },
+        "index": { "type": "number" },
+        "data": { "type": "string", "maxLength": 650000 },
+        "created": { "type": "number" }
+      },
+      "required": ["id", "batchKey", "mediaId", "index", "data", "created"]
+    },
+    "LegendProfile": {
+      "title": "LegendProfile",
+      "description": "Cohort Legend profile card.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 128 },
+        "batchKey": { "type": "string", "maxLength": 32 },
+        "builtin": { "type": "boolean" },
+        "order": { "type": "number" },
+        "n": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "nick": { "type": "string", "maxLength": 80 },
+        "title": { "type": "string", "maxLength": 100 },
+        "nature": { "type": "string", "maxLength": 80 },
+        "special": { "type": "string", "maxLength": 100 },
+        "memory": { "type": "string", "maxLength": 3000 },
+        "image": { "type": "string", "maxLength": 300 },
+        "imageData": { "type": "string", "maxLength": 650000 },
+        "profileVer": { "type": "number" },
+        "updated": { "type": "number" },
+        "deleted": { "type": "boolean" }
+      },
+      "required": ["id", "batchKey", "n", "order", "updated", "deleted"]
+    },
+    "JourneyItem": {
+      "title": "JourneyItem",
+      "description": "Batch journey milestone entry.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 128 },
+        "batchKey": { "type": "string", "maxLength": 32 },
+        "date": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "message": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "order": { "type": "number" },
+        "builtin": { "type": "boolean" },
+        "mediaData": { "type": "string", "maxLength": 780000 },
+        "mediaType": { "type": "string", "maxLength": 80 },
+        "updated": { "type": "number" },
+        "deleted": { "type": "boolean" }
+      },
+      "required": ["id", "batchKey", "date", "title", "message", "order", "updated", "deleted"]
+    },
+    "MediaMeta": {
+      "title": "MediaMeta",
+      "description": "Date & caption metadata for a photo or video.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 128 },
+        "batchKey": { "type": "string", "maxLength": 32 },
+        "date": { "type": "string", "maxLength": 120 },
+        "caption": { "type": "string", "maxLength": 500 },
+        "updated": { "type": "number" }
+      },
+      "required": ["id", "batchKey", "date", "caption", "updated"]
+    },
+    "FriendLetter": {
+      "title": "FriendLetter",
+      "description": "Friend letter text associated with a Legend profile.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 128 },
+        "batchKey": { "type": "string", "maxLength": 32 },
+        "text": { "type": "string", "maxLength": 8000 },
+        "updated": { "type": "number" }
+      },
+      "required": ["id", "batchKey", "text", "updated"]
+    },
+    "HiddenMedia": {
+      "title": "HiddenMedia",
+      "description": "Hidden built-in archive media sync flag.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 128 },
+        "batchKey": { "type": "string", "maxLength": 32 },
+        "hidden": { "type": "boolean" },
+        "updated": { "type": "number" }
+      },
+      "required": ["id", "batchKey", "hidden", "updated"]
+    },
+    "AppState": {
+      "title": "AppState",
+      "description": "Shared batch spotlight state (e.g. Memories of the Day).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 128 },
+        "batchKey": { "type": "string", "maxLength": 32 },
+        "ids": { "type": "array" },
+        "updated": { "type": "number" }
+      },
+      "required": ["id", "batchKey", "ids", "updated"]
+    }
+  },
+  "firestore": {
+    "/groupMessages/{messageId}": {
+      "schema": { "$ref": "#/entities/GroupMessage" },
+      "description": "Real-time shared batch group chat messages."
+    },
+    "/mediaItems/{mediaId}": {
+      "schema": { "$ref": "#/entities/MediaItem" },
+      "description": "Real-time shared photos and videos."
+    },
+    "/mediaChunks/{chunkId}": {
+      "schema": { "$ref": "#/entities/MediaChunk" },
+      "description": "Chunked payload parts for larger shared videos."
+    },
+    "/profiles/{profileId}": {
+      "schema": { "$ref": "#/entities/LegendProfile" },
+      "description": "Shared Legends profiles and avatars."
+    },
+    "/journeys/{journeyId}": {
+      "schema": { "$ref": "#/entities/JourneyItem" },
+      "description": "Shared Our Journey milestones."
+    },
+    "/mediaMeta/{metaId}": {
+      "schema": { "$ref": "#/entities/MediaMeta" },
+      "description": "Shared captions and dates for media items."
+    },
+    "/letters/{letterId}": {
+      "schema": { "$ref": "#/entities/FriendLetter" },
+      "description": "Shared friend letters."
+    },
+    "/hiddenMedia/{mediaId}": {
+      "schema": { "$ref": "#/entities/HiddenMedia" },
+      "description": "Shared deleted/restored state for built-in media."
+    },
+    "/appState/{stateId}": {
+      "schema": { "$ref": "#/entities/AppState" },
+      "description": "Shared Memories of the Day selection."
+    }
+  }
+}

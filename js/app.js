@@ -236,9 +236,14 @@ function showPage(i, options = true) {
   syncPageUI(target, persist, title);
 }
 
+let lastHomeBackTap = 0;
 function goBackInApp() {
   if ($('appNavDrawer')?.classList.contains('open')) {
     closeNavDrawer(false);
+    return;
+  }
+  if (!$('chatWhoTray')?.hidden) {
+    closeWhoTray();
     return;
   }
   if (currentHistState.ogDepth > 0) {
@@ -247,6 +252,32 @@ function goBackInApp() {
     showPage(0, { replace: true });
   }
 }
+
+window.__ogHandleAndroidBack = function () {
+  if ($('appNavDrawer')?.classList.contains('open')) {
+    closeNavDrawer(false);
+    return true;
+  }
+  if ($('chatWhoTray') && !$('chatWhoTray').hidden) {
+    closeWhoTray();
+    return true;
+  }
+  if (typeof selectionState !== 'undefined') {
+    if (selectionState.photo?.active) { setSelectionMode('photo', false); return true; }
+    if (selectionState.video?.active) { setSelectionMode('video', false); return true; }
+  }
+  if (currentPage !== 0 || currentHistState.ogDepth > 0) {
+    goBackInApp();
+    return true;
+  }
+  const now = Date.now();
+  if (now - lastHomeBackTap < 2000) {
+    return false;
+  }
+  lastHomeBackTap = now;
+  showToast('Press back again to exit');
+  return true;
+};
 
 function finishSubscreenTo(fallbackPage) {
   const prev = currentHistState.ogDepth > 0 ? histStack[currentHistState.ogDepth - 1] : null;
@@ -545,11 +576,13 @@ function renderProfileDetailBody(p) {
     const [file] = await filePicker('image/*', false);
     if (!file) return;
     p.imageBlob = file;
+    p.updated = Date.now();
     await put('profiles', p);
     await renderPeople();
     const updated = activeProfiles.find((x) => x.id === p.id) || p;
     renderProfileDetailBody(updated);
     showToast('Profile photo updated');
+    window.OGCloud?.pushProfile(p).catch(() => {});
   };
   $('deleteProfileBtn').onclick = async () => {
     if (!confirmTap($('deleteProfileBtn'), 'Tap again to delete')) return;
@@ -558,6 +591,7 @@ function renderProfileDetailBody(p) {
     if (p.builtin) localStorage.setItem('deleted_' + p.id, '1');
     await renderPeople();
     showToast(`${p.n} deleted (recoverable in Restore Center)`);
+    window.OGCloud?.markProfileDeleted(p.id, true).catch(() => {});
     finishSubscreenTo(PAGE.LEGENDS);
   };
 }
@@ -584,13 +618,15 @@ $('newProfileForm').onsubmit = async (e) => {
     nature: $('profileNature').value.trim(),
     special: $('profileSpecial').value.trim(),
     memory: $('profileMemory').value.trim(),
-    image: 'assets/common.jpg'
+    image: 'assets/common.jpg',
+    updated: Date.now()
   };
   if (file) p.imageBlob = file;
   await put('profiles', p);
   e.target.reset();
   await renderPeople();
   showToast(`Added ${p.n} to The Legends`);
+  window.OGCloud?.pushProfile(p).catch(() => {});
   finishSubscreenTo(PAGE.LEGENDS);
 };
 
@@ -669,6 +705,7 @@ req.onsuccess = async (e) => {
   await renderJourney();
   await updateV7Home();
   updateUnreadBadge();
+  initCloudSyncOnce();
 };
 
 function store(name, mode = 'readonly') { return DB.transaction(name, mode).objectStore(name); }
@@ -745,15 +782,17 @@ async function deleteMediaItems(items, type) {
     if (item.builtin) {
       await recycleItem('hiddenMedia', item.id, item);
       await put('hiddenMedia', { id: item.id });
+      window.OGCloud?.setHiddenMedia(item.id, true).catch(() => {});
     } else {
       await recycleItem('media', item.id, item);
       await del('media', item.id);
+      window.OGCloud?.markMediaDeleted(item.id, true).catch(() => {});
     }
   }
   await renderQuickGalleries();
   await updateV7Home();
   const label = items.length === 1 ? (type === 'photo' ? 'Photo' : 'Video') : `${items.length} ${type}s`;
-  showToast(`${label} deleted (recoverable in Restore Center)`);
+  showToast(`${label} deleted & synced`);
 }
 
 // Direct Photo & Video Galleries
@@ -987,19 +1026,34 @@ async function addMedia(type) {
   const files = await filePicker(type === 'photo' ? 'image/*' : 'video/*', true);
   if (!files.length) return 0;
   const folderId = type === 'photo' ? 'builtin-photos' : 'builtin-videos';
+  const createdList = [];
+  const uploader = getChatSender();
   for (const file of files) {
-    await put('media', {
+    const item = {
       id: 'm-' + Date.now() + '-' + Math.random().toString(36).slice(2),
       folderId,
       type,
       name: file.name,
       blob: file,
-      created: Date.now()
-    });
+      addedBy: uploader,
+      created: Date.now(),
+      updated: Date.now()
+    };
+    await put('media', item);
+    createdList.push(item);
   }
   await renderQuickGalleries();
   await updateV7Home();
-  showToast(`Added ${files.length} ${type}${files.length > 1 ? 's' : ''}`);
+  showToast(`Added ${files.length} ${type}${files.length > 1 ? 's' : ''} — syncing online...`);
+  if (window.OGCloud) {
+    Promise.all(createdList.map((it) => window.OGCloud.pushMediaItem(it)))
+      .then(() => showToast(`${files.length} ${type}${files.length > 1 ? 's' : ''} synced to everyone!`))
+      .catch((err) => {
+        if (err?.message === 'FILE_TOO_LARGE_FOR_CLOUD') {
+          showToast('Saved on device (video max 12 MB for online sync)');
+        }
+      });
+  }
   return files.length;
 }
 
@@ -1054,7 +1108,8 @@ async function renderJourney() {
       if (j.builtin) localStorage.setItem('deleted_' + j.id, '1');
       renderJourney();
       updateV7Home();
-      showToast('Journey memory deleted (recoverable in Restore Center)');
+      showToast('Journey memory deleted');
+      window.OGCloud?.markJourneyDeleted(j.id, true).catch(() => {});
     };
     host.appendChild(c);
   });
@@ -1071,6 +1126,7 @@ $('newJourneyForm').onsubmit = async (e) => {
     title: $('journeyTitle').value.trim(),
     message: $('journeyMessage').value.trim(),
     order: Date.now(),
+    updated: Date.now(),
     builtin: false
   };
   if (file) {
@@ -1081,6 +1137,7 @@ $('newJourneyForm').onsubmit = async (e) => {
   e.target.reset();
   await renderJourney();
   showToast('Added memory to Our Journey');
+  window.OGCloud?.pushJourney(j).catch(() => {});
   finishSubscreenTo(PAGE.JOURNEY);
 };
 
@@ -1156,8 +1213,12 @@ async function getMemoryDayPool() {
 function memoryDaySavedIds() {
   try { return JSON.parse(localStorage.getItem('og-memory-day-items') || '[]'); } catch { return []; }
 }
-function saveMemoryDayIds(ids) {
-  localStorage.setItem('og-memory-day-items', JSON.stringify([...new Set(ids)]));
+function saveMemoryDayIds(ids, pushCloud = true) {
+  const clean = [...new Set(ids)];
+  localStorage.setItem('og-memory-day-items', JSON.stringify(clean));
+  if (pushCloud) {
+    window.OGCloud?.pushMemoryOfDay(clean).catch(() => {});
+  }
 }
 function dailyDefaultIds(all) {
   if (!all.length) return [];
@@ -1185,7 +1246,7 @@ async function renderMemoryDay() {
   let ids = memoryDaySavedIds().filter((id) => all.some((x) => x.id === id));
   if (!ids.length) {
     ids = dailyDefaultIds(all);
-    saveMemoryDayIds(ids);
+    saveMemoryDayIds(ids, false);
   }
   memoryDayItems = ids.map((id) => all.find((x) => x.id === id)).filter(Boolean);
 
@@ -1338,15 +1399,17 @@ $('metaForm').onsubmit = async (e) => {
   e.preventDefault();
   const id = $('metaPage').dataset.mediaId;
   if (!id) return;
-  await put('mediaMeta', {
+  const meta = {
     id,
     date: $('metaDate').value.trim(),
     caption: $('metaCaption').value.trim(),
     updated: Date.now()
-  });
+  };
+  await put('mediaMeta', meta);
   await refreshViewerV7();
   await updateV7Home();
   showToast('Caption & date saved');
+  window.OGCloud?.pushMediaMeta(meta).catch(() => {});
   goBackInApp();
 };
 
@@ -1415,8 +1478,10 @@ async function openFriendLetter(p) {
 }
 $('saveLetterBtn').onclick = async () => {
   if (!activeLetterProfile) return;
-  await put('letters', { id: activeLetterProfile.id, text: $('letterText').value, updated: Date.now() });
+  const letter = { id: activeLetterProfile.id, text: $('letterText').value, updated: Date.now() };
+  await put('letters', letter);
   showToast(`Letter saved for ${activeLetterProfile.n}`);
+  window.OGCloud?.pushLetter(letter).catch(() => {});
   goBackInApp();
 };
 
@@ -1763,6 +1828,7 @@ async function renderGroupChat({ preserveScroll = false } = {}) {
       await renderGroupChat({ preserveScroll: true });
       await updateV7Home();
       showToast('Message deleted');
+      window.OGCloud?.markMessageDeleted(m).catch(() => {});
     };
     row.querySelectorAll('.chat-react-chip').forEach((chip) => {
       chip.onclick = async () => {
@@ -1775,8 +1841,10 @@ async function renderGroupChat({ preserveScroll = false } = {}) {
         if (list.length) nextReactions[emoji] = list;
         else delete nextReactions[emoji];
         m.reactions = nextReactions;
+        m.updated = Date.now();
         await put('groupMessages', m);
         await renderGroupChat({ preserveScroll: true });
+        window.OGCloud?.updateMessageReactions(m, nextReactions).catch(() => {});
       };
     });
     if (m.mediaBlob && !m.mediaType?.startsWith('video')) {
@@ -1822,12 +1890,14 @@ $('msgComposeForm')?.addEventListener('submit', async (e) => {
   if (!text && !pendingMsgMedia) return;
   await waitDB();
   const sender = getChatSender();
+  const nowTs = Date.now();
   const msg = {
-    id: 'gm-' + Date.now() + '-' + Math.random().toString(36).slice(2),
+    id: 'gm-' + nowTs + '-' + Math.random().toString(36).slice(2),
     groupId: SHARED_GROUP_ID,
     sender,
     text,
-    created: Date.now()
+    created: nowTs,
+    updated: nowTs
   };
   if (replyingToMsg) {
     msg.replyTo = { ...replyingToMsg };
@@ -1847,6 +1917,11 @@ $('msgComposeForm')?.addEventListener('submit', async (e) => {
   await renderGroupChat();
   await updateV7Home();
   $('msgTextInput')?.focus();
+  window.OGCloud?.pushMessage(msg).catch((err) => {
+    if (err?.message === 'FILE_TOO_LARGE_FOR_CLOUD') {
+      showToast('Media saved on device (max 12 MB for online sync)');
+    }
+  });
 });
 
 let clearChatConfirmTimer = null;
@@ -1867,8 +1942,10 @@ $('msgClearThreadBtn')?.addEventListener('click', async () => {
   btn.dataset.confirming = '';
   btn.style.color = '';
   const all = await getAll('groupMessages');
-  for (const m of all.filter((x) => x.groupId === SHARED_GROUP_ID)) {
+  const targets = all.filter((x) => x.groupId === SHARED_GROUP_ID);
+  for (const m of targets) {
     await del('groupMessages', m.id);
+    window.OGCloud?.markMessageDeleted(m).catch(() => {});
   }
   clearReplyTarget();
   await markMessagesSeen();
@@ -2009,16 +2086,25 @@ async function renderRestoreCenter() {
     row.className = 'restore-row';
     row.innerHTML = `<span>${escapeHtml(r.kind)} · ${escapeHtml(r.data?.name || r.data?.n || r.data?.title || r.originalId)}</span><button class="mini-btn" type="button">Restore</button>`;
     row.querySelector('button').onclick = async () => {
-      if (r.kind === 'profile') await put('profiles', r.data);
-      else if (r.kind === 'journey') await put('journeys', r.data);
-      else if (r.kind === 'media') await put('media', r.data);
-      else if (r.kind === 'hiddenMedia') await del('hiddenMedia', r.originalId);
+      if (r.kind === 'profile') {
+        await put('profiles', r.data);
+        window.OGCloud?.pushProfile({ ...r.data, deleted: false, updated: Date.now() }).catch(() => {});
+      } else if (r.kind === 'journey') {
+        await put('journeys', r.data);
+        window.OGCloud?.pushJourney({ ...r.data, deleted: false, updated: Date.now() }).catch(() => {});
+      } else if (r.kind === 'media') {
+        await put('media', r.data);
+        window.OGCloud?.pushMediaItem({ ...r.data, deleted: false, updated: Date.now() }).catch(() => {});
+      } else if (r.kind === 'hiddenMedia') {
+        await del('hiddenMedia', r.originalId);
+        window.OGCloud?.setHiddenMedia(r.originalId, false).catch(() => {});
+      }
       localStorage.removeItem('deleted_' + r.originalId);
       await del('recycle', r.id);
       await seedProfiles(); await seedJourneys();
       await renderPeople(); await renderQuickGalleries(); await renderJourney();
       await renderRestoreCenter(); await updateV7Home();
-      showToast('Item restored');
+      showToast('Item restored & synced');
     };
     host.appendChild(row);
   }
@@ -2029,6 +2115,7 @@ async function renderRestoreCenter() {
     row.innerHTML = `<span>Hidden media · ${escapeHtml(h.id)}</span><button class="mini-btn" type="button">Restore</button>`;
     row.querySelector('button').onclick = async () => {
       await del('hiddenMedia', h.id);
+      window.OGCloud?.setHiddenMedia(h.id, false).catch(() => {});
       await renderRestoreCenter();
       await renderQuickGalleries();
       await updateV7Home();
@@ -2130,4 +2217,300 @@ $('importInput').onchange = async (e) => {
   }
   e.target.value = '';
 };
+
+// =========================================================================
+// REAL-TIME ONLINE CLOUD SYNC ACROSS ALL PHONES (FIRESTORE)
+// =========================================================================
+let cloudSyncStarted = false;
+let cloudBootSeededMessages = false;
+let cloudBootSeededProfiles = false;
+let cloudBootSeededJourneys = false;
+const uploadedMissingIds = new Set();
+
+function initCloudSyncOnce() {
+  if (cloudSyncStarted || !DB || !window.OGCloud) return;
+  cloudSyncStarted = true;
+  const cloud = window.OGCloud;
+
+  cloud.startRealtimeSync({
+    async onGroupMessages(rows) {
+      if (!rows.length && !cloudBootSeededMessages) {
+        cloudBootSeededMessages = true;
+        const locals = (await getAll('groupMessages')).filter((m) => m.groupId === SHARED_GROUP_ID);
+        for (const m of locals) {
+          cloud.pushMessage(m).catch(() => {});
+        }
+        return;
+      }
+      cloudBootSeededMessages = true;
+      const locals = await getAll('groupMessages');
+      const localMap = new Map(locals.map((x) => [x.id, x]));
+      const cloudIds = new Set(rows.map((r) => r.id));
+      let changed = false;
+
+      for (const r of rows) {
+        const cur = localMap.get(r.id);
+        if (r.deleted) {
+          if (cur) {
+            await del('groupMessages', r.id);
+            changed = true;
+          }
+          continue;
+        }
+        const needBlob = !cur?.mediaBlob && (r.mediaData || r.chunked);
+        const isNewer = !cur || Number(r.updated || 0) > Number(cur.updated || 0);
+        if (isNewer || needBlob) {
+          let mediaBlob = cur?.mediaBlob || null;
+          if (!mediaBlob && (r.mediaData || r.chunked)) {
+            mediaBlob = await cloud.resolveCloudBlob(r.id, r.mediaData, r.chunked, r.mediaType, r.chunkCount);
+          }
+          const rec = {
+            id: r.id,
+            groupId: r.groupId || SHARED_GROUP_ID,
+            sender: r.sender || 'Legend',
+            text: r.text || '',
+            created: Number(r.created || Date.now()),
+            updated: Number(r.updated || r.created || Date.now()),
+            replyTo: r.replyTo || null,
+            reactions: r.reactions || {}
+          };
+          if (mediaBlob) {
+            rec.mediaBlob = mediaBlob;
+            rec.mediaType = r.mediaType || mediaBlob.type;
+            rec.mediaName = r.mediaName || 'Shared media';
+          }
+          await put('groupMessages', rec);
+          changed = true;
+        }
+      }
+
+      // Push any local messages not yet in cloud
+      for (const m of locals) {
+        if (m.groupId === SHARED_GROUP_ID && !cloudIds.has(m.id) && !uploadedMissingIds.has('gm:' + m.id)) {
+          uploadedMissingIds.add('gm:' + m.id);
+          cloud.pushMessage(m).catch(() => {});
+        }
+      }
+
+      if (changed) {
+        await updateUnreadBadge();
+        await updateV7Home();
+        if (currentPage === PAGE.MESSAGES) {
+          await markMessagesSeen();
+          await renderGroupChat();
+        }
+      }
+    },
+
+    async onMediaItems(rows) {
+      const locals = await getAll('media');
+      const localMap = new Map(locals.map((x) => [x.id, x]));
+      const cloudIds = new Set(rows.map((r) => r.id));
+      let changed = false;
+
+      for (const r of rows) {
+        const cur = localMap.get(r.id);
+        if (r.deleted) {
+          if (cur) {
+            await del('media', r.id);
+            changed = true;
+          }
+          continue;
+        }
+        const needBlob = !cur?.blob && (r.dataUrl || r.chunked);
+        const isNewer = !cur || Number(r.updated || 0) > Number(cur.updated || 0);
+        if (isNewer || needBlob) {
+          const blob = cur?.blob || await cloud.resolveCloudBlob(r.id, r.dataUrl, r.chunked, r.mimeType, r.chunkCount);
+          if (blob) {
+            await put('media', {
+              id: r.id,
+              folderId: r.folderId || (r.type === 'video' ? 'builtin-videos' : 'builtin-photos'),
+              type: r.type === 'video' ? 'video' : 'photo',
+              name: r.name || 'Batch Memory',
+              blob,
+              addedBy: r.addedBy || 'Legend',
+              created: Number(r.created || Date.now()),
+              updated: Number(r.updated || r.created || Date.now())
+            });
+            changed = true;
+          }
+        }
+      }
+
+      // Sync any local uploads not yet in Firestore
+      for (const m of locals) {
+        if (!cloudIds.has(m.id) && !uploadedMissingIds.has('media:' + m.id)) {
+          uploadedMissingIds.add('media:' + m.id);
+          cloud.pushMediaItem(m).catch(() => {});
+        }
+      }
+
+      if (changed) {
+        await renderQuickGalleries();
+        await updateV7Home();
+      }
+    },
+
+    async onProfiles(rows) {
+      if (!rows.length && !cloudBootSeededProfiles) {
+        cloudBootSeededProfiles = true;
+        const locals = await getAll('profiles');
+        for (const p of locals) {
+          cloud.pushProfile({ ...p, updated: p.updated || Date.now(), deleted: false }).catch(() => {});
+        }
+        return;
+      }
+      cloudBootSeededProfiles = true;
+      const locals = await getAll('profiles');
+      const localMap = new Map(locals.map((x) => [x.id, x]));
+      let changed = false;
+
+      for (const r of rows) {
+        const cur = localMap.get(r.id);
+        if (r.deleted) {
+          if (cur) {
+            await del('profiles', r.id);
+            if (r.builtin) localStorage.setItem('deleted_' + r.id, '1');
+            changed = true;
+          }
+          continue;
+        }
+        const needBlob = !cur?.imageBlob && r.imageData;
+        const isNewer = !cur || Number(r.updated || 0) > Number(cur.updated || 0);
+        if (isNewer || needBlob) {
+          const imageBlob = r.imageData ? cloud.dataUrlToBlob(r.imageData, 'image/jpeg') : (cur?.imageBlob || null);
+          const rec = {
+            id: r.id,
+            builtin: Boolean(r.builtin),
+            order: Number(r.order ?? 999),
+            n: r.n || 'Legend',
+            nick: r.nick || '',
+            title: r.title || '',
+            nature: r.nature || '',
+            special: r.special || '',
+            memory: r.memory || '',
+            image: r.image || 'assets/common.jpg',
+            profileVer: Number(r.profileVer || 2),
+            updated: Number(r.updated || Date.now())
+          };
+          if (imageBlob) rec.imageBlob = imageBlob;
+          await put('profiles', rec);
+          changed = true;
+        }
+      }
+      if (changed) {
+        await renderPeople();
+      }
+    },
+
+    async onJourneys(rows) {
+      if (!rows.length && !cloudBootSeededJourneys) {
+        cloudBootSeededJourneys = true;
+        const locals = await getAll('journeys');
+        for (const j of locals) {
+          cloud.pushJourney({ ...j, updated: j.updated || Date.now(), deleted: false }).catch(() => {});
+        }
+        return;
+      }
+      cloudBootSeededJourneys = true;
+      const locals = await getAll('journeys');
+      const localMap = new Map(locals.map((x) => [x.id, x]));
+      let changed = false;
+
+      for (const r of rows) {
+        const cur = localMap.get(r.id);
+        if (r.deleted) {
+          if (cur) {
+            await del('journeys', r.id);
+            if (r.builtin) localStorage.setItem('deleted_' + r.id, '1');
+            changed = true;
+          }
+          continue;
+        }
+        const needBlob = !cur?.mediaBlob && r.mediaData;
+        const isNewer = !cur || Number(r.updated || 0) > Number(cur.updated || 0);
+        if (isNewer || needBlob) {
+          const mediaBlob = r.mediaData ? cloud.dataUrlToBlob(r.mediaData, r.mediaType) : (cur?.mediaBlob || null);
+          const rec = {
+            id: r.id,
+            date: r.date || '',
+            title: r.title || '',
+            message: r.message || '',
+            order: Number(r.order || Date.now()),
+            builtin: Boolean(r.builtin),
+            updated: Number(r.updated || Date.now())
+          };
+          if (mediaBlob) {
+            rec.mediaBlob = mediaBlob;
+            rec.mediaType = r.mediaType || mediaBlob.type;
+          }
+          await put('journeys', rec);
+          changed = true;
+        }
+      }
+      if (changed) {
+        await renderJourney();
+      }
+    },
+
+    async onMediaMeta(rows) {
+      const locals = await getAll('mediaMeta');
+      const localMap = new Map(locals.map((x) => [x.id, x]));
+      let changed = false;
+      for (const r of rows) {
+        const cur = localMap.get(r.id);
+        if (!cur || Number(r.updated || 0) > Number(cur.updated || 0)) {
+          await put('mediaMeta', { id: r.id, date: r.date || '', caption: r.caption || '', updated: Number(r.updated || Date.now()) });
+          changed = true;
+        }
+      }
+      if (changed) await refreshViewerV7();
+    },
+
+    async onLetters(rows) {
+      const locals = await getAll('letters');
+      const localMap = new Map(locals.map((x) => [x.id, x]));
+      for (const r of rows) {
+        const cur = localMap.get(r.id);
+        if (!cur || Number(r.updated || 0) > Number(cur.updated || 0)) {
+          await put('letters', { id: r.id, text: r.text || '', updated: Number(r.updated || Date.now()) });
+        }
+      }
+    },
+
+    async onHiddenMedia(rows) {
+      const locals = await getAll('hiddenMedia');
+      const localSet = new Set(locals.map((x) => x.id));
+      let changed = false;
+      for (const r of rows) {
+        if (r.hidden && !localSet.has(r.id)) {
+          await put('hiddenMedia', { id: r.id });
+          changed = true;
+        } else if (!r.hidden && localSet.has(r.id)) {
+          await del('hiddenMedia', r.id);
+          changed = true;
+        }
+      }
+      if (changed) {
+        await renderQuickGalleries();
+        await updateV7Home();
+      }
+    },
+
+    async onAppState(rows) {
+      const mod = rows.find((r) => r.id === 'memoryOfDay');
+      if (mod && Array.isArray(mod.ids) && mod.ids.length) {
+        const current = JSON.stringify(memoryDaySavedIds());
+        const incoming = JSON.stringify(mod.ids);
+        if (current !== incoming) {
+          saveMemoryDayIds(mod.ids, false);
+          await renderMemoryDay();
+        }
+      }
+    }
+  });
+}
+
+window.addEventListener('ogcloud:ready', initCloudSyncOnce);
+
 

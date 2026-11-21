@@ -172,7 +172,7 @@ h1, h2, h3 {
 .site-shell {
   height: 100dvh;
   display: grid;
-  grid-template-rows: 56px minmax(0, 1fr);
+  grid-template-rows: calc(60px + env(safe-area-inset-top, 0px)) minmax(0, 1fr);
   max-width: 1480px;
   margin: 0 auto;
   position: relative;
@@ -186,7 +186,7 @@ h1, h2, h3 {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 6px 14px;
+  padding: calc(8px + env(safe-area-inset-top, 0px)) 14px 8px;
   z-index: 30;
 }
 
@@ -203,7 +203,7 @@ h1, h2, h3 {
   gap: 10px;
   background: transparent;
   border: 0;
-  padding: 6px 10px;
+  padding: 5px 10px;
   min-height: 44px;
   border-radius: 14px;
   cursor: pointer;
@@ -218,15 +218,22 @@ h1, h2, h3 {
 .brand-btn:hover { background: var(--surface-hover); }
 .brand-btn:active { transform: scale(0.97); }
 .brand-mark {
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  background: var(--fab-bg);
-  color: var(--fab-ink);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #090a0f;
+  border: 1.5px solid var(--accent-border);
+  overflow: hidden;
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.34);
+}
+.brand-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 .brand-text { overflow: hidden; text-overflow: ellipsis; }
 
@@ -2346,16 +2353,16 @@ h1, h2, h3 {
 }
 
 @media (max-width: 760px) {
-  /* Native Android Phone Layout: Top App Bar (52px) + Scrollable Feed + Bottom Nav (60px) */
-  /* Combined fixed chrome = 112px / 812px = 13.8% (under 15% sticky cap) */
+  /* Native Android Phone Layout: Top App Bar (60px + safe-area) + Scrollable Feed + Bottom Nav (64px) */
   .site-shell {
-    grid-template-rows: 52px minmax(0, 1fr) calc(60px + env(safe-area-inset-bottom));
+    grid-template-rows: calc(60px + env(safe-area-inset-top, 0px)) minmax(0, 1fr) calc(64px + env(safe-area-inset-bottom, 0px));
   }
   .topbar {
-    padding: 4px 8px;
-    height: 52px;
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 10px 8px;
+    min-height: calc(60px + env(safe-area-inset-top, 0px));
+    height: auto;
   }
-  .brand-text { font-size: 1rem; max-width: 44vw; }
+  .brand-text { font-size: 1.02rem; max-width: 44vw; }
   .nav-icon { width: 44px; height: 44px; }
 
   .drawer-primary-only { display: none; }
@@ -2364,10 +2371,11 @@ h1, h2, h3 {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     align-items: center;
-    background: var(--surface);
+    background: var(--surface-elev);
+    backdrop-filter: blur(18px);
     border-top: 1px solid var(--line);
-    padding: 4px 4px env(safe-area-inset-bottom);
-    height: calc(60px + env(safe-area-inset-bottom));
+    padding: 5px 4px calc(5px + env(safe-area-inset-bottom, 0px));
+    height: calc(64px + env(safe-area-inset-bottom, 0px));
     z-index: 35;
   }
   .bnav-item {
@@ -2470,7 +2478,7 @@ h1, h2, h3 {
 
   /* Full-Screen Android Subscreen Mode: hide bottom nav & FAB */
   .site-shell.subscreen-mode {
-    grid-template-rows: 52px minmax(0, 1fr);
+    grid-template-rows: calc(60px + env(safe-area-inset-top, 0px)) minmax(0, 1fr);
   }
   .site-shell.subscreen-mode .android-bottom-nav,
   .site-shell.subscreen-mode .android-fab,
