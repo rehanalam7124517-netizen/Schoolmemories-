@@ -34,6 +34,7 @@
   --danger-border: rgba(255, 156, 148, 0.32);
   --shadow: 0 20px 50px rgba(0, 0, 0, 0.46);
   --handle-bar: rgba(255, 255, 255, 0.24);
+  --read-color: #38bdf8;
   --font-display: 'Fraunces', Georgia, serif;
   --font-sans: 'Outfit', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
@@ -131,6 +132,7 @@
   --danger-border: rgba(185, 28, 28, 0.32);
   --shadow: 0 14px 36px rgba(24, 21, 15, 0.09);
   --handle-bar: rgba(24, 23, 21, 0.22);
+  --read-color: #0284c7;
 }
 
 *, *::before, *::after {
@@ -2206,18 +2208,36 @@ h1, h2, h3 {
 .chat-bubble-foot {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   margin-left: auto;
   font-family: var(--font-mono);
   font-size: 0.63rem;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
-.chat-ticks {
-  color: var(--accent);
-  font-weight: 700;
-  letter-spacing: -2px;
+.chat-status {
+  border: 0;
+  background: transparent;
+  padding: 1px 2px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-sans);
+  font-size: 0.66rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.14s ease, color 0.14s ease, background 0.14s ease;
 }
+.chat-status:hover { background: var(--surface-hover); }
+.chat-status svg { display: block; flex: 0 0 auto; }
+.chat-status.status-sending { opacity: 0.72; }
+.chat-status.status-sent { color: var(--muted); }
+.chat-status.status-delivered { color: var(--text); opacity: 0.86; }
+.chat-status.status-read { color: var(--read-color, var(--accent)); font-weight: 700; }
 
 .chat-reply-bar {
   flex: 0 0 auto;

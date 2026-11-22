@@ -1893,6 +1893,209 @@ async function seedSocialMessages() {
   }
 }
 
+let latestCloudGroupRows = [];
+const sentReceiptKeys = new Set();
+
+function getDeviceId() {
+  let id = localStorage.getItem('og_device_id');
+  if (!id || !/^dev-[a-zA-Z0-9_-]{4,48}$/.test(id)) {
+    id = 'dev-' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+    localStorage.setItem('og_device_id', id);
+  }
+  return id;
+}
+
+function safeReceiptKey(raw) {
+  return String(raw || '').replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 64);
+}
+
+function getReceiptInfo(m) {
+  if (m?.syncState === 'sending') {
+    return {
+      state: 'sending',
+      label: 'Sending',
+      readers: [],
+      deliveredCount: 0,
+      tooltip: 'Sending to group cloud...'
+    };
+  }
+  const senderDevKey = m?.senderDeviceId ? safeReceiptKey(m.senderDeviceId) : '';
+  const readMap = m?.readBy && typeof m.readBy === 'object' ? m.readBy : {};
+  const delivMap = m?.deliveredTo && typeof m.deliveredTo === 'object' ? m.deliveredTo : {};
+
+  const readers = Object.entries(readMap)
+    .filter(([key, val]) => {
+      if (!val || typeof val !== 'object') return false;
+      if (senderDevKey) return key !== senderDevKey;
+      return String(val.name || '') !== String(m?.sender || '');
+    })
+    .map(([, val]) => ({
+      name: String(val.name || 'Legend'),
+      at: Number(val.at || 0)
+    }))
+    .sort((a, b) => b.at - a.at);
+
+  const deliveredKeys = Object.keys(delivMap).filter((key) => {
+    if (senderDevKey) return key !== senderDevKey;
+    return true;
+  });
+
+  if (readers.length > 0) {
+    const label = readers.length > 1 ? `Read · ${readers.length}` : 'Read';
+    const names = readers
+      .slice(0, 5)
+      .map((r) => `${r.name}${r.at ? ' (' + formatTimeShort(r.at) + ')' : ''}`)
+      .join(', ');
+    return {
+      state: 'read',
+      label,
+      readers,
+      deliveredCount: Math.max(deliveredKeys.length, readers.length),
+      tooltip: `Read by ${names}${readers.length > 5 ? ` +${readers.length - 5} more` : ''}`
+    };
+  }
+
+  if (deliveredKeys.length > 0) {
+    return {
+      state: 'delivered',
+      label: 'Delivered',
+      readers: [],
+      deliveredCount: deliveredKeys.length,
+      tooltip: `Delivered to ${deliveredKeys.length} ${deliveredKeys.length === 1 ? 'friend' : 'friends'}`
+    };
+  }
+
+  return {
+    state: 'sent',
+    label: 'Sent',
+    readers: [],
+    deliveredCount: 0,
+    tooltip: 'Sent to group cloud'
+  };
+}
+
+function renderStatusHtml(info) {
+  if (info.state === 'sending') {
+    return '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg><span>Sending</span>';
+  }
+  if (info.state === 'sent') {
+    return '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg><span>Sent</span>';
+  }
+  return `<svg width="15" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 12.5 6.5 17.5 16.5 6.5"/><path d="M8.5 12.5 13.5 17.5 23 6.5"/></svg><span>${escapeHtml(info.label)}</span>`;
+}
+
+function formatReceiptToast(m, info) {
+  if (info.state === 'sending') return 'Sending message to group cloud...';
+  if (info.state === 'sent') return 'Sent to group cloud · waiting for delivery';
+  if (info.state === 'delivered') {
+    return `Delivered to ${info.deliveredCount} ${info.deliveredCount === 1 ? 'friend' : 'friends'} · not read yet`;
+  }
+  const seenList = info.readers
+    .slice(0, 4)
+    .map((r) => `${r.name} (${formatTimeShort(r.at || m.updated || m.created)})`)
+    .join(', ');
+  const extra = info.readers.length > 4 ? ` +${info.readers.length - 4} more` : '';
+  return `Read by ${seenList}${extra}`;
+}
+
+function isRemoteMessageForDevice(r, myDevId, myDevKey, mySender) {
+  if (!r || r.deleted || /^gm-[1-5]$/.test(r.id)) return false;
+  if (r.senderDeviceId) {
+    return r.senderDeviceId !== myDevId && safeReceiptKey(r.senderDeviceId) !== myDevKey;
+  }
+  return String(r.sender || '') !== String(mySender || '');
+}
+
+async function syncReceiptsForRows(rows, isViewingChat, pendingWriteIds = new Set()) {
+  if (!DB || !window.OGCloud || navigator.onLine === false) return;
+  const source = Array.isArray(rows) ? rows : latestCloudGroupRows;
+  if (!source.length) return;
+
+  const myDevId = getDeviceId();
+  const myDevKey = safeReceiptKey(myDevId);
+  const mySender = getChatSender();
+  const nowTs = Date.now();
+
+  const candidates = source
+    .filter((r) => !pendingWriteIds.has(r.id) && isRemoteMessageForDevice(r, myDevId, myDevKey, mySender))
+    .sort((a, b) => Number(b.created || 0) - Number(a.created || 0))
+    .slice(0, 30);
+
+  if (!candidates.length) return;
+
+  const toRead = [];
+  const toDeliver = [];
+
+  for (const r of candidates) {
+    const hasDelivered = Boolean(r.deliveredTo && r.deliveredTo[myDevKey]);
+    const hasRead = Boolean(r.readBy && r.readBy[myDevKey]);
+    if (isViewingChat) {
+      const readKey = `${r.id}:read:${myDevKey}`;
+      if (!hasRead && !sentReceiptKeys.has(readKey)) {
+        sentReceiptKeys.add(readKey);
+        sentReceiptKeys.add(`${r.id}:deliv:${myDevKey}`);
+        toRead.push({
+          id: r.id,
+          created: r.created,
+          updated: r.updated,
+          deliveredAt: (r.deliveredTo && r.deliveredTo[myDevKey]) || nowTs
+        });
+      }
+    } else {
+      const delivKey = `${r.id}:deliv:${myDevKey}`;
+      if (!hasDelivered && !sentReceiptKeys.has(delivKey)) {
+        sentReceiptKeys.add(delivKey);
+        toDeliver.push({
+          id: r.id,
+          created: r.created,
+          updated: r.updated,
+          deliveredAt: nowTs
+        });
+      }
+    }
+  }
+
+  if (!toRead.length && !toDeliver.length) return;
+
+  const readerInfo = { deviceId: myDevId, name: mySender };
+
+  // Optimistically mirror receipts in IndexedDB
+  const locals = await getAll('groupMessages');
+  const localMap = new Map(locals.map((x) => [x.id, x]));
+  for (const entry of toDeliver) {
+    const rec = localMap.get(entry.id);
+    if (rec) {
+      rec.deliveredTo = { ...(rec.deliveredTo || {}), [myDevKey]: entry.deliveredAt };
+      await put('groupMessages', rec);
+    }
+  }
+  for (const entry of toRead) {
+    const rec = localMap.get(entry.id);
+    if (rec) {
+      rec.deliveredTo = { ...(rec.deliveredTo || {}), [myDevKey]: entry.deliveredAt };
+      rec.readBy = { ...(rec.readBy || {}), [myDevKey]: { name: mySender, at: nowTs } };
+      await put('groupMessages', rec);
+    }
+  }
+
+  if (toDeliver.length) {
+    window.OGCloud.markMessagesReceipt(toDeliver, 'delivered', readerInfo).catch(() => {
+      toDeliver.forEach((e) => sentReceiptKeys.delete(`${e.id}:deliv:${myDevKey}`));
+    });
+  }
+  if (toRead.length) {
+    window.OGCloud.markMessagesReceipt(toRead, 'read', readerInfo).catch(() => {
+      toRead.forEach((e) => sentReceiptKeys.delete(`${e.id}:read:${myDevKey}`));
+    });
+  }
+}
+
+function markVisibleCloudMessagesRead() {
+  if (currentPage === PAGE.MESSAGES && document.visibilityState === 'visible') {
+    syncReceiptsForRows(latestCloudGroupRows, true);
+  }
+}
+
 async function updateUnreadBadge() {
   if (!DB) return;
   const gm = (await getAll('groupMessages')).filter((m) => m.groupId === SHARED_GROUP_ID);
@@ -1925,6 +2128,7 @@ async function openMessagesDialog(mentionName = null) {
   await waitDB();
   syncSenderDropdown();
   await markMessagesSeen();
+  markVisibleCloudMessagesRead();
   if (alreadyHere || !chatRenderSeq) {
     await renderGroupChat();
   }
@@ -1987,7 +2191,9 @@ async function renderGroupChat({ preserveScroll = false } = {}) {
       feed.appendChild(dateEl);
     }
 
-    const isMe = m.sender === sender;
+    const myDevId = getDeviceId();
+    const isMe = m.sender === sender && (!m.senderDeviceId || m.senderDeviceId === myDevId);
+    const rInfo = isMe ? getReceiptInfo(m) : null;
     const row = document.createElement('div');
     row.className = 'chat-row ' + (isMe ? 'me' : 'them');
 
@@ -2034,10 +2240,15 @@ async function renderGroupChat({ preserveScroll = false } = {}) {
           <div class="chat-react-row">${reactHtml}</div>
           <div class="chat-bubble-foot">
             <span>${formatTimeShort(m.created)}</span>
-            ${isMe ? '<span class="chat-ticks" aria-hidden="true">✓✓</span>' : ''}
+            ${isMe ? `<button class="chat-status status-${rInfo.state}" type="button" aria-label="Message status: ${escapeHtml(rInfo.label)}" title="${escapeHtml(rInfo.tooltip)}">${renderStatusHtml(rInfo)}</button>` : ''}
           </div>
         </div>
       </div>`;
+
+    const statusBtn = row.querySelector('.chat-status');
+    if (statusBtn && rInfo) {
+      statusBtn.onclick = () => showToast(formatReceiptToast(m, rInfo));
+    }
 
     row.querySelector('.chat-mini-act.reply').onclick = () => setReplyTarget(m);
     row.querySelector('.chat-mini-act.del').onclick = async () => {
@@ -2115,7 +2326,11 @@ $('msgComposeForm')?.addEventListener('submit', async (e) => {
     id: 'gm-' + nowTs + '-' + Math.random().toString(36).slice(2),
     groupId: SHARED_GROUP_ID,
     sender,
+    senderDeviceId: getDeviceId(),
     text,
+    deliveredTo: {},
+    readBy: {},
+    syncState: 'sending',
     created: nowTs,
     updated: nowTs
   };
@@ -2139,13 +2354,26 @@ $('msgComposeForm')?.addEventListener('submit', async (e) => {
   await renderGroupChat();
   await updateV7Home();
   $('msgTextInput')?.focus();
-  queueCloudOp('gm:' + msg.id, () => window.OGCloud.pushMessage(msg)).catch((err) => {
-    if (err?.message === 'FILE_TOO_LARGE_FOR_CLOUD') {
-      showToast('Media saved on device (max 25 MB for online sync)');
-    } else {
-      showToast('Message queued — will sync online automatically');
-    }
-  });
+  queueCloudOp('gm:' + msg.id, () => window.OGCloud.pushMessage(msg))
+    .then(async (ok) => {
+      if (!ok) return;
+      const allMsgs = await getAll('groupMessages');
+      const existing = allMsgs.find((x) => x.id === msg.id);
+      if (existing && existing.syncState === 'sending') {
+        existing.syncState = 'sent';
+        await put('groupMessages', existing);
+        if (currentPage === PAGE.MESSAGES) {
+          await renderGroupChat({ preserveScroll: true });
+        }
+      }
+    })
+    .catch((err) => {
+      if (err?.message === 'FILE_TOO_LARGE_FOR_CLOUD') {
+        showToast('Media saved on device (max 25 MB for online sync)');
+      } else {
+        showToast('Message queued — will sync online automatically');
+      }
+    });
 });
 
 let clearChatConfirmTimer = null;
@@ -2524,7 +2752,12 @@ function initCloudSyncOnce() {
   flushPendingCloudOps();
 
   cloud.startRealtimeSync({
-    async onGroupMessages(rows) {
+    async onGroupMessages(rows, snapshot) {
+      latestCloudGroupRows = rows;
+      const pendingWriteIds = new Set(
+        (snapshot?.docs || []).filter((d) => d.metadata?.hasPendingWrites).map((d) => d.id)
+      );
+
       if (!rows.length && !cloudBootSeededMessages) {
         cloudBootSeededMessages = true;
         cloudHydrated.groupMessages = true;
@@ -2541,6 +2774,7 @@ function initCloudSyncOnce() {
       const localMap = new Map(locals.map((x) => [x.id, x]));
       const cloudIds = new Set(rows.map((r) => r.id));
       let changed = false;
+      let hasBrandNewMsg = false;
       const incomingOtherMsgs = [];
 
       for (const r of rows) {
@@ -2554,21 +2788,35 @@ function initCloudSyncOnce() {
         }
         const needBlob = !cur?.mediaBlob && Boolean(r.mediaData || r.chunked);
         const isNewer = !cur || Number(r.updated || 0) > Number(cur.updated || 0);
-        if (isNewer || needBlob) {
+        const nextDelivered = r.deliveredTo && typeof r.deliveredTo === 'object' ? r.deliveredTo : (cur?.deliveredTo || {});
+        const nextRead = r.readBy && typeof r.readBy === 'object' ? r.readBy : (cur?.readBy || {});
+        const nextSenderDevId = r.senderDeviceId || cur?.senderDeviceId || '';
+        const nextSyncState = pendingWriteIds.has(r.id) ? 'sending' : 'sent';
+        const receiptsChanged = !cur
+          || cur.syncState !== nextSyncState
+          || (cur.senderDeviceId || '') !== nextSenderDevId
+          || JSON.stringify(cur.deliveredTo || {}) !== JSON.stringify(nextDelivered)
+          || JSON.stringify(cur.readBy || {}) !== JSON.stringify(nextRead);
+
+        if (isNewer || needBlob || receiptsChanged) {
           const isStaticSeed = /^gm-[1-5]$/.test(r.id);
+          if (!cur) hasBrandNewMsg = true;
           if (!cur && wasHydrated && !isStaticSeed && !isSelfCreated(r.id)) {
             incomingOtherMsgs.push(r);
           }
-          // Save text immediately so new messages pop in right away like WhatsApp/Instagram
           const baseRec = {
             id: r.id,
             groupId: r.groupId || SHARED_GROUP_ID,
             sender: r.sender || 'Legend',
+            senderDeviceId: nextSenderDevId,
             text: r.text || '',
             created: Number(r.created || Date.now()),
             updated: Number(r.updated || r.created || Date.now()),
             replyTo: r.replyTo || null,
-            reactions: r.reactions || {}
+            reactions: r.reactions || {},
+            deliveredTo: nextDelivered,
+            readBy: nextRead,
+            syncState: nextSyncState
           };
           if (cur?.mediaBlob) {
             baseRec.mediaBlob = cur.mediaBlob;
@@ -2607,7 +2855,7 @@ function initCloudSyncOnce() {
         await updateV7Home();
         if (currentPage === PAGE.MESSAGES) {
           await markMessagesSeen();
-          await renderGroupChat();
+          await renderGroupChat({ preserveScroll: !hasBrandNewMsg });
         }
         if (incomingOtherMsgs.length && (currentPage !== PAGE.MESSAGES || document.hidden)) {
           const latest = incomingOtherMsgs.sort((a, b) => Number(a.created || 0) - Number(b.created || 0)).pop();
@@ -2625,6 +2873,8 @@ function initCloudSyncOnce() {
           });
         }
       }
+
+      syncReceiptsForRows(rows, currentPage === PAGE.MESSAGES && document.visibilityState === 'visible', pendingWriteIds);
     },
 
     async onMediaItems(rows) {
@@ -2971,7 +3221,10 @@ function initCloudSyncOnce() {
 window.addEventListener('ogcloud:ready', initCloudSyncOnce);
 window.addEventListener('online', flushPendingCloudOps);
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') flushPendingCloudOps();
+  if (document.visibilityState === 'visible') {
+    flushPendingCloudOps();
+    markVisibleCloudMessagesRead();
+  }
 });
 
 

@@ -63,17 +63,27 @@ service cloud.firestore {
         );
     }
 
+    function isValidReceiptMap(data, field) {
+      return !(field in data)
+        || data[field] == null
+        || (
+          data[field] is map
+          && data[field].keys().size() <= 40
+        );
+    }
+
     function isValidGroupMessage(data, docId) {
       return data.keys().hasAll(['id', 'batchKey', 'groupId', 'sender', 'text', 'created', 'updated', 'deleted'])
         && data.keys().hasOnly([
-          'id', 'batchKey', 'groupId', 'sender', 'text',
+          'id', 'batchKey', 'groupId', 'sender', 'senderDeviceId', 'text',
           'mediaData', 'mediaType', 'mediaName', 'chunked', 'chunkCount',
-          'replyTo', 'reactions', 'created', 'updated', 'deleted'
+          'replyTo', 'reactions', 'deliveredTo', 'readBy', 'created', 'updated', 'deleted'
         ])
         && data.id == docId
         && isBatchMemberPayload(data)
         && data.groupId is string && data.groupId == 'grp-og-legends'
         && data.sender is string && data.sender.size() >= 1 && data.sender.size() <= 80
+        && isOptString(data, 'senderDeviceId', 80)
         && data.text is string && data.text.size() <= 4000
         && isOptString(data, 'mediaData', 850000)
         && isOptString(data, 'mediaType', 80)
@@ -82,6 +92,8 @@ service cloud.firestore {
         && isOptNumber(data, 'chunkCount')
         && isValidReplyMap(data)
         && isValidReactionsMap(data)
+        && isValidReceiptMap(data, 'deliveredTo')
+        && isValidReceiptMap(data, 'readBy')
         && data.created is number && data.created > 0
         && data.updated is number && data.updated >= data.created
         && data.deleted is bool;
@@ -218,7 +230,12 @@ service cloud.firestore {
                     && incoming().id == existing().id
                     && incoming().batchKey == existing().batchKey
                     && incoming().created == existing().created
-                    && incoming().diff(existing()).affectedKeys().hasOnly(['reactions', 'updated', 'deleted', 'text']);
+                    && incoming().sender == existing().sender
+                    && (!('senderDeviceId' in existing()) || incoming().senderDeviceId == existing().senderDeviceId)
+                    && (
+                      incoming().diff(existing()).affectedKeys().hasOnly(['reactions', 'updated', 'deleted', 'text'])
+                      || incoming().diff(existing()).affectedKeys().hasOnly(['deliveredTo', 'readBy', 'updated'])
+                    );
       allow delete: if isValidId(messageId) && isBatchMemberPayload(existing());
     }
 

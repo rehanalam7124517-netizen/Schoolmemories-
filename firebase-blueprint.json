@@ -9,6 +9,7 @@
         "batchKey": { "type": "string", "maxLength": 32 },
         "groupId": { "type": "string", "maxLength": 64 },
         "sender": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "senderDeviceId": { "type": "string", "maxLength": 80 },
         "text": { "type": "string", "maxLength": 4000 },
         "mediaData": { "type": "string", "maxLength": 850000 },
         "mediaType": { "type": "string", "maxLength": 80 },
@@ -17,6 +18,8 @@
         "chunkCount": { "type": "number" },
         "replyTo": { "type": "object" },
         "reactions": { "type": "object" },
+        "deliveredTo": { "type": "object" },
+        "readBy": { "type": "object" },
         "created": { "type": "number" },
         "updated": { "type": "number" },
         "deleted": { "type": "boolean" }

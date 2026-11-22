@@ -321,6 +321,7 @@ window.OGCloud = {
       batchKey: BATCH_KEY,
       groupId: String(msg.groupId || 'grp-og-legends').slice(0, 64),
       sender: String(msg.sender || 'Legend').slice(0, 80) || 'Legend',
+      senderDeviceId: String(msg.senderDeviceId || '').slice(0, 80),
       text: String(msg.text || '').slice(0, 4000),
       mediaData: mediaInfo.inlineData || '',
       mediaType: String(mediaInfo.mimeType || '').slice(0, 80),
@@ -335,11 +336,68 @@ window.OGCloud = {
           }
         : null,
       reactions: msg.reactions && typeof msg.reactions === 'object' ? msg.reactions : {},
+      deliveredTo: msg.deliveredTo && typeof msg.deliveredTo === 'object' ? msg.deliveredTo : {},
+      readBy: msg.readBy && typeof msg.readBy === 'object' ? msg.readBy : {},
       created,
       updated,
       deleted: Boolean(msg.deleted)
     };
     return upsertDoc('groupMessages', id, payload, OperationType.CREATE);
+  },
+
+  async markMessagesReceipt(entries, kind, readerInfo) {
+    if (!Array.isArray(entries) || !entries.length) return true;
+    const safeDevId = sanitizeId(readerInfo?.deviceId || 'device').slice(0, 64);
+    const readerName = String(readerInfo?.name || 'Legend').slice(0, 60) || 'Legend';
+    const nowTs = Date.now();
+    const isRead = kind === 'read';
+    const chunkSize = 20;
+
+    for (let i = 0; i < entries.length; i += chunkSize) {
+      const slice = entries.slice(i, i + chunkSize);
+      const batch = writeBatch(db);
+      for (const entry of slice) {
+        const msgId = sanitizeId(entry.id);
+        const ref = doc(db, 'groupMessages', msgId);
+        const nextUpdated = Math.max(Number(entry.updated || entry.created || nowTs), nowTs);
+        const patch = {
+          [`deliveredTo.${safeDevId}`]: Number(entry.deliveredAt || nowTs),
+          updated: nextUpdated
+        };
+        if (isRead) {
+          patch[`readBy.${safeDevId}`] = { name: readerName, at: nowTs };
+        }
+        batch.update(ref, patch);
+      }
+      try {
+        await batch.commit();
+      } catch (error) {
+        if (error?.code === 'not-found') {
+          // One or more messages were concurrently deleted; fall back to individual updates
+          for (const entry of slice) {
+            const msgId = sanitizeId(entry.id);
+            const nextUpdated = Math.max(Number(entry.updated || entry.created || nowTs), nowTs);
+            const patch = {
+              [`deliveredTo.${safeDevId}`]: Number(entry.deliveredAt || nowTs),
+              updated: nextUpdated
+            };
+            if (isRead) {
+              patch[`readBy.${safeDevId}`] = { name: readerName, at: nowTs };
+            }
+            try {
+              await updateDoc(doc(db, 'groupMessages', msgId), patch);
+            } catch (singleErr) {
+              if (singleErr?.code !== 'not-found') {
+                handleFirestoreError(singleErr, OperationType.UPDATE, `groupMessages/${msgId}`);
+              }
+            }
+          }
+        } else {
+          handleFirestoreError(error, OperationType.UPDATE, 'groupMessages');
+        }
+      }
+    }
+    return true;
   },
 
   async updateMessageReactions(msg, reactions) {
@@ -353,8 +411,11 @@ window.OGCloud = {
       batchKey: BATCH_KEY,
       groupId: String(msg.groupId || 'grp-og-legends').slice(0, 64),
       sender: String(msg.sender || 'Legend').slice(0, 80) || 'Legend',
+      senderDeviceId: String(msg.senderDeviceId || '').slice(0, 80),
       text: String(msg.text || '').slice(0, 4000),
       reactions: nextReactions,
+      deliveredTo: msg.deliveredTo && typeof msg.deliveredTo === 'object' ? msg.deliveredTo : {},
+      readBy: msg.readBy && typeof msg.readBy === 'object' ? msg.readBy : {},
       created,
       updated,
       deleted: Boolean(msg.deleted)
@@ -375,7 +436,10 @@ window.OGCloud = {
       batchKey: BATCH_KEY,
       groupId: String(msg.groupId || 'grp-og-legends').slice(0, 64),
       sender: String(msg.sender || 'Legend').slice(0, 80) || 'Legend',
+      senderDeviceId: String(msg.senderDeviceId || '').slice(0, 80),
       text: String(msg.text || '').slice(0, 4000),
+      deliveredTo: msg.deliveredTo && typeof msg.deliveredTo === 'object' ? msg.deliveredTo : {},
+      readBy: msg.readBy && typeof msg.readBy === 'object' ? msg.readBy : {},
       created,
       updated,
       deleted: true
