@@ -5,12 +5,15 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.View;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
@@ -21,6 +24,8 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
+import androidx.core.content.pm.PackageInfoCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
@@ -29,8 +34,14 @@ import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.getcapacitor.BridgeActivity;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class MainActivity extends BridgeActivity {
@@ -38,6 +49,8 @@ public class MainActivity extends BridgeActivity {
     private static final String EXTRA_TARGET_PAGE = "og_target_page";
     private static final int REQ_APP_PERMISSIONS = 2026;
     private final AtomicInteger notifyCounter = new AtomicInteger(100);
+    private final AtomicBoolean isDownloadingApk = new AtomicBoolean(false);
+    private volatile String pendingInstallApkPath = null;
     private int pendingTargetPage = -1;
 
     @Override
@@ -109,6 +122,20 @@ public class MainActivity extends BridgeActivity {
                 );
             }
         });
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (pendingInstallApkPath != null) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || getPackageManager().canRequestPackageInstalls()) {
+                File apkFile = new File(pendingInstallApkPath);
+                pendingInstallApkPath = null;
+                if (apkFile.exists()) {
+                    launchApkInstaller(apkFile);
+                }
+            }
+        }
     }
 
     @Override
@@ -256,10 +283,141 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
+    private void emitApkProgress(int pct, String status) {
+        WebView wv = getBridge() != null ? getBridge().getWebView() : null;
+        if (wv == null) return;
+        String safeStatus = status.replace("'", "");
+        wv.post(() -> wv.evaluateJavascript(
+                "window.__ogApkUpdateProgress && window.__ogApkUpdateProgress(" + pct + ", '" + safeStatus + "');",
+                null
+        ));
+    }
+
+    private void launchApkInstaller(File apkFile) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !getPackageManager().canRequestPackageInstalls()) {
+                pendingInstallApkPath = apkFile.getAbsolutePath();
+                emitApkProgress(100, "permission");
+                Intent permIntent = new Intent(
+                        Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        Uri.parse("package:" + getPackageName())
+                );
+                startActivity(permIntent);
+                return;
+            }
+            Uri apkUri = FileProvider.getUriForFile(
+                    this,
+                    getPackageName() + ".fileprovider",
+                    apkFile
+            );
+            Intent installIntent = new Intent(Intent.ACTION_VIEW);
+            installIntent.setDataAndType(apkUri, "application/vnd.android.package-archive");
+            installIntent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+            emitApkProgress(100, "ready");
+            startActivity(installIntent);
+        } catch (Exception e) {
+            emitApkProgress(0, "error");
+        }
+    }
+
+    private void startApkDownload(String apkUrl) {
+        if (apkUrl == null || !apkUrl.startsWith("https://")) return;
+        if (!isDownloadingApk.compareAndSet(false, true)) return;
+        new Thread(() -> {
+            HttpURLConnection conn = null;
+            try {
+                emitApkProgress(0, "downloading");
+                String currentUrl = apkUrl;
+                for (int i = 0; i < 6; i++) {
+                    URL url = new URL(currentUrl);
+                    conn = (HttpURLConnection) url.openConnection();
+                    conn.setInstanceFollowRedirects(false);
+                    conn.setConnectTimeout(15000);
+                    conn.setReadTimeout(30000);
+                    int code = conn.getResponseCode();
+                    if (code == HttpURLConnection.HTTP_MOVED_TEMP
+                            || code == HttpURLConnection.HTTP_MOVED_PERM
+                            || code == HttpURLConnection.HTTP_SEE_OTHER
+                            || code == 307 || code == 308) {
+                        String nextLoc = conn.getHeaderField("Location");
+                        conn.disconnect();
+                        if (nextLoc == null || !nextLoc.startsWith("https://")) {
+                            throw new RuntimeException("Invalid redirect");
+                        }
+                        currentUrl = nextLoc;
+                        continue;
+                    }
+                    break;
+                }
+                if (conn == null || conn.getResponseCode() < 200 || conn.getResponseCode() >= 300) {
+                    throw new RuntimeException("Download failed");
+                }
+                File updatesDir = new File(getCacheDir(), "updates");
+                if (!updatesDir.exists()) updatesDir.mkdirs();
+                File tmpFile = new File(updatesDir, "update.tmp.apk");
+                File outFile = new File(updatesDir, "The-OG-Legends-Update.apk");
+                long total = conn.getContentLengthLong();
+                long downloaded = 0;
+                int lastPct = 0;
+                try (InputStream in = conn.getInputStream();
+                     FileOutputStream out = new FileOutputStream(tmpFile)) {
+                    byte[] buf = new byte[16384];
+                    int n;
+                    while ((n = in.read(buf)) != -1) {
+                        out.write(buf, 0, n);
+                        downloaded += n;
+                        if (total > 0) {
+                            int pct = (int) Math.min(99, (downloaded * 100L) / total);
+                            if (pct >= lastPct + 15) {
+                                lastPct = pct;
+                                emitApkProgress(pct, "downloading");
+                            }
+                        }
+                    }
+                }
+                if (outFile.exists()) outFile.delete();
+                if (!tmpFile.renameTo(outFile)) {
+                    throw new RuntimeException("Rename failed");
+                }
+                runOnUiThread(() -> launchApkInstaller(outFile));
+            } catch (Exception e) {
+                emitApkProgress(0, "error");
+            } finally {
+                if (conn != null) conn.disconnect();
+                isDownloadingApk.set(false);
+            }
+        }).start();
+    }
+
     public class OGNativeBridge {
         @JavascriptInterface
         public boolean isNativeApp() {
             return true;
+        }
+
+        @JavascriptInterface
+        public int getAppVersionCode() {
+            try {
+                PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
+                return (int) PackageInfoCompat.getLongVersionCode(pInfo);
+            } catch (Exception e) {
+                return 100;
+            }
+        }
+
+        @JavascriptInterface
+        public String getAppVersionName() {
+            try {
+                PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
+                return pInfo.versionName != null ? pInfo.versionName : "15.9.0";
+            } catch (Exception e) {
+                return "15.9.0";
+            }
+        }
+
+        @JavascriptInterface
+        public void downloadAndInstallApk(String apkUrl, String versionName) {
+            startApkDownload(apkUrl);
         }
 
         @JavascriptInterface

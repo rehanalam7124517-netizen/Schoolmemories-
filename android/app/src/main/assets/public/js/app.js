@@ -609,6 +609,71 @@ window.addEventListener('ogpermissions:updated', syncPermissionUI);
 document.addEventListener('DOMContentLoaded', syncPermissionUI);
 setTimeout(syncPermissionUI, 150);
 
+function syncAutoUpdaterUI(detail) {
+  const u = window.OGUpdater;
+  const state = detail || {
+    version: u?.version || '15.9.0',
+    isNativeApk: u?.isNativeApk?.() || false,
+    isInstalled: u?.isStandalone?.() || false,
+    isInstallable: u?.isInstallable?.() || false,
+    isIOS: u?.isIOS?.() || false,
+    isOnline: navigator.onLine !== false,
+  };
+  const showInstall = !state.isNativeApk && !state.isInstalled && (state.isInstallable || state.isIOS);
+  if ($('pwaInstallTopBtn')) $('pwaInstallTopBtn').hidden = !showInstall;
+  if ($('toolsInstallBtn')) $('toolsInstallBtn').hidden = !showInstall;
+  if ($('toolsInstallStatus')) {
+    $('toolsInstallStatus').textContent = state.isIOS
+      ? 'Tap for iPhone / iPad Home Screen install steps'
+      : 'Add to Home Screen · works offline & updates automatically';
+  }
+  if ($('toolsAutoUpdateStatus')) {
+    const label = u?.getApkVersionLabel?.() || `v${state.version}`;
+    if (state.apkStatus === 'downloading') {
+      $('toolsAutoUpdateStatus').textContent = `Downloading update (${state.apkProgress || 0}%)...`;
+    } else {
+      $('toolsAutoUpdateStatus').textContent = `${label} · Auto-updates enabled (tap to check)`;
+    }
+  }
+  if ($('offlineBanner')) {
+    $('offlineBanner').hidden = state.isOnline !== false;
+  }
+}
+
+async function handleInstallAppClick() {
+  const u = window.OGUpdater;
+  if (!u) return;
+  if (u.isInstallable?.()) {
+    await u.promptInstall();
+  } else if (u.isIOS?.()) {
+    if ($('iosInstallModal')) $('iosInstallModal').hidden = false;
+  } else {
+    showToast('Open browser menu (⋮) and tap "Add to Home screen"');
+  }
+}
+
+$('pwaInstallTopBtn')?.addEventListener('click', handleInstallAppClick);
+$('toolsInstallBtn')?.addEventListener('click', handleInstallAppClick);
+$('iosInstallCloseBtn')?.addEventListener('click', () => {
+  if ($('iosInstallModal')) $('iosInstallModal').hidden = true;
+});
+$('iosInstallModal')?.addEventListener('click', (e) => {
+  if (e.target === $('iosInstallModal')) $('iosInstallModal').hidden = true;
+});
+$('toolsAutoUpdateBtn')?.addEventListener('click', async () => {
+  if (!window.OGUpdater) return;
+  showToast('Checking for latest update...');
+  await window.OGUpdater.checkNow();
+});
+window.addEventListener('ogupdater:state', (e) => syncAutoUpdaterUI(e.detail));
+window.addEventListener('ogupdater:toast', (e) => {
+  if (e.detail?.message) showToast(e.detail.message);
+});
+window.addEventListener('online', () => syncAutoUpdaterUI());
+window.addEventListener('offline', () => syncAutoUpdaterUI());
+document.addEventListener('DOMContentLoaded', () => syncAutoUpdaterUI());
+setTimeout(() => syncAutoUpdaterUI(), 250);
+
 const inlineConfirmTimers = new WeakMap();
 function resetConfirmTap(btn) {
   if (!btn) return;
@@ -3219,9 +3284,17 @@ function initCloudSyncOnce() {
 }
 
 window.addEventListener('ogcloud:ready', initCloudSyncOnce);
-window.addEventListener('online', flushPendingCloudOps);
+if (window.OGCloud) initCloudSyncOnce();
+setTimeout(() => {
+  if (!cloudSyncStarted && DB && window.OGCloud) initCloudSyncOnce();
+}, 400);
+window.addEventListener('online', () => {
+  window.OGCloud?.ensureOnline?.();
+  flushPendingCloudOps();
+});
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
+    window.OGCloud?.ensureOnline?.();
     flushPendingCloudOps();
     markVisibleCloudMessagesRead();
   }

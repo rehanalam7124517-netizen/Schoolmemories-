@@ -2560,3 +2560,74 @@ h1, h2, h3 {
   .site-shell.subscreen-mode ~ .app-toast { bottom: 24px; }
 }
 
+.pwa-install-top-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid var(--accent-soft);
+  background: var(--tonal-bg);
+  color: var(--tonal-text);
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.14s ease, background 0.14s ease;
+}
+.pwa-install-top-btn[hidden] { display: none; }
+.pwa-install-top-btn:hover { background: var(--surface-hover); }
+.pwa-install-top-btn:active { transform: scale(0.96); }
+
+.offline-banner {
+  position: fixed;
+  left: 50%;
+  bottom: calc(82px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 9998;
+  background: var(--surface-2);
+  color: var(--accent);
+  border: 1px solid var(--accent-soft);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  box-shadow: var(--shadow);
+  pointer-events: none;
+}
+.offline-banner[hidden] { display: none; }
+
+.ios-install-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10020;
+  background: rgba(0, 0, 0, 0.72);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+.ios-install-modal[hidden] { display: none; }
+.ios-install-card {
+  width: 100%;
+  max-width: 340px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 22px 20px;
+  display: grid;
+  gap: 12px;
+  box-shadow: var(--shadow);
+}
+.ios-install-card strong {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+}
+.ios-install-card p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+

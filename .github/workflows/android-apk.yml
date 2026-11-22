@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-apk:
@@ -42,7 +42,21 @@ jobs:
         run: |
           if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
 
+      - name: Compute APK release version
+        id: ver
+        run: |
+          CODE=$((100 + github.run_number))
+          NAME="15.9.${{ github.run_number }}"
+          FEED_URL="https://github.com/${{ github.repository }}/releases/download/latest/apk-update.json"
+          APK_URL="https://github.com/${{ github.repository }}/releases/download/latest/The-OG-Legends-Android.apk"
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "feed_url=$FEED_URL" >> "$GITHUB_OUTPUT"
+          echo "apk_url=$APK_URL" >> "$GITHUB_OUTPUT"
+
       - name: Build web assets & sync Capacitor Android
+        env:
+          VITE_APK_UPDATE_URL: ${{ steps.ver.outputs.feed_url }}
         run: |
           rm -rf dist android/app/src/main/assets/public
           npm run build
@@ -58,15 +72,41 @@ jobs:
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleDebug --no-daemon -PappVersionCode=${{ steps.ver.outputs.code }} -PappVersionName=${{ steps.ver.outputs.name }}
 
-      - name: Prepare APK artifact
+      - name: Prepare APK & update feed
         run: |
           mkdir -p release-apk
           cp android/app/build/outputs/apk/debug/app-debug.apk release-apk/The-OG-Legends-Android.apk
-          ls -lh release-apk/The-OG-Legends-Android.apk
+          node -e '
+            const fs = require("fs");
+            const payload = {
+              versionCode: Number(process.env.CODE),
+              versionName: process.env.NAME,
+              apkUrl: process.env.APK_URL,
+              updatedAt: new Date().toISOString()
+            };
+            fs.writeFileSync("release-apk/apk-update.json", JSON.stringify(payload, null, 2));
+          '
+          ls -lh release-apk/
+        env:
+          CODE: ${{ steps.ver.outputs.code }}
+          NAME: ${{ steps.ver.outputs.name }}
+          APK_URL: ${{ steps.ver.outputs.apk_url }}
 
-      - name: Upload Android APK
+      - name: Publish rolling latest GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: The OG Legends Latest APK
+          body: Automatic build ${{ steps.ver.outputs.name }} (versionCode ${{ steps.ver.outputs.code }})
+          files: |
+            release-apk/The-OG-Legends-Android.apk
+            release-apk/apk-update.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Android APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: The-OG-Legends-APK

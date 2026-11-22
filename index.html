@@ -3,17 +3,21 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="theme-color" content="#0a0b0f" />
+  <meta name="theme-color" content="#090a0f" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="OG Legends" />
   <meta name="description" content="The OG Legends — Mother Teresa Public School Batch 2025–26 memories, cohort profiles, journey timeline, photo & video gallery, and batch messages." />
   <meta property="og:title" content="The OG Legends — Our Memories" />
   <meta property="og:description" content="Mother Teresa Public School Batch 2025–26 memories, cohort profiles, journey timeline, photo & video gallery, and batch messages." />
   <title>The OG Legends — Our Memories</title>
-  <link rel="icon" type="image/png" href="assets/og-logo.png" />
-  <link rel="apple-touch-icon" href="assets/og-logo.png" />
+  <link rel="icon" type="image/png" href="pwa-192x192.png" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,500&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=15.8.0" />
+  <link rel="stylesheet" href="css/style.css?v=15.9.0" />
 </head>
 <body>
   <div id="app">
@@ -36,6 +40,10 @@
         </div>
 
         <div class="top-actions">
+          <button id="pwaInstallTopBtn" class="pwa-install-top-btn" type="button" title="Install App" aria-label="Install App" hidden>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Install</span>
+          </button>
           <button id="searchBtn" class="nav-icon" type="button" title="Search memories" aria-label="Search memories">
             <svg class="nav-svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle class="duo" cx="10.8" cy="10.8" r="7.2"/><circle cx="10.8" cy="10.8" r="7.2"/><path d="m20.5 20.5-4.3-4.3"/></svg>
           </button>
@@ -745,6 +753,16 @@
                     <b>Live Notifications & Permissions</b>
                     <small id="toolsPermStatus">Checking permission status...</small>
                   </button>
+                  <button id="toolsInstallBtn" class="tool-card tool-card-wide" type="button" hidden>
+                    <span class="tool-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="3" fill="currentColor" fill-opacity="0.14"/><path d="M12 7v7"/><path d="m9 11 3 3 3-3"/><line x1="10" y1="18" x2="14" y2="18"/></svg></span>
+                    <b>Install App on Tablet / Phone</b>
+                    <small id="toolsInstallStatus">Add to Home Screen · works offline &amp; updates automatically</small>
+                  </button>
+                  <button id="toolsAutoUpdateBtn" class="tool-card tool-card-wide" type="button">
+                    <span class="tool-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" fill="currentColor" fill-opacity="0.12"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg></span>
+                    <b>Automatic Updates Active</b>
+                    <small id="toolsAutoUpdateStatus">v15.9.0 · Tap to check for new updates now</small>
+                  </button>
                 </div>
                 <div id="restoreList" class="restore-list" hidden></div>
               </div>
@@ -832,10 +850,22 @@
     </main>
   </div>
 
+  <div id="offlineBanner" class="offline-banner" role="status" hidden>
+    <span>Offline Mode — Cached memories are available</span>
+  </div>
+
+  <div id="iosInstallModal" class="ios-install-modal" role="dialog" aria-modal="true" aria-labelledby="iosInstallTitle" hidden>
+    <div class="ios-install-card">
+      <strong id="iosInstallTitle">Install on iPhone / iPad</strong>
+      <p>1. Tap the <strong>Share</strong> icon in Safari.<br />2. Scroll down and tap <strong>Add to Home Screen</strong>.<br />Future updates will sync automatically.</p>
+      <button id="iosInstallCloseBtn" class="primary-btn" type="button">Got it</button>
+    </div>
+  </div>
+
   <div id="appToast" class="app-toast" role="status" aria-live="polite" hidden></div>
 
   <script type="module" src="src/cloud-sync.js"></script>
-  <script src="js/media-manifest.js?v=15.8.0"></script>
-  <script src="js/app.js?v=15.8.0"></script>
+  <script src="js/media-manifest.js?v=15.9.0"></script>
+  <script src="js/app.js?v=15.9.0"></script>
 </body>
 </html>

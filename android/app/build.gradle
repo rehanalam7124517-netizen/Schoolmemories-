@@ -4,11 +4,13 @@ android {
     namespace "com.oglegends.memories"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
+        def ciVersionCode = project.hasProperty('appVersionCode') ? project.property('appVersionCode').toInteger() : 100
+        def ciVersionName = project.hasProperty('appVersionName') ? project.property('appVersionName').toString() : "15.9.0"
         applicationId "com.oglegends.memories"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode ciVersionCode
+        versionName ciVersionName
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

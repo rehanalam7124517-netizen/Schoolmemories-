@@ -1,3 +1,4 @@
+import './pwa-updater.js';
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import {
@@ -11,7 +12,8 @@ import {
   where,
   onSnapshot,
   getDoc,
-  writeBatch
+  writeBatch,
+  enableNetwork
 } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
@@ -20,10 +22,20 @@ const MAX_INLINE_DATA_CHARS = 760000;
 const CHUNK_CHAR_SIZE = 450000;
 const MAX_VIDEO_SYNC_BYTES = 25 * 1024 * 1024;
 
+const isNativeAndroidWebView =
+  typeof window !== 'undefined' &&
+  Boolean(
+    window.OGNativeBridge?.isNativeApp?.() ||
+      window.Capacitor?.isNativePlatform?.() ||
+      (window.location?.protocol === 'https:' && window.location?.hostname === 'localhost')
+  );
+
 const app = initializeApp(firebaseConfig);
 export const db = initializeFirestore(
   app,
-  { experimentalAutoDetectLongPolling: true },
+  isNativeAndroidWebView
+    ? { experimentalForceLongPolling: true }
+    : { experimentalAutoDetectLongPolling: true },
   firebaseConfig.firestoreDatabaseId
 );
 export const auth = getAuth(app);
@@ -288,6 +300,14 @@ window.OGCloud = {
   dataUrlToBlob,
   resolveCloudBlob,
   stopSync,
+
+  async ensureOnline() {
+    try {
+      await enableNetwork(db);
+    } catch {
+      // ignore network resume errors when offline
+    }
+  },
 
   startRealtimeSync(handlers = {}) {
     stopSync();
