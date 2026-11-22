@@ -133,6 +133,7 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         navigateFallback: 'index.html',
+        navigateFallbackDenylist: [/^\/api\//, /firestore\.googleapis\.com/],
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
         globIgnores: ['**/assets/aistudio/**', '**/media/photos/**'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,

@@ -87,7 +87,7 @@ define(['./workbox-25ee6505'], (function (workbox) { 'use strict';
     "revision": "73be9983e08d90bbaa33d0bac72f2aad"
   }, {
     "url": "index.html",
-    "revision": "61fc49804f5c13ea5a548953b6f3bc06"
+    "revision": "cec763de1ac01e9f231ad841380405dd"
   }, {
     "url": "favicon.ico",
     "revision": "d41d8cd98f00b204e9800998ecf8427e"
@@ -122,7 +122,7 @@ define(['./workbox-25ee6505'], (function (workbox) { 'use strict';
     "url": "assets/og-logo-BSR6YLDl.png",
     "revision": null
   }, {
-    "url": "assets/index-Dfccdn3R.js",
+    "url": "assets/index-DRNvjTVa.js",
     "revision": null
   }, {
     "url": "assets/index-BcBTu4gE.css",
@@ -144,7 +144,9 @@ define(['./workbox-25ee6505'], (function (workbox) { 'use strict';
     "revision": "69c4965f6d3a15a38b58ed043af7bc5c"
   }], {});
   workbox.cleanupOutdatedCaches();
-  workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("index.html")));
+  workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("index.html"), {
+    denylist: [/^\/api\//, /firestore\.googleapis\.com/]
+  }));
   workbox.registerRoute(/\/version\.json/i, new workbox.NetworkOnly(), 'GET');
   workbox.registerRoute(/\/(js|css)\/.*\.(js|css)/i, new workbox.NetworkFirst({
     "cacheName": "og-runtime-code",

@@ -22,20 +22,13 @@ const MAX_INLINE_DATA_CHARS = 760000;
 const CHUNK_CHAR_SIZE = 450000;
 const MAX_VIDEO_SYNC_BYTES = 25 * 1024 * 1024;
 
-const isNativeAndroidWebView =
-  typeof window !== 'undefined' &&
-  Boolean(
-    window.OGNativeBridge?.isNativeApp?.() ||
-      window.Capacitor?.isNativePlatform?.() ||
-      (window.location?.protocol === 'https:' && window.location?.hostname === 'localhost')
-  );
-
 const app = initializeApp(firebaseConfig);
 export const db = initializeFirestore(
   app,
-  isNativeAndroidWebView
-    ? { experimentalForceLongPolling: true }
-    : { experimentalAutoDetectLongPolling: true },
+  {
+    experimentalForceLongPolling: true,
+    ignoreUndefinedProperties: true
+  },
   firebaseConfig.firestoreDatabaseId
 );
 export const auth = getAuth(app);
@@ -72,6 +65,8 @@ export function handleFirestoreError(error, operationType, path) {
 
 async function testConnection() {
   try {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+    await enableNetwork(db).catch(() => {});
     await getDocFromServer(doc(db, 'test', 'connection'));
   } catch (error) {
     if (error instanceof Error && error.message.includes('the client is offline')) {
