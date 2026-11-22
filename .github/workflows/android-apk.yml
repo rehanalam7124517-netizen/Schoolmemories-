@@ -45,14 +45,16 @@ jobs:
       - name: Compute APK release version
         id: ver
         run: |
-          CODE=$((100 + github.run_number))
-          NAME="15.9.${{ github.run_number }}"
+          RUN_NUM="${GITHUB_RUN_NUMBER:-1}"
+          CODE=$((100 + RUN_NUM))
+          NAME="15.9.${RUN_NUM}"
           FEED_URL="https://github.com/${{ github.repository }}/releases/download/latest/apk-update.json"
           APK_URL="https://github.com/${{ github.repository }}/releases/download/latest/The-OG-Legends-Android.apk"
           echo "code=$CODE" >> "$GITHUB_OUTPUT"
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
           echo "feed_url=$FEED_URL" >> "$GITHUB_OUTPUT"
           echo "apk_url=$APK_URL" >> "$GITHUB_OUTPUT"
+          echo "Resolved versionCode=$CODE versionName=$NAME"
 
       - name: Build web assets & sync Capacitor Android
         env:

@@ -356,7 +356,11 @@ public class MainActivity extends BridgeActivity {
                 if (!updatesDir.exists()) updatesDir.mkdirs();
                 File tmpFile = new File(updatesDir, "update.tmp.apk");
                 File outFile = new File(updatesDir, "The-OG-Legends-Update.apk");
-                long total = conn.getContentLengthLong();
+                long total = conn.getContentLength();
+                String lenHdr = conn.getHeaderField("Content-Length");
+                if (lenHdr != null) {
+                    try { total = Long.parseLong(lenHdr.trim()); } catch (NumberFormatException ignored) {}
+                }
                 long downloaded = 0;
                 int lastPct = 0;
                 try (InputStream in = conn.getInputStream();
