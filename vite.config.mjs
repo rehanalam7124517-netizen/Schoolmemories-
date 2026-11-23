@@ -3,7 +3,7 @@ import path from 'node:path';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-const APP_VERSION = '16.0.3';
+const APP_VERSION = '16.0.4';
 const BUILD_STAMP = String(Date.now());
 const APK_UPDATE_URL = process.env.VITE_APK_UPDATE_URL || '';
 
@@ -136,7 +136,7 @@ export default defineConfig(({ command }) => ({
         clientsClaim: true,
         navigateFallback: 'index.html',
         navigateFallbackDenylist: [/^\/api\//, /firestore\.googleapis\.com/],
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,jpg,jpeg,webp,svg,woff,woff2}'],
         globIgnores: ['**/assets/aistudio/**', '**/media/photos/**'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         runtimeCaching: [

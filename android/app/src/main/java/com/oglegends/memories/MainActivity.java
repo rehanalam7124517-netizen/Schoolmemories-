@@ -413,9 +413,9 @@ public class MainActivity extends BridgeActivity {
         public String getAppVersionName() {
             try {
                 PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
-                return pInfo.versionName != null ? pInfo.versionName : "16.0.3";
+                return pInfo.versionName != null ? pInfo.versionName : "16.0.4";
             } catch (Exception e) {
-                return "16.0.3";
+                return "16.0.4";
             }
         }
 
