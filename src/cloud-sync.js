@@ -307,6 +307,7 @@ window.OGCloud = {
   startRealtimeSync(handlers = {}) {
     stopSync();
     if (handlers.onGroupMessages) subscribeCollection('groupMessages', handlers.onGroupMessages);
+    if (handlers.onGroupTyping) subscribeCollection('groupTyping', handlers.onGroupTyping);
     if (handlers.onMediaItems) subscribeCollection('mediaItems', handlers.onMediaItems);
     if (handlers.onProfiles) subscribeCollection('profiles', handlers.onProfiles);
     if (handlers.onJourneys) subscribeCollection('journeys', handlers.onJourneys);
@@ -358,6 +359,24 @@ window.OGCloud = {
       deleted: Boolean(msg.deleted)
     };
     return upsertDoc('groupMessages', id, payload, OperationType.CREATE);
+  },
+
+  async setTypingStatus({ deviceId, sender, isTyping }) {
+    const safeDevId = sanitizeId(deviceId || 'device').slice(0, 64);
+    const typingDocId = sanitizeId(`gt_${safeDevId}`);
+    const nowTs = Date.now();
+    const active = Boolean(isTyping);
+    const payload = {
+      id: typingDocId,
+      batchKey: BATCH_KEY,
+      groupId: 'grp-og-legends',
+      deviceId: safeDevId,
+      sender: String(sender || 'Legend').slice(0, 80) || 'Legend',
+      isTyping: active,
+      updated: nowTs,
+      expiresAt: active ? nowTs + 7500 : nowTs
+    };
+    return upsertDoc('groupTyping', typingDocId, payload, OperationType.WRITE);
   },
 
   async markMessagesReceipt(entries, kind, readerInfo) {

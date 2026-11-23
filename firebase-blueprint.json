@@ -151,6 +151,22 @@
         "updated": { "type": "number" }
       },
       "required": ["id", "batchKey", "ids", "updated"]
+    },
+    "GroupTyping": {
+      "title": "GroupTyping",
+      "description": "Real-time typing indicator status per participant device in the Batch Group chat.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 128 },
+        "batchKey": { "type": "string", "maxLength": 32 },
+        "groupId": { "type": "string", "maxLength": 64 },
+        "deviceId": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "sender": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "isTyping": { "type": "boolean" },
+        "updated": { "type": "number" },
+        "expiresAt": { "type": "number" }
+      },
+      "required": ["id", "batchKey", "groupId", "deviceId", "sender", "isTyping", "updated", "expiresAt"]
     }
   },
   "firestore": {
@@ -189,6 +205,10 @@
     "/appState/{stateId}": {
       "schema": { "$ref": "#/entities/AppState" },
       "description": "Shared Memories of the Day selection."
+    },
+    "/groupTyping/{typingId}": {
+      "schema": { "$ref": "#/entities/GroupTyping" },
+      "description": "Ephemeral per-device typing status documents for real-time group chat indicators."
     }
   }
 }

@@ -214,6 +214,19 @@ service cloud.firestore {
         && data.updated is number && data.updated > 0;
     }
 
+    function isValidGroupTyping(data, docId) {
+      return data.keys().hasAll(['id', 'batchKey', 'groupId', 'deviceId', 'sender', 'isTyping', 'updated', 'expiresAt'])
+        && data.keys().hasOnly(['id', 'batchKey', 'groupId', 'deviceId', 'sender', 'isTyping', 'updated', 'expiresAt'])
+        && data.id == docId
+        && isBatchMemberPayload(data)
+        && data.groupId is string && data.groupId == 'grp-og-legends'
+        && data.deviceId is string && data.deviceId.size() >= 1 && data.deviceId.size() <= 80
+        && data.sender is string && data.sender.size() >= 1 && data.sender.size() <= 80
+        && data.isTyping is bool
+        && data.updated is number && data.updated > 0
+        && data.expiresAt is number && data.expiresAt >= data.updated;
+    }
+
     // Startup connectivity test doc
     match /test/{docId} {
       allow get: if docId == 'connection';
@@ -237,6 +250,21 @@ service cloud.firestore {
                       || incoming().diff(existing()).affectedKeys().hasOnly(['deliveredTo', 'readBy', 'updated'])
                     );
       allow delete: if isValidId(messageId) && isBatchMemberPayload(existing());
+    }
+
+    // Real-time Batch Group Typing Indicators
+    match /groupTyping/{typingId} {
+      allow get: if isValidId(typingId) && isBatchMemberPayload(existing());
+      allow list: if isBatchMemberPayload(existing());
+      allow create: if isValidId(typingId) && isValidGroupTyping(incoming(), typingId);
+      allow update: if isValidId(typingId)
+                    && isValidGroupTyping(incoming(), typingId)
+                    && incoming().id == existing().id
+                    && incoming().batchKey == existing().batchKey
+                    && incoming().groupId == existing().groupId
+                    && incoming().deviceId == existing().deviceId
+                    && incoming().diff(existing()).affectedKeys().hasOnly(['sender', 'isTyping', 'updated', 'expiresAt']);
+      allow delete: if isValidId(typingId) && isBatchMemberPayload(existing());
     }
 
     // Shared Photos & Videos

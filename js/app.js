@@ -169,6 +169,9 @@ function syncPageUI(i, persist = true, customTitle = null) {
   if (was === PAGE.VIEWER && currentPage !== PAGE.VIEWER) {
     cleanupViewerOnLeave();
   }
+  if (was === PAGE.MESSAGES && currentPage !== PAGE.MESSAGES && typeof emitTypingStatus === 'function') {
+    emitTypingStatus(false);
+  }
   if (was !== currentPage && typeof pauseAllForegroundVideo === 'function') {
     pauseAllForegroundVideo();
   }
@@ -1882,6 +1885,7 @@ function syncSenderDropdown() {
       closeWhoTray();
       syncSenderDropdown();
       await renderGroupChat();
+      if ($('msgTextInput')?.value.trim()) emitTypingStatus(true, { force: true });
       showToast(`Writing as ${name}`);
     };
     host.appendChild(chip);
@@ -1911,6 +1915,7 @@ $('customSenderWrap')?.addEventListener('submit', async (e) => {
   closeWhoTray();
   syncSenderDropdown();
   await renderGroupChat();
+  if ($('msgTextInput')?.value.trim()) emitTypingStatus(true, { force: true });
   showToast(`Writing as ${name}`);
 });
 
@@ -2161,6 +2166,100 @@ function markVisibleCloudMessagesRead() {
   }
 }
 
+let latestTypingRows = [];
+let typingExpiryTimer = null;
+let typingAutoStopTimer = null;
+let lastTypingSentAt = 0;
+let lastTypingSentActive = false;
+let lastTypingSentSender = '';
+
+function formatTypingLabel(names) {
+  if (!names.length) return '';
+  if (names.length === 1) return `${names[0]} is typing...`;
+  if (names.length === 2) return `${names[0]} and ${names[1]} are typing...`;
+  return `${names[0]}, ${names[1]} and ${names.length - 2} more are typing...`;
+}
+
+function renderTypingIndicator() {
+  const bar = $('chatTypingBar');
+  const textEl = $('chatTypingText');
+  if (!bar || !textEl) return;
+
+  if (typingExpiryTimer) {
+    clearTimeout(typingExpiryTimer);
+    typingExpiryTimer = null;
+  }
+
+  const myDevKey = safeReceiptKey(getDeviceId());
+  const myTypingDocId = `gt_${myDevKey}`;
+  const nowTs = Date.now();
+
+  const activeTypers = (Array.isArray(latestTypingRows) ? latestTypingRows : [])
+    .filter((r) => {
+      if (!r || !r.isTyping) return false;
+      if (r.groupId && r.groupId !== SHARED_GROUP_ID) return false;
+      if (r.id === myTypingDocId || safeReceiptKey(r.deviceId) === myDevKey) return false;
+      const exp = Number(r.expiresAt || (Number(r.updated || 0) + 7500));
+      return exp > nowTs;
+    })
+    .sort((a, b) => Number(b.updated || 0) - Number(a.updated || 0));
+
+  if (!activeTypers.length) {
+    bar.hidden = true;
+    return;
+  }
+
+  const seenNames = [];
+  for (const row of activeTypers) {
+    const label = String(row.sender || 'Someone').trim() || 'Someone';
+    if (!seenNames.includes(label)) seenNames.push(label);
+  }
+
+  textEl.textContent = formatTypingLabel(seenNames);
+  bar.hidden = false;
+
+  const nextExpiry = Math.min(
+    ...activeTypers.map((r) => Number(r.expiresAt || (Number(r.updated || 0) + 7500)))
+  );
+  const waitMs = Math.max(400, Math.min(8000, nextExpiry - nowTs + 150));
+  typingExpiryTimer = setTimeout(() => {
+    renderTypingIndicator();
+  }, waitMs);
+}
+
+function emitTypingStatus(isTyping, { force = false } = {}) {
+  const active = Boolean(isTyping);
+  if (typingAutoStopTimer) {
+    clearTimeout(typingAutoStopTimer);
+    typingAutoStopTimer = null;
+  }
+
+  const sender = getChatSender();
+  const nowTs = Date.now();
+
+  if (active) {
+    typingAutoStopTimer = setTimeout(() => {
+      emitTypingStatus(false);
+    }, 3500);
+    if (!force && lastTypingSentActive && lastTypingSentSender === sender && (nowTs - lastTypingSentAt) < 2500) {
+      return;
+    }
+  } else if (!force && !lastTypingSentActive) {
+    return;
+  }
+
+  lastTypingSentActive = active;
+  lastTypingSentAt = nowTs;
+  lastTypingSentSender = sender;
+
+  if (!window.OGCloud?.setTypingStatus || navigator.onLine === false) return;
+  window.OGCloud.setTypingStatus({
+    deviceId: getDeviceId(),
+    sender,
+    isTyping: active
+  }).catch(() => {});
+}
+
 async function updateUnreadBadge() {
   if (!DB) return;
   const gm = (await getAll('groupMessages')).filter((m) => m.groupId === SHARED_GROUP_ID);
@@ -2380,10 +2479,20 @@ $('msgMediaInput')?.addEventListener('change', (e) => {
 
 $('msgClearAttachBtn')?.addEventListener('click', clearPendingAttachment);
 
+$('msgTextInput')?.addEventListener('input', () => {
+  const hasText = Boolean($('msgTextInput')?.value.trim());
+  emitTypingStatus(hasText);
+});
+
+$('msgTextInput')?.addEventListener('blur', () => {
+  emitTypingStatus(false);
+});
+
 $('msgComposeForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   const text = $('msgTextInput').value.trim();
   if (!text && !pendingMsgMedia) return;
+  emitTypingStatus(false, { force: true });
   await waitDB();
   const sender = getChatSender();
   const nowTs = Date.now();
@@ -2942,6 +3051,11 @@ function initCloudSyncOnce() {
       syncReceiptsForRows(rows, currentPage === PAGE.MESSAGES && document.visibilityState === 'visible', pendingWriteIds);
     },
 
+    onGroupTyping(rows) {
+      latestTypingRows = Array.isArray(rows) ? rows : [];
+      renderTypingIndicator();
+    },
+
     async onMediaItems(rows) {
       const wasHydrated = cloudHydrated.mediaItems;
       cloudHydrated.mediaItems = true;
@@ -3297,7 +3411,12 @@ document.addEventListener('visibilitychange', () => {
     window.OGCloud?.ensureOnline?.();
     flushPendingCloudOps();
     markVisibleCloudMessagesRead();
+  } else {
+    emitTypingStatus(false);
   }
+});
+window.addEventListener('pagehide', () => {
+  emitTypingStatus(false);
 });
 
 

@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,500&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=15.9.0" />
+  <link rel="stylesheet" href="css/style.css?v=15.9.1" />
 </head>
 <body>
   <div id="app">
@@ -520,6 +520,11 @@
 
               <div id="msgFeedHost" class="chat-feed" aria-live="polite"></div>
 
+              <div id="chatTypingBar" class="chat-typing-bar" role="status" aria-live="polite" hidden>
+                <span class="typing-dots" aria-hidden="true"><span></span><span></span><span></span></span>
+                <span id="chatTypingText" class="chat-typing-text">Someone is typing...</span>
+              </div>
+
               <div id="chatReplyBar" class="chat-reply-bar" hidden>
                 <div class="chat-reply-accent"></div>
                 <div class="chat-reply-info">
@@ -865,7 +870,7 @@
   <div id="appToast" class="app-toast" role="status" aria-live="polite" hidden></div>
 
   <script type="module" src="src/cloud-sync.js"></script>
-  <script src="js/media-manifest.js?v=15.9.0"></script>
-  <script src="js/app.js?v=15.9.0"></script>
+  <script src="js/media-manifest.js?v=15.9.1"></script>
+  <script src="js/app.js?v=15.9.1"></script>
 </body>
 </html>
