@@ -17,10 +17,56 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,500&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <script type="module" crossorigin src="./assets/index-DXDGSlrL.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-g-wtipZ6.css">
+  <script type="module" crossorigin src="./assets/index-CA0fOn7s.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-DwQqYbPK.css">
 <link rel="manifest" href="./manifest.webmanifest"></head>
 <body>
+  <!-- PERSISTENT PROFILE LOGIN GATE (Name Picker -> Password) -->
+  <div id="authGate" class="auth-gate" role="dialog" aria-modal="true" aria-labelledby="authGateTitle" hidden>
+    <div class="auth-card">
+      <div class="auth-brand">
+        <img src="./assets/og-logo-BSR6YLDl.png" alt="The OG Legends" class="auth-logo" />
+        <div>
+          <span class="auth-eyebrow">Mother Teresa Public School · 2025–26</span>
+          <h1 id="authGateTitle">The OG Legends</h1>
+        </div>
+      </div>
+
+      <div id="authStepSelect" class="auth-step">
+        <div class="auth-step-head">
+          <h2>Select Your Profile</h2>
+          <p>Pick your name to sign into your permanent batch profile.</p>
+        </div>
+        <input id="authNameSearch" class="auth-search" type="search" placeholder="Search your name..." autocomplete="off" aria-label="Search batch profile" />
+        <div id="authNameGrid" class="auth-name-grid"></div>
+      </div>
+
+      <div id="authStepPassword" class="auth-step" hidden>
+        <div class="auth-picked-card">
+          <img id="authPickedAvatar" src="./assets/common-D6K0768N.jpg" alt="" referrerpolicy="no-referrer" />
+          <div class="auth-picked-info">
+            <span class="auth-picked-label">Signing in as</span>
+            <strong id="authPickedName">Legend</strong>
+          </div>
+          <button id="authBackToNamesBtn" class="mini-btn" type="button">Change</button>
+        </div>
+
+        <form id="authLoginForm" class="auth-form">
+          <label class="auth-field-label" for="authPasswordInput">Password</label>
+          <div class="auth-pass-wrap">
+            <input id="authPasswordInput" class="auth-input" type="password" placeholder="Enter your password" autocomplete="current-password" required />
+            <button id="authTogglePassBtn" class="auth-eye-btn" type="button" aria-label="Show or hide password" title="Show or hide password">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+          <p id="authErrorMsg" class="auth-error" role="alert" hidden></p>
+          <button id="authLoginSubmitBtn" class="primary-btn auth-submit-btn" type="submit">Unlock Archive</button>
+        </form>
+        <p class="auth-footnote">Stays signed in on this device like WhatsApp &amp; Instagram.</p>
+      </div>
+    </div>
+  </div>
+
   <div id="app">
     <main id="siteShell" class="site-shell">
       <!-- ANDROID TOP APP BAR -->
@@ -48,7 +94,11 @@
           <button id="searchBtn" class="nav-icon" type="button" title="Search memories" aria-label="Search memories">
             <svg class="nav-svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle class="duo" cx="10.8" cy="10.8" r="7.2"/><circle cx="10.8" cy="10.8" r="7.2"/><path d="m20.5 20.5-4.3-4.3"/></svg>
           </button>
-          <button id="toolsBtn" class="nav-icon" type="button" title="Theme & Settings" aria-label="Theme and Settings">
+          <button id="topAccountBtn" class="top-account-pill" type="button" title="My Profile & Account" aria-label="My Profile and Settings" hidden>
+            <span id="topAccountInitials" class="top-account-avatar">RE</span>
+            <span id="topAccountName" class="top-account-name">Rehan</span>
+          </button>
+          <button id="toolsBtn" class="nav-icon" type="button" title="Account & Settings" aria-label="Account and Settings">
             <svg class="nav-svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.95" stroke-linecap="round" stroke-linejoin="round"><path class="duo" d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
         </div>
@@ -126,7 +176,7 @@
           <div class="drawer-footer">
             <button id="drawerThemeBtn" class="drawer-footer-btn" type="button">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5" fill="currentColor" fill-opacity="0.16"/><circle cx="8.5" cy="10" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="7.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="15.5" cy="10" r="1.2" fill="currentColor" stroke="none"/><path d="M16.5 14.5a2.5 2.5 0 0 1-2.5 2.5h-1a1.5 1.5 0 0 0-1.5 1.5v.8a2.2 2.2 0 0 1-2.2 2.2"/></svg>
-              <span>Switch Theme & Backup</span>
+              <span id="drawerAccountSummary">Account &amp; Settings</span>
             </button>
           </div>
         </aside>
@@ -297,7 +347,7 @@
               <div class="section-actions">
                 <input id="peopleFilterInput" class="inline-search" type="search" placeholder="Filter by name or nickname..." aria-label="Filter profiles" />
                 <div id="peopleCounter" class="counter">12 Profiles</div>
-                <button id="addProfileBtn" class="primary-btn small" type="button">
+                <button id="addProfileBtn" class="primary-btn small" type="button" hidden>
                   <svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                   <span>Add Legend</span>
                 </button>
@@ -498,26 +548,16 @@
                   <b id="msgThreadTitle">The OG Legends</b>
                   <small id="msgThreadSub">Batch 2025–26 · Everyone sees every message</small>
                 </div>
-                <button id="chatWhoToggleBtn" class="chat-who-btn" type="button" aria-expanded="false" aria-controls="chatWhoTray" title="Switch who is writing">
-                  <span id="chatWhoLabel">Rehan</span>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                </button>
-                <button id="msgClearThreadBtn" class="nav-icon chat-clear-btn" type="button" title="Clear all group messages" aria-label="Clear group messages">
+                <div id="chatWhoBadge" class="chat-who-badge" title="Your logged-in profile">
+                  <span class="chat-who-dot" aria-hidden="true"></span>
+                  <span id="chatWhoLabel">Member</span>
+                </div>
+                <button id="msgClearThreadBtn" class="nav-icon chat-clear-btn" type="button" title="Clear all group messages" aria-label="Clear group messages" hidden>
                   <svg class="nav-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path class="duo" d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6Z"/><path d="M3 6h18"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                 </button>
               </header>
 
-              <div id="chatWhoTray" class="chat-who-tray" hidden>
-                <div class="chat-who-head">
-                  <span>Writing as</span>
-                  <small>Tap any Legend or enter your name</small>
-                </div>
-                <div id="chatSenderChips" class="chat-sender-chips"></div>
-                <form id="customSenderWrap" class="chat-custom-sender">
-                  <input id="customSenderInput" type="text" maxlength="28" placeholder="Or type another name..." aria-label="Enter custom display name" />
-                  <button class="primary-btn small" type="submit">Use Name</button>
-                </form>
-              </div>
+              <div id="chatWhoTray" class="chat-who-tray" hidden></div>
 
               <div id="msgFeedHost" class="chat-feed" aria-live="polite"></div>
 
@@ -585,7 +625,7 @@
                     <strong>Journey Story</strong>
                     <small>Add date, note & media</small>
                   </button>
-                  <button id="sheetAddProfileBtn" class="sheet-tile" type="button">
+                  <button id="sheetAddProfileBtn" class="sheet-tile" type="button" hidden>
                     <span class="sheet-tile-icon" aria-hidden="true">
                       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9.5" cy="7.5" r="3.8" fill="currentColor" fill-opacity="0.16"/><path d="M2.5 20.5v-1.8A4.2 4.2 0 0 1 6.7 14.5h5.6a4.2 4.2 0 0 1 4.2 4.2v1.8" fill="currentColor" fill-opacity="0.12"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg>
                     </span>
@@ -692,12 +732,40 @@
             </div>
           </article>
 
-          <!-- PAGE 18: THEME & SETTINGS (Full-Screen Android Activity) -->
+          <!-- PAGE 18: ACCOUNT, SETTINGS & DISCREET ADMIN VAULT -->
           <article class="page subpage" data-page="18" id="toolsPage">
             <div class="subpage-shell">
-              <div class="subpage-card">
-                <div class="eyebrow">Archive Controls</div>
-                <h2>Theme & Settings</h2>
+              <div class="subpage-card tools-stack">
+                <div>
+                  <div class="eyebrow">Personal Profile</div>
+                  <h2>Account &amp; Settings</h2>
+                </div>
+
+                <!-- 1. My Logged-In Profile Card -->
+                <section class="account-profile-card">
+                  <div class="account-card-top">
+                    <img id="accCardAvatar" class="account-card-avatar" src="./assets/common-D6K0768N.jpg" alt="My profile" referrerpolicy="no-referrer" />
+                    <div class="account-card-meta">
+                      <strong id="accCardName">Legend</strong>
+                      <small id="accCardRole">Batch Member · MTPS 2025–26</small>
+                    </div>
+                  </div>
+                  <div class="account-card-actions">
+                    <button id="changeOwnPassToggleBtn" class="mini-btn" type="button">Change Password</button>
+                    <button id="logoutBtn" class="mini-btn danger" type="button">Log Out</button>
+                  </div>
+                  <form id="changeOwnPassForm" class="account-pass-form" hidden>
+                    <input id="ownCurrentPass" type="password" placeholder="Current password" autocomplete="current-password" required />
+                    <input id="ownNewPass" type="password" placeholder="New password (min 5 chars)" minlength="5" autocomplete="new-password" required />
+                    <input id="ownConfirmPass" type="password" placeholder="Confirm new password" minlength="5" autocomplete="new-password" required />
+                    <div class="dialog-actions">
+                      <button class="primary-btn small" type="submit">Update Password</button>
+                      <button id="cancelOwnPassBtn" class="mini-btn" type="button">Cancel</button>
+                    </div>
+                  </form>
+                </section>
+
+                <!-- 2. Appearance & Theme -->
                 <div class="theme-picker-section">
                   <div class="theme-picker-head">
                     <strong>App Theme Palette</strong>
@@ -722,55 +790,108 @@
                     </button>
                   </div>
                 </div>
+
+                <!-- 3. Notifications & App Updates -->
                 <div class="tool-grid">
-                  <button id="toolsSearchBtn" class="tool-card" type="button">
-                    <span class="tool-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.8" cy="10.8" r="7.2" fill="currentColor" fill-opacity="0.16"/><path d="m20.5 20.5-4.3-4.3"/></svg></span>
-                    <b>Search</b>
-                    <small>Find memories & messages</small>
-                  </button>
-                  <button id="toolsAddBtn" class="tool-card" type="button">
-                    <span class="tool-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" fill="currentColor" fill-opacity="0.16"/><circle cx="12" cy="13" r="3.2"/></svg></span>
-                    <b>Upload Media</b>
-                    <small>Add photos or videos</small>
-                  </button>
-                  <button id="toolsMsgBtn" class="tool-card" type="button">
-                    <span class="tool-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 14a2.5 2.5 0 0 1-2.5 2.5H8l-4.5 4V6A2.5 2.5 0 0 1 6 3.5h12.5A2.5 2.5 0 0 1 21 6v8Z" fill="currentColor" fill-opacity="0.16"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="12.5" x2="13" y2="12.5"/></svg></span>
-                    <b>Batch Group</b>
-                    <small>Open shared group chat</small>
-                  </button>
-                  <button id="exportBtn" class="tool-card" type="button">
-                    <span class="tool-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" fill="currentColor" fill-opacity="0.14"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
-                    <b>Export Backup</b>
-                    <small>Save archive JSON</small>
-                  </button>
-                  <label class="tool-card">
-                    <span class="tool-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" fill="currentColor" fill-opacity="0.14"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
-                    <b>Import Backup</b>
-                    <small>Restore JSON file</small>
-                    <input id="importInput" type="file" accept="application/json" hidden />
-                  </label>
-                  <button id="restoreBtn" class="tool-card" type="button">
-                    <span class="tool-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8" fill="currentColor" fill-opacity="0.12"/><path d="M3 3v5h5"/><polyline points="12 7 12 12 15.5 14"/></svg></span>
-                    <b>Restore Center</b>
-                    <small>Recover deleted items</small>
-                  </button>
                   <button id="toolsPermBtn" class="tool-card tool-card-wide" type="button">
                     <span class="tool-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" fill="currentColor" fill-opacity="0.16"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
-                    <b>Live Notifications & Permissions</b>
+                    <b>Live Notifications &amp; Permissions</b>
                     <small id="toolsPermStatus">Checking permission status...</small>
                   </button>
                   <button id="toolsInstallBtn" class="tool-card tool-card-wide" type="button" hidden>
                     <span class="tool-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="3" fill="currentColor" fill-opacity="0.14"/><path d="M12 7v7"/><path d="m9 11 3 3 3-3"/><line x1="10" y1="18" x2="14" y2="18"/></svg></span>
-                    <b>Install App on Tablet / Phone</b>
+                    <b>Install App on Phone / Tablet</b>
                     <small id="toolsInstallStatus">Add to Home Screen · works offline &amp; updates automatically</small>
                   </button>
                   <button id="toolsAutoUpdateBtn" class="tool-card tool-card-wide" type="button">
                     <span class="tool-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" fill="currentColor" fill-opacity="0.12"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg></span>
                     <b>Automatic Updates Active</b>
-                    <small id="toolsAutoUpdateStatus">v15.9.0 · Tap to check for new updates now</small>
+                    <small id="toolsAutoUpdateStatus">v16.0.2 · Tap to check for new updates now</small>
                   </button>
                 </div>
-                <div id="restoreList" class="restore-list" hidden></div>
+
+                <!-- 4. Secondary Quick Utilities Accordion -->
+                <details class="tools-accordion">
+                  <summary>More Quick Shortcuts</summary>
+                  <div class="tool-grid tools-subgrid">
+                    <button id="toolsSearchBtn" class="tool-card" type="button">
+                      <span class="tool-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.8" cy="10.8" r="7.2" fill="currentColor" fill-opacity="0.16"/><path d="m20.5 20.5-4.3-4.3"/></svg></span>
+                      <b>Search Archive</b>
+                      <small>Find memories &amp; messages</small>
+                    </button>
+                    <button id="toolsAddBtn" class="tool-card" type="button">
+                      <span class="tool-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" fill="currentColor" fill-opacity="0.16"/><circle cx="12" cy="13" r="3.2"/></svg></span>
+                      <b>Upload Media</b>
+                      <small>Add photos or videos</small>
+                    </button>
+                    <button id="toolsMsgBtn" class="tool-card tool-card-wide" type="button">
+                      <span class="tool-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 14a2.5 2.5 0 0 1-2.5 2.5H8l-4.5 4V6A2.5 2.5 0 0 1 6 3.5h12.5A2.5 2.5 0 0 1 21 6v8Z" fill="currentColor" fill-opacity="0.16"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="12.5" x2="13" y2="12.5"/></svg></span>
+                      <b>Batch Group Chat</b>
+                      <small>Open shared class room</small>
+                    </button>
+                  </div>
+                </details>
+
+                <!-- 5. ADMIN VAULT (STRICTLY HIDDEN FOR NON-ADMINS — REHAN ONLY) -->
+                <section id="adminVaultSection" class="admin-vault-section" hidden>
+                  <div class="admin-vault-head">
+                    <div class="eyebrow">Private Admin Vault · Rehan</div>
+                    <h3>Archive Controls, Legends &amp; Accounts</h3>
+                    <p class="admin-hint">Tip: Open any Legend profile and long-press or triple-tap their photo/name to secretly edit everything.</p>
+                  </div>
+
+                  <div class="tool-grid">
+                    <button id="adminToggleLegendsBtn" class="tool-card" type="button">
+                      <span class="tool-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7.5" r="3.8"/><path d="M2.5 20.5v-1.8A4.2 4.2 0 0 1 6.7 14.5h4.6a4.2 4.2 0 0 1 4.2 4.2v1.8"/><path d="M16.5 4.2a3.4 3.4 0 0 1 0 6.6"/></svg></span>
+                      <b>Manage Legends</b>
+                      <small>Edit name, details, add/delete</small>
+                    </button>
+                    <button id="adminToggleAccountsBtn" class="tool-card" type="button">
+                      <span class="tool-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+                      <b>Accounts &amp; Passwords</b>
+                      <small>Reset passwords or add member</small>
+                    </button>
+                    <button id="restoreBtn" class="tool-card" type="button">
+                      <span class="tool-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8" fill="currentColor" fill-opacity="0.12"/><path d="M3 3v5h5"/><polyline points="12 7 12 12 15.5 14"/></svg></span>
+                      <b>Restore Center</b>
+                      <small>Recover deleted items</small>
+                    </button>
+                    <button id="exportBtn" class="tool-card" type="button">
+                      <span class="tool-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" fill="currentColor" fill-opacity="0.14"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
+                      <b>Export Backup</b>
+                      <small>Save full archive JSON</small>
+                    </button>
+                    <label class="tool-card tool-card-wide">
+                      <span class="tool-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" fill="currentColor" fill-opacity="0.14"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
+                      <b>Import Backup JSON</b>
+                      <small>Restore archive file across devices</small>
+                      <input id="importInput" type="file" accept="application/json" hidden />
+                    </label>
+                  </div>
+
+                  <div id="adminLegendsPanel" class="admin-subpanel" hidden>
+                    <div class="admin-panel-head">
+                      <strong>Edit Any Legend</strong>
+                      <button id="adminAddLegendBtn" class="primary-btn small" type="button">+ Add Legend</button>
+                    </div>
+                    <div id="adminLegendsList" class="admin-rows"></div>
+                  </div>
+
+                  <div id="adminAccountsPanel" class="admin-subpanel" hidden>
+                    <div class="admin-panel-head">
+                      <strong>Member Logins</strong>
+                    </div>
+                    <div id="adminAccountsList" class="admin-rows"></div>
+                    <form id="adminCreateAccountForm" class="admin-add-account-form">
+                      <strong>Create New Member Login</strong>
+                      <input id="adminNewAccName" maxlength="40" placeholder="Member Name (e.g. Rohan)" required />
+                      <input id="adminNewAccPass" type="text" minlength="5" maxlength="40" placeholder="Temporary Password" required />
+                      <button class="primary-btn small" type="submit">Create Login Account</button>
+                    </form>
+                  </div>
+
+                  <div id="restoreList" class="restore-list" hidden></div>
+                </section>
               </div>
             </div>
           </article>
@@ -817,6 +938,42 @@
                 <span>Next</span>
                 <svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
               </button>
+            </div>
+          </article>
+
+          <!-- PAGE 20: SECRET ADMIN LEGEND EDITOR (Hidden Full Editor — Admin Only) -->
+          <article class="page subpage" data-page="20" id="legendEditorPage">
+            <div class="subpage-shell">
+              <div class="subpage-card">
+                <form id="legendEditorForm" class="modal-form">
+                  <div class="eyebrow">Hidden Legend Editor</div>
+                  <h2 id="legendEditorHeading">Edit Legend</h2>
+                  <div class="editor-photo-row">
+                    <img id="editProfilePreview" src="./assets/common-D6K0768N.jpg" alt="Profile preview" referrerpolicy="no-referrer" />
+                    <div class="editor-photo-btns">
+                      <label class="mini-btn" style="cursor:pointer;">
+                        <span>Change Photo</span>
+                        <input id="editProfileImageInput" type="file" accept="image/*" hidden />
+                      </label>
+                      <button id="editProfileResetImgBtn" class="mini-btn" type="button">Reset Photo</button>
+                    </div>
+                  </div>
+                  <label class="field-lbl">Name <input id="editProfileName" maxlength="40" placeholder="Name" required /></label>
+                  <label class="field-lbl">Nickname <input id="editProfileNick" maxlength="60" placeholder="Nickname" /></label>
+                  <label class="field-lbl">Title <input id="editProfileTitle" maxlength="70" placeholder="Title (e.g. The Strategist)" /></label>
+                  <label class="field-lbl">Nature <input id="editProfileNature" maxlength="70" placeholder="Nature" /></label>
+                  <label class="field-lbl">What Makes Them Special <input id="editProfileSpecial" maxlength="90" placeholder="Special trait" /></label>
+                  <label class="field-lbl">Memory Note <textarea id="editProfileMemory" maxlength="1200" placeholder="Memory note"></textarea></label>
+                  <label class="checkbox-row">
+                    <input id="editSyncAccountName" type="checkbox" checked />
+                    <span>Also update linked login profile name</span>
+                  </label>
+                  <div class="dialog-actions">
+                    <button class="primary-btn" type="submit">Save All Changes</button>
+                    <button id="editProfileDeleteBtn" class="mini-btn danger" type="button">Delete Legend</button>
+                  </div>
+                </form>
+              </div>
             </div>
           </article>
         </section>
@@ -870,7 +1027,7 @@
 
   <div id="appToast" class="app-toast" role="status" aria-live="polite" hidden></div>
 
-  <script src="js/media-manifest.js?v=15.9.2"></script>
-  <script src="js/app.js?v=15.9.2"></script>
+  <script src="js/media-manifest.js?v=16.0.2"></script>
+  <script src="js/app.js?v=16.0.2"></script>
 </body>
 </html>

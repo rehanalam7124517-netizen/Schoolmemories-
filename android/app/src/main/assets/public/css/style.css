@@ -2674,4 +2674,465 @@ h1, h2, h3 {
   color: var(--muted);
 }
 
+/* ==================== PERSISTENT PROFILE LOGIN GATE ==================== */
+.auth-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  background: radial-gradient(circle at top, rgba(244, 193, 82, 0.1), transparent 55%), var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  overflow-y: auto;
+}
+.auth-gate[hidden] { display: none; }
+.auth-card {
+  width: 100%;
+  max-width: 480px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 26px;
+  padding: 24px 20px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 18px;
+}
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+.auth-logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  object-fit: cover;
+  border: 1px solid var(--accent-border);
+  flex: 0 0 auto;
+}
+.auth-eyebrow {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.auth-brand h1 {
+  margin: 2px 0 0;
+  font-family: var(--font-display);
+  font-size: 1.38rem;
+  line-height: 1.15;
+}
+.auth-step { display: grid; gap: 14px; }
+.auth-step[hidden] { display: none; }
+.auth-step-head h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.24rem;
+}
+.auth-step-head p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+.auth-search,
+.auth-input,
+.account-pass-form input,
+.admin-add-account-form input,
+.admin-row-reset input {
+  width: 100%;
+  min-height: 46px;
+  border-radius: 14px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-input, var(--surface-2));
+  color: var(--text);
+  padding: 10px 14px;
+  font-size: 0.94rem;
+  outline: none;
+}
+.auth-search:focus,
+.auth-input:focus,
+.account-pass-form input:focus,
+.admin-add-account-form input:focus,
+.admin-row-reset input:focus {
+  border-color: var(--accent);
+}
+.auth-name-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  max-height: min(46vh, 360px);
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.auth-name-tile {
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  border-radius: 16px;
+  padding: 12px 8px;
+  min-height: 92px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  cursor: pointer;
+  transition: transform 0.14s ease, border-color 0.16s ease, background 0.16s ease;
+}
+.auth-name-tile:hover {
+  border-color: var(--accent-border);
+  background: var(--surface-3);
+}
+.auth-name-tile:active { transform: scale(0.96); }
+.auth-name-tile img {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--accent-border);
+}
+.auth-name-tile strong {
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.2;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.auth-picked-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+}
+.auth-picked-card img {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--accent-border);
+  flex: 0 0 auto;
+}
+.auth-picked-info {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.auth-picked-label {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.auth-picked-info strong {
+  display: block;
+  font-size: 1.05rem;
+  color: var(--text);
+}
+.auth-form { display: grid; gap: 10px; }
+.auth-field-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.auth-pass-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.auth-pass-wrap .auth-input { padding-right: 48px; }
+.auth-eye-btn {
+  position: absolute;
+  right: 4px;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  border-radius: 10px;
+}
+.auth-eye-btn:hover { color: var(--accent); }
+.auth-error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(239, 68, 68, 0.14);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+  font-size: 0.84rem;
+  font-weight: 500;
+}
+.auth-submit-btn {
+  width: 100%;
+  min-height: 48px;
+  justify-content: center;
+  margin-top: 2px;
+}
+.auth-footnote {
+  margin: 0;
+  text-align: center;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+/* ==================== TOPBAR ACCOUNT PILL & CHAT LOCKED BADGE ==================== */
+.top-account-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 11px 0 4px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.top-account-pill:hover {
+  border-color: var(--accent-border);
+  background: var(--surface-3);
+}
+.top-account-pill[hidden] { display: none; }
+.top-account-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--tonal-bg);
+  color: var(--tonal-text);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+.top-account-name {
+  max-width: 92px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-who-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 600;
+  flex: 0 0 auto;
+}
+.chat-who-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #4ade80;
+}
+
+/* ==================== CLEAN ACCOUNT, SETTINGS & ADMIN VAULT ==================== */
+.tools-stack { display: grid; gap: 18px; }
+.account-profile-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-2);
+}
+.account-card-top {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+.account-card-avatar {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid var(--accent-border);
+  flex: 0 0 auto;
+}
+.account-card-meta { min-width: 0; flex: 1; }
+.account-card-meta strong { display: block; font-size: 1.06rem; }
+.account-card-meta small { display: block; color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
+.account-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.account-pass-form {
+  display: grid;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.account-pass-form[hidden] { display: none; }
+
+.tools-accordion {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface-2);
+  padding: 12px 14px;
+}
+.tools-accordion summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text);
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.tools-accordion summary::-webkit-details-marker { display: none; }
+.tools-accordion summary::after {
+  content: '+';
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  color: var(--accent);
+}
+.tools-accordion[open] summary::after { content: '−'; }
+.tools-subgrid { margin-top: 12px; }
+
+.admin-vault-section {
+  display: grid;
+  gap: 14px;
+  padding: 18px 16px;
+  border-radius: 20px;
+  border: 1px solid var(--accent-border);
+  background: linear-gradient(180deg, rgba(244, 193, 82, 0.06), transparent 140px), var(--surface-2);
+}
+.admin-vault-section[hidden] { display: none; }
+.admin-vault-head h3 {
+  margin: 4px 0 4px;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+}
+.admin-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.admin-subpanel {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.admin-subpanel[hidden] { display: none; }
+.admin-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.admin-rows { display: grid; gap: 8px; }
+.admin-row {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+.admin-row-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.admin-row-info { min-width: 0; flex: 1; }
+.admin-row-info strong { display: block; font-size: 0.92rem; }
+.admin-row-info small { display: block; color: var(--muted); font-size: 0.76rem; }
+.admin-row-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.admin-row-reset {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.admin-row-reset[hidden] { display: none; }
+.admin-add-account-form {
+  display: grid;
+  gap: 8px;
+  margin-top: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+/* ==================== HIDDEN LEGEND EDITOR & OWNERSHIP STATES ==================== */
+.editor-photo-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+.editor-photo-row img {
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  object-fit: cover;
+  border: 1px solid var(--accent-border);
+  flex: 0 0 auto;
+}
+.editor-photo-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.field-lbl {
+  display: grid;
+  gap: 5px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+  color: var(--text);
+  cursor: pointer;
+}
+.checkbox-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+.quick-media-card.not-deletable,
+.quick-video-card.not-deletable {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+  .auth-name-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .top-account-name { display: none; }
+  .top-account-pill { padding: 3px; }
+}
+
 

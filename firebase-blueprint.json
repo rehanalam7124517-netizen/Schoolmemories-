@@ -9,6 +9,7 @@
         "batchKey": { "type": "string", "maxLength": 32 },
         "groupId": { "type": "string", "maxLength": 64 },
         "sender": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "ownerId": { "type": "string", "maxLength": 80 },
         "senderDeviceId": { "type": "string", "maxLength": 80 },
         "text": { "type": "string", "maxLength": 4000 },
         "mediaData": { "type": "string", "maxLength": 850000 },
@@ -41,6 +42,7 @@
         "chunked": { "type": "boolean" },
         "chunkCount": { "type": "number" },
         "addedBy": { "type": "string", "maxLength": 80 },
+        "ownerId": { "type": "string", "maxLength": 80 },
         "created": { "type": "number" },
         "updated": { "type": "number" },
         "deleted": { "type": "boolean" }
@@ -96,6 +98,8 @@
         "message": { "type": "string", "minLength": 1, "maxLength": 4000 },
         "order": { "type": "number" },
         "builtin": { "type": "boolean" },
+        "addedBy": { "type": "string", "maxLength": 80 },
+        "ownerId": { "type": "string", "maxLength": 80 },
         "mediaData": { "type": "string", "maxLength": 850000 },
         "mediaType": { "type": "string", "maxLength": 80 },
         "updated": { "type": "number" },
@@ -167,9 +171,32 @@
         "expiresAt": { "type": "number" }
       },
       "required": ["id", "batchKey", "groupId", "deviceId", "sender", "isTyping", "updated", "expiresAt"]
+    },
+    "BatchAccount": {
+      "title": "BatchAccount",
+      "description": "Permanent login profile for each batch member with salted password digest and role.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 128 },
+        "batchKey": { "type": "string", "maxLength": 32 },
+        "profileId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "role": { "type": "string", "enum": ["admin", "member"] },
+        "salt": { "type": "string", "minLength": 8, "maxLength": 64 },
+        "passHash": { "type": "string", "minLength": 32, "maxLength": 128 },
+        "passVersion": { "type": "number" },
+        "active": { "type": "boolean" },
+        "order": { "type": "number" },
+        "updated": { "type": "number" }
+      },
+      "required": ["id", "batchKey", "name", "role", "salt", "passHash", "passVersion", "active", "order", "updated"]
     }
   },
   "firestore": {
+    "/batchAccounts/{accountId}": {
+      "schema": { "$ref": "#/entities/BatchAccount" },
+      "description": "Permanent per-member login credentials (salted SHA-256 hash) and role."
+    },
     "/groupMessages/{messageId}": {
       "schema": { "$ref": "#/entities/GroupMessage" },
       "description": "Real-time shared batch group chat messages."

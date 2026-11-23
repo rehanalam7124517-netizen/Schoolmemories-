@@ -47,7 +47,7 @@ jobs:
         run: |
           RUN_NUM="${GITHUB_RUN_NUMBER:-1}"
           CODE=$((100 + RUN_NUM))
-          NAME="15.9.${RUN_NUM}"
+          NAME="16.0.${RUN_NUM}"
           FEED_URL="https://github.com/${{ github.repository }}/releases/download/latest/apk-update.json"
           APK_URL="https://github.com/${{ github.repository }}/releases/download/latest/The-OG-Legends-Android.apk"
           echo "code=$CODE" >> "$GITHUB_OUTPUT"

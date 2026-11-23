@@ -5,9 +5,9 @@ android {
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
         def rawCode = project.findProperty('appVersionCode')?.toString()?.trim()
-        def ciVersionCode = (rawCode && rawCode.isInteger()) ? rawCode.toInteger() : 100
+        def ciVersionCode = (rawCode && rawCode ==~ /\d+/) ? rawCode.toInteger() : 100
         def rawName = project.findProperty('appVersionName')?.toString()?.trim()
-        def ciVersionName = rawName ? rawName : "15.9.0"
+        def ciVersionName = rawName ? rawName : "16.0.2"
         applicationId "com.oglegends.memories"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion

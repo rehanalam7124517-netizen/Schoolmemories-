@@ -87,7 +87,7 @@ define(['./workbox-25ee6505'], (function (workbox) { 'use strict';
     "revision": "73be9983e08d90bbaa33d0bac72f2aad"
   }, {
     "url": "index.html",
-    "revision": "79efd6b26490cef8dda52afb53fd7509"
+    "revision": "b2e62b1ae703c77d2cef451b95e8d8fc"
   }, {
     "url": "favicon.ico",
     "revision": "d41d8cd98f00b204e9800998ecf8427e"
@@ -108,13 +108,10 @@ define(['./workbox-25ee6505'], (function (workbox) { 'use strict';
     "revision": "f738e6754d18e97d295315a6a700a3b4"
   }, {
     "url": "js/app.js",
-    "revision": "296351c5549ff7d7578a6d356eff0973"
+    "revision": "72a5c5a9c25ba9e260c11bf338c3baab"
   }, {
     "url": "css/style.css",
-    "revision": "31a281bd0858c6cb3ef165e2e8730a06"
-  }, {
-    "url": "assets/workbox-window.prod.es5-BBnX5xw4.js",
-    "revision": null
+    "revision": "47d6548f26e033b6d010577b1a20f20f"
   }, {
     "url": "assets/og-logo.png",
     "revision": null
@@ -122,10 +119,10 @@ define(['./workbox-25ee6505'], (function (workbox) { 'use strict';
     "url": "assets/og-logo-BSR6YLDl.png",
     "revision": null
   }, {
-    "url": "assets/index-g-wtipZ6.css",
+    "url": "assets/index-DwQqYbPK.css",
     "revision": null
   }, {
-    "url": "assets/index-DXDGSlrL.js",
+    "url": "assets/index-CA0fOn7s.js",
     "revision": null
   }, {
     "url": "apple-touch-icon.png",
@@ -141,7 +138,7 @@ define(['./workbox-25ee6505'], (function (workbox) { 'use strict';
     "revision": "8f33b54242c3c54bba08341122a51fd5"
   }, {
     "url": "manifest.webmanifest",
-    "revision": "69c4965f6d3a15a38b58ed043af7bc5c"
+    "revision": "86b73970c873847856a4332689404612"
   }], {});
   workbox.cleanupOutdatedCaches();
   workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("index.html"), {

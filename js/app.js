@@ -15,7 +15,8 @@ const PEOPLE = [
 ];
 
 const $ = (id) => document.getElementById(id);
-const pageEls = [...document.querySelectorAll('.page')];
+const pageEls = [...document.querySelectorAll('.page')]
+  .sort((a, b) => Number(a.dataset.page ?? 999) - Number(b.dataset.page ?? 999));
 const drawerNavItems = [...document.querySelectorAll('.drawer-item[data-nav-page]')];
 const bottomNavItems = [...document.querySelectorAll('.bnav-item[data-nav-page]')];
 const PAGE = {
@@ -38,10 +39,11 @@ const PAGE = {
   META: 16,
   LETTER: 17,
   TOOLS: 18,
-  VIEWER: 19
+  VIEWER: 19,
+  LEGEND_EDITOR: 20
 };
 const PERSISTENT_PAGES = new Set([0, 1, 2, 3, 4, 5, 6, 7, 8]);
-const SUBSCREEN_PAGES = new Set([9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]);
+const SUBSCREEN_PAGES = new Set([9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
 const PAGE_TITLES = [
   'The OG Legends',
   'The Legends',
@@ -61,8 +63,9 @@ const PAGE_TITLES = [
   'Search Archive',
   'Memory Info',
   'Friend Letter',
-  'Theme & Settings',
-  'Memory Viewer'
+  'Account & Settings',
+  'Memory Viewer',
+  'Edit Legend'
 ];
 const THEME_META_COLORS = {
   'obsidian-gold': '#0a0b0f',
@@ -176,7 +179,8 @@ function syncPageUI(i, persist = true, customTitle = null) {
     pauseAllForegroundVideo();
   }
 
-  pageEls.forEach((p, idx) => p.classList.toggle('active', idx === currentPage));
+  const pageTarget = pageEls.find((p) => Number(p.dataset.page) === currentPage) || pageEls[currentPage];
+  pageEls.forEach((p) => p.classList.toggle('active', p === pageTarget));
   drawerNavItems.forEach((btn) => btn.classList.toggle('active', Number(btn.dataset.navPage) === currentPage));
   bottomNavItems.forEach((btn) => {
     const isActive = Number(btn.dataset.navPage) === currentPage;
@@ -198,7 +202,7 @@ function syncPageUI(i, persist = true, customTitle = null) {
   if ($('topBackBtn')) $('topBackBtn').hidden = currentPage === 0;
 
   closeNavDrawerUI();
-  const active = pageEls[currentPage];
+  const active = pageTarget;
   if (active && was !== currentPage) active.scrollTop = 0;
   if (currentPage === RANDOM_PAGE_IDX && was !== RANDOM_PAGE_IDX) resetRandomBatch();
   if (currentPage === PAGE.MESSAGES && typeof renderGroupChat === 'function') {
@@ -257,6 +261,13 @@ function goBackInApp() {
 }
 
 window.__ogHandleAndroidBack = function () {
+  if ($('authGate') && !$('authGate').hidden) {
+    if ($('authStepPassword') && !$('authStepPassword').hidden) {
+      $('authBackToNamesBtn')?.click();
+      return true;
+    }
+    return true;
+  }
   if ($('appNavDrawer')?.classList.contains('open')) {
     closeNavDrawer(false);
     return true;
@@ -743,6 +754,413 @@ function directPairId(a, b) {
   return [String(a || '').toLowerCase(), String(b || '').toLowerCase()].sort().join('__');
 }
 
+// =========================================================================
+// PERMANENT BATCH ACCOUNTS, SALTED HASH AUTH & OWNERSHIP RBAC
+// =========================================================================
+const AUTH_SESSION_KEY = 'og_auth_session_v1';
+const BUILTIN_ACCOUNTS_SEED = [
+  { id: 'acc-rehan', profileId: 'builtin-profile-0', name: 'Rehan', role: 'admin', salt: '19cd4cff0ca6b62c1f1ade85', passHash: '370be535f4020755202263c799b9e1dceb0d06888e2cc8575dbc4b2592b63252', passVersion: 1, active: true, order: 0 },
+  { id: 'acc-abdul', profileId: 'builtin-profile-1', name: 'Abdul', role: 'member', salt: '44f1ea7ce02a80cc5af24146', passHash: '949a77e74bca19393c0b6e0540ec4374733298abdebc0ed602b11af83dd3f57d', passVersion: 1, active: true, order: 1 },
+  { id: 'acc-rabsana', profileId: 'builtin-profile-2', name: 'Rabsana', role: 'member', salt: '9850ebfdae1336f69ac5a693', passHash: 'f8527143ed83467f02b249fb672be605fb7774f8b47ebe03ee268669e69e91ae', passVersion: 1, active: true, order: 2 },
+  { id: 'acc-saniya', profileId: 'builtin-profile-3', name: 'Saniya', role: 'member', salt: '36f7fcee1deaf871b5dfe593', passHash: '34083151264d974f4d7db80480c386977bcf0b0b39fc19e6a5c6c71d0cfd2278', passVersion: 1, active: true, order: 3 },
+  { id: 'acc-sonu', profileId: 'builtin-profile-4', name: 'Sonu', role: 'member', salt: '48f8db78f144fc92a705a132', passHash: 'b883eb0783ca88eeb358c2943253a08675993b672c8f0e03974397ff72c99305', passVersion: 1, active: true, order: 4 },
+  { id: 'acc-amrendra', profileId: 'builtin-profile-5', name: 'Amrendra', role: 'member', salt: 'e86f7ccad218f3aaf22040ed', passHash: '892a4216729669c24fa64e2cc82ed28a01f2fe8dc04ee37d1eef72beb63c9ade', passVersion: 1, active: true, order: 5 },
+  { id: 'acc-amrit', profileId: 'builtin-profile-6', name: 'Amrit', role: 'member', salt: 'a03ae52c17adde23d0d98b41', passHash: 'b1bc63153ec22789cf5b1bb35081a4bed81283982666c0542edd1ea09365b312', passVersion: 1, active: true, order: 6 },
+  { id: 'acc-aniket', profileId: 'builtin-profile-7', name: 'Aniket', role: 'member', salt: 'f78fb5807f60be70fa63edb5', passHash: '3132c6fe501f8855f4216767c610ab499fff56eba73e0cb34d6a595e17bfef6d', passVersion: 1, active: true, order: 7 },
+  { id: 'acc-krishna', profileId: 'builtin-profile-8', name: 'Krishna', role: 'member', salt: '72a1673e1e3cd92a9fa12721', passHash: '6e084852759c27d66aa42c1423f3eba4af61ea75111d8d1cbc24d5cbb8e44856', passVersion: 1, active: true, order: 8 },
+  { id: 'acc-hemant', profileId: 'builtin-profile-9', name: 'Hemant', role: 'member', salt: '39df237fa81021745b1beab6', passHash: '1ce9ad90d2d36e72c0c4eb9451f58ac7803b96c9f7fccd02954b160220982779', passVersion: 1, active: true, order: 9 },
+  { id: 'acc-depanshu', profileId: 'builtin-profile-10', name: 'Depanshu', role: 'member', salt: '2bcc48f53b9ef026f5802d5d', passHash: '97216aeb4dcfeef0891e08725901392c8389b6d46254a20f5dc3fae8f9e1c574', passVersion: 1, active: true, order: 10 },
+  { id: 'acc-sahin', profileId: 'builtin-profile-11', name: 'Sahin', role: 'member', salt: 'b5fa06663d39da5206471df3', passHash: 'be741b73d2255e01131da53344da70ec44d3168b9a285a4df8f840f36f1cad4c', passVersion: 1, active: true, order: 11 }
+];
+
+let cachedAccounts = [];
+let currentAuthAccount = null;
+let selectedLoginAccountId = null;
+
+function sha256Fallback(ascii) {
+  function rightRotate(value, amount) {
+    return (value >>> amount) | (value << (32 - amount));
+  }
+  const mathPow = Math.pow;
+  const maxWord = mathPow(2, 32);
+  let result = '';
+  const words = [];
+  const asciiBitLength = ascii.length * 8;
+  const hash = sha256Fallback.h || [];
+  const k = sha256Fallback.k || [];
+  let primeCounter = k.length;
+  const isComposite = {};
+  for (let candidate = 2; primeCounter < 64; candidate++) {
+    if (!isComposite[candidate]) {
+      for (let i = 0; i < 313; i += candidate) isComposite[i] = candidate;
+      hash[primeCounter] = (mathPow(candidate, 0.5) * maxWord) | 0;
+      k[primeCounter++] = (mathPow(candidate, 1 / 3) * maxWord) | 0;
+    }
+  }
+  sha256Fallback.h = hash;
+  sha256Fallback.k = k;
+  const h = hash.slice(0, 8);
+  ascii += '\x80';
+  while (ascii.length % 64 - 56) ascii += '\x00';
+  for (let i = 0; i < ascii.length; i++) {
+    const j = ascii.charCodeAt(i);
+    words[i >> 2] |= j << ((3 - i) % 4) * 8;
+  }
+  words[words.length] = (asciiBitLength / maxWord) | 0;
+  words[words.length] = asciiBitLength;
+  for (let j = 0; j < words.length;) {
+    const w = words.slice(j, j += 16);
+    const oldHash = h.slice(0);
+    for (let i = 0; i < 64; i++) {
+      const w15 = w[i - 15], w2 = w[i - 2];
+      const a = h[0], e = h[4];
+      const temp1 = h[7]
+        + (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25))
+        + ((e & h[5]) ^ ((~e) & h[6]))
+        + k[i]
+        + (w[i] = i < 16 ? w[i] : (
+          w[i - 16]
+          + (rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15 >>> 3))
+          + w[i - 7]
+          + (rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2 >>> 10))
+        ) | 0);
+      const temp2 = (rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22))
+        + ((a & h[1]) ^ (a & h[2]) ^ (h[1] & h[2]));
+      h.unshift((temp1 + temp2) | 0);
+      h[4] = (h[4] + temp1) | 0;
+      h.pop();
+    }
+    for (let i = 0; i < 8; i++) h[i] = (h[i] + oldHash[i]) | 0;
+  }
+  for (let i = 0; i < 8; i++) {
+    for (let j = 3; j + 1; j--) {
+      const b = (h[i] >> (j * 8)) & 255;
+      result += (b < 16 ? '0' : '') + b.toString(16);
+    }
+  }
+  return result;
+}
+
+async function hashPasswordWithSalt(salt, password) {
+  const raw = `${salt}:${password}`;
+  if (typeof window !== 'undefined' && window.crypto?.subtle) {
+    try {
+      const bytes = new TextEncoder().encode(raw);
+      const digest = await window.crypto.subtle.digest('SHA-256', bytes);
+      return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+    } catch {}
+  }
+  const utf8 = unescape(encodeURIComponent(raw));
+  return sha256Fallback(utf8);
+}
+
+function generateSaltHex() {
+  const bytes = new Uint8Array(12);
+  if (typeof window !== 'undefined' && window.crypto?.getRandomValues) {
+    window.crypto.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+  }
+  return [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+function readAuthSession() {
+  try {
+    const raw = localStorage.getItem(AUTH_SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed?.accountId ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveAuthSession(acc) {
+  if (!acc) {
+    localStorage.removeItem(AUTH_SESSION_KEY);
+    return;
+  }
+  localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({
+    accountId: acc.id,
+    name: acc.name,
+    role: acc.role,
+    passVersion: Number(acc.passVersion || 1),
+    loggedInAt: Date.now()
+  }));
+}
+
+function getCurrentAccount() {
+  return currentAuthAccount;
+}
+
+function isCurrentAdmin() {
+  return Boolean(currentAuthAccount && currentAuthAccount.role === 'admin' && currentAuthAccount.id === 'acc-rehan');
+}
+
+function isOwnerOfRecord(item) {
+  const acc = currentAuthAccount;
+  if (!acc || !item) return false;
+  if (item.ownerId) return item.ownerId === acc.id;
+  const ownerName = String(item.addedBy || item.sender || '').trim();
+  return Boolean(ownerName && ownerName === acc.name);
+}
+
+function canDeleteMedia(item) {
+  if (!currentAuthAccount || !item) return false;
+  if (isCurrentAdmin()) return true;
+  if (item.builtin) return false;
+  return isOwnerOfRecord(item);
+}
+
+function canDeleteJourney(j) {
+  if (!currentAuthAccount || !j) return false;
+  if (isCurrentAdmin()) return true;
+  if (j.builtin) return false;
+  return isOwnerOfRecord(j);
+}
+
+function canDeleteMessage(m) {
+  if (!currentAuthAccount || !m) return false;
+  if (isCurrentAdmin()) return true;
+  if (/^gm-[1-5]$/.test(m.id)) return false;
+  if (m.ownerId) return m.ownerId === currentAuthAccount.id;
+  return m.sender === currentAuthAccount.name && (!m.senderDeviceId || m.senderDeviceId === getDeviceId());
+}
+
+function getAccountAvatarSrc(acc) {
+  if (acc?.profileId) {
+    const prof = activeProfiles.find((p) => p.id === acc.profileId);
+    if (prof) return profileImageSrc(prof);
+  }
+  const byName = activeProfiles.find((p) => p.n.toLowerCase() === String(acc?.name || '').toLowerCase());
+  return byName ? profileImageSrc(byName) : 'assets/common.jpg';
+}
+
+function renderAuthNameGrid() {
+  const grid = $('authNameGrid');
+  if (!grid) return;
+  const q = ($('authNameSearch')?.value || '').trim().toLowerCase();
+  const list = cachedAccounts
+    .filter((a) => a && a.active !== false)
+    .sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
+    .filter((a) => !q || String(a.name || '').toLowerCase().includes(q));
+
+  grid.innerHTML = '';
+  if (!list.length) {
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">No matching profiles found.</div>';
+    return;
+  }
+  list.forEach((acc) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'auth-name-tile';
+    btn.innerHTML = `
+      <img src="${getAccountAvatarSrc(acc)}" alt="${escapeHtml(acc.name)}" referrerpolicy="no-referrer" onerror="this.src='assets/common.jpg'">
+      <strong>${escapeHtml(acc.name)}</strong>`;
+    btn.onclick = () => selectAuthProfile(acc);
+    grid.appendChild(btn);
+  });
+}
+
+function selectAuthProfile(acc) {
+  if (!acc) return;
+  selectedLoginAccountId = acc.id;
+  if ($('authPickedAvatar')) $('authPickedAvatar').src = getAccountAvatarSrc(acc);
+  if ($('authPickedName')) $('authPickedName').textContent = acc.name;
+  if ($('authPasswordInput')) {
+    $('authPasswordInput').value = '';
+    $('authPasswordInput').type = 'password';
+  }
+  if ($('authErrorMsg')) {
+    $('authErrorMsg').hidden = true;
+    $('authErrorMsg').textContent = '';
+  }
+  if ($('authStepSelect')) $('authStepSelect').hidden = true;
+  if ($('authStepPassword')) $('authStepPassword').hidden = false;
+  setTimeout(() => $('authPasswordInput')?.focus(), 60);
+}
+
+function showAuthGate(reasonMsg = '') {
+  const gate = $('authGate');
+  const appEl = $('app');
+  if (gate) gate.hidden = false;
+  if (appEl) appEl.setAttribute('aria-hidden', 'true');
+  selectedLoginAccountId = null;
+  if ($('authStepSelect')) $('authStepSelect').hidden = false;
+  if ($('authStepPassword')) $('authStepPassword').hidden = true;
+  if ($('authErrorMsg')) {
+    $('authErrorMsg').hidden = !reasonMsg;
+    $('authErrorMsg').textContent = reasonMsg;
+  }
+  renderAuthNameGrid();
+}
+
+function hideAuthGate() {
+  const gate = $('authGate');
+  const appEl = $('app');
+  if (gate) gate.hidden = true;
+  if (appEl) appEl.removeAttribute('aria-hidden');
+}
+
+function syncRoleAndAccountUI() {
+  const acc = currentAuthAccount;
+  const admin = isCurrentAdmin();
+  const topPill = $('topAccountBtn');
+  if (topPill) {
+    topPill.hidden = !acc;
+    if (acc) {
+      if ($('topAccountInitials')) $('topAccountInitials').textContent = senderInitials(acc.name);
+      if ($('topAccountName')) $('topAccountName').textContent = acc.name;
+    }
+  }
+  if ($('drawerAccountSummary')) {
+    $('drawerAccountSummary').textContent = acc ? `${acc.name} · Settings` : 'Account & Settings';
+  }
+  if ($('accCardName')) $('accCardName').textContent = acc ? acc.name : 'Guest';
+  if ($('accCardRole')) {
+    $('accCardRole').textContent = admin
+      ? 'Archive Admin · Full Control'
+      : 'Batch Member · MTPS 2025–26';
+  }
+  if ($('accCardAvatar')) $('accCardAvatar').src = acc ? getAccountAvatarSrc(acc) : 'assets/common.jpg';
+  if ($('chatWhoLabel') && acc) $('chatWhoLabel').textContent = acc.name;
+  if ($('msgClearThreadBtn')) $('msgClearThreadBtn').hidden = !admin;
+  if ($('adminVaultSection')) $('adminVaultSection').hidden = !admin;
+  if ($('sheetAddProfileBtn')) $('sheetAddProfileBtn').hidden = !admin;
+  if ($('addProfileBtn')) $('addProfileBtn').hidden = true;
+  if (admin && currentPage === PAGE.TOOLS) {
+    renderAdminPanels();
+  }
+}
+
+async function seedAccountsAndRestoreSession() {
+  const saved = await getAll('accounts');
+  const map = new Map(saved.map((a) => [a.id, a]));
+  for (const seed of BUILTIN_ACCOUNTS_SEED) {
+    if (!map.has(seed.id)) {
+      const rec = { ...seed, updated: BUILTIN_SEED_TS };
+      await put('accounts', rec);
+      map.set(seed.id, rec);
+    }
+  }
+  cachedAccounts = [...map.values()].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+
+  const sess = readAuthSession();
+  const matched = sess ? cachedAccounts.find((a) => a.id === sess.accountId) : null;
+  if (matched && matched.active !== false && Number(matched.passVersion || 1) === Number(sess.passVersion || 1)) {
+    currentAuthAccount = matched;
+    saveAuthSession(matched);
+    hideAuthGate();
+  } else {
+    currentAuthAccount = null;
+    if (sess) saveAuthSession(null);
+    showAuthGate();
+  }
+  syncRoleAndAccountUI();
+}
+
+$('authNameSearch')?.addEventListener('input', renderAuthNameGrid);
+$('authBackToNamesBtn')?.addEventListener('click', () => {
+  selectedLoginAccountId = null;
+  if ($('authStepPassword')) $('authStepPassword').hidden = true;
+  if ($('authStepSelect')) $('authStepSelect').hidden = false;
+  if ($('authErrorMsg')) $('authErrorMsg').hidden = true;
+  renderAuthNameGrid();
+});
+$('authTogglePassBtn')?.addEventListener('click', () => {
+  const inp = $('authPasswordInput');
+  if (!inp) return;
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+});
+$('authLoginForm')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const acc = cachedAccounts.find((a) => a.id === selectedLoginAccountId);
+  const pass = $('authPasswordInput')?.value || '';
+  const errEl = $('authErrorMsg');
+  if (!acc || acc.active === false) {
+    if (errEl) { errEl.textContent = 'This account is unavailable.'; errEl.hidden = false; }
+    return;
+  }
+  const candidateHash = await hashPasswordWithSalt(acc.salt, pass);
+  if (candidateHash !== acc.passHash) {
+    if (errEl) { errEl.textContent = 'Incorrect password. Please try again.'; errEl.hidden = false; }
+    $('authPasswordInput')?.focus();
+    $('authPasswordInput')?.select();
+    return;
+  }
+  currentAuthAccount = acc;
+  saveAuthSession(acc);
+  localStorage.setItem('og_chat_sender', acc.name);
+  if ($('authPasswordInput')) $('authPasswordInput').value = '';
+  if (errEl) errEl.hidden = true;
+  hideAuthGate();
+  syncRoleAndAccountUI();
+  await renderPeople();
+  await renderQuickGalleries();
+  await renderJourney();
+  await updateV7Home();
+  if (currentPage === PAGE.MESSAGES) await renderGroupChat();
+  showToast(`Welcome back, ${acc.name}!`);
+});
+
+$('topAccountBtn')?.addEventListener('click', () => $('toolsBtn')?.click());
+$('logoutBtn')?.addEventListener('click', () => {
+  if (!confirmTap($('logoutBtn'), 'Tap again to log out')) return;
+  emitTypingStatus(false);
+  currentAuthAccount = null;
+  saveAuthSession(null);
+  syncRoleAndAccountUI();
+  showAuthGate();
+  showToast('Signed out');
+});
+
+$('changeOwnPassToggleBtn')?.addEventListener('click', () => {
+  const form = $('changeOwnPassForm');
+  if (!form) return;
+  form.hidden = !form.hidden;
+  if (!form.hidden) {
+    form.reset();
+    $('ownCurrentPass')?.focus();
+  }
+});
+$('cancelOwnPassBtn')?.addEventListener('click', () => {
+  if ($('changeOwnPassForm')) {
+    $('changeOwnPassForm').reset();
+    $('changeOwnPassForm').hidden = true;
+  }
+});
+$('changeOwnPassForm')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const acc = currentAuthAccount;
+  if (!acc) return;
+  const curPass = $('ownCurrentPass')?.value || '';
+  const newPass = $('ownNewPass')?.value || '';
+  const confPass = $('ownConfirmPass')?.value || '';
+  if (newPass.length < 5) return showToast('New password must be at least 5 characters');
+  if (newPass !== confPass) return showToast('New passwords do not match');
+  const curHash = await hashPasswordWithSalt(acc.salt, curPass);
+  if (curHash !== acc.passHash) return showToast('Current password is incorrect');
+
+  const nextSalt = generateSaltHex();
+  const nextHash = await hashPasswordWithSalt(nextSalt, newPass);
+  const updatedAcc = {
+    ...acc,
+    salt: nextSalt,
+    passHash: nextHash,
+    passVersion: Number(acc.passVersion || 1) + 1,
+    updated: Date.now()
+  };
+  markSelfCreated(updatedAcc.id, updatedAcc.updated);
+  await put('accounts', updatedAcc);
+  cachedAccounts = cachedAccounts.map((x) => (x.id === updatedAcc.id ? updatedAcc : x));
+  currentAuthAccount = updatedAcc;
+  saveAuthSession(updatedAcc);
+  e.target.reset();
+  e.target.hidden = true;
+  showToast('Password updated across all devices');
+  queueCloudOp('account:' + updatedAcc.id, () => window.OGCloud.pushAccount(updatedAcc));
+});
+
 // People profiles persisted in IndexedDB
 let activeProfiles = [];
 function profileImageSrc(p) {
@@ -837,10 +1255,56 @@ async function renderPeople() {
   }
 
   syncSenderDropdown();
+  if ($('authGate') && !$('authGate').hidden) renderAuthNameGrid();
   if (typeof updateV7Home === 'function') updateV7Home();
 }
 
 $('peopleFilterInput')?.addEventListener('input', renderPeople);
+
+function attachSecretAdminLegendTrigger(el, profile) {
+  if (!el || !isCurrentAdmin()) return;
+  let tapCount = 0;
+  let tapTimer = null;
+  let holdTimer = null;
+  let startX = 0;
+  let startY = 0;
+
+  const cancelHold = () => {
+    if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+  };
+  el.addEventListener('pointerdown', (e) => {
+    if (!isCurrentAdmin()) return;
+    startX = e.clientX || 0;
+    startY = e.clientY || 0;
+    holdTimer = setTimeout(() => {
+      tapCount = 0;
+      openSecretLegendEditor(profile);
+    }, 650);
+  });
+  el.addEventListener('pointermove', (e) => {
+    if (!holdTimer) return;
+    if (Math.hypot((e.clientX || 0) - startX, (e.clientY || 0) - startY) > 10) {
+      cancelHold();
+    }
+  });
+  el.addEventListener('contextmenu', (e) => {
+    if (isCurrentAdmin()) e.preventDefault();
+  });
+  el.addEventListener('pointerup', cancelHold);
+  el.addEventListener('pointercancel', cancelHold);
+  el.addEventListener('pointerleave', cancelHold);
+  el.addEventListener('click', () => {
+    if (!isCurrentAdmin()) return;
+    tapCount += 1;
+    clearTimeout(tapTimer);
+    if (tapCount >= 3) {
+      tapCount = 0;
+      openSecretLegendEditor(profile);
+      return;
+    }
+    tapTimer = setTimeout(() => { tapCount = 0; }, 900);
+  });
+}
 
 function renderProfileDetailBody(p) {
   $('profileDialogBody').innerHTML = `
@@ -859,38 +1323,123 @@ function renderProfileDetailBody(p) {
         <div class="profile-actions">
           <button class="mini-btn" id="openProfileChatBtn" type="button"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 14a2.5 2.5 0 0 1-2.5 2.5H8l-4.5 4V6A2.5 2.5 0 0 1 6 3.5h12.5A2.5 2.5 0 0 1 21 6v8Z" fill="currentColor" fill-opacity="0.16"/></svg><span>Message in Batch Group</span></button>
           <button class="mini-btn" id="openLetterBtn" type="button"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5" fill="currentColor" fill-opacity="0.14"/><path d="m3.5 7 8.5 6 8.5-6"/></svg><span>Open Letter</span></button>
-          <button class="mini-btn" id="changeProfileImageBtn" type="button"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="3.5" fill="currentColor" fill-opacity="0.14"/><circle cx="8.8" cy="8.8" r="1.6" fill="currentColor" stroke="none"/><path d="m21 15.5-3.8-3.8a2 2 0 0 0-2.83 0L6 20.5"/></svg><span>Change Photo</span></button>
-          <button class="mini-btn danger" id="deleteProfileBtn" type="button"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg><span>Delete</span></button>
         </div>
       </div>
     </div>
     <div class="memory-box"><strong>Memory Note</strong><p>${escapeHtml(p.memory)}</p></div>`;
   $('openProfileChatBtn').onclick = () => openMessagesDialog(p.n);
   $('openLetterBtn').onclick = () => openFriendLetter(p);
-  $('changeProfileImageBtn').onclick = async () => {
-    const [file] = await filePicker('image/*', false);
-    if (!file) return;
-    p.imageBlob = file;
-    p.updated = Date.now();
-    markSelfCreated(p.id, p.updated);
-    await put('profiles', p);
-    await renderPeople();
-    const updated = activeProfiles.find((x) => x.id === p.id) || p;
-    renderProfileDetailBody(updated);
-    showToast('Profile photo updated & syncing...');
-    queueCloudOp('profile:' + p.id, () => window.OGCloud.pushProfile(p), 'Profile photo sync retry scheduled');
-  };
-  $('deleteProfileBtn').onclick = async () => {
-    if (!confirmTap($('deleteProfileBtn'), 'Tap again to delete')) return;
-    await recycleItem('profile', p.id, p);
-    await del('profiles', p.id);
-    if (p.builtin) localStorage.setItem('deleted_' + p.id, '1');
-    await renderPeople();
-    showToast(`${p.n} deleted (recoverable in Restore Center)`);
-    queueCloudOp('profile-del:' + p.id, () => window.OGCloud.markProfileDeleted(p, true));
-    finishSubscreenTo(PAGE.LEGENDS);
-  };
+  attachSecretAdminLegendTrigger($('profileDialogBody').querySelector('.profile-img-wrap'), p);
+  attachSecretAdminLegendTrigger($('profileDialogBody').querySelector('.profile-info .eyebrow'), p);
 }
+
+let editingLegendId = null;
+let editingLegendPendingBlob = null;
+let editingLegendResetPhoto = false;
+
+function openSecretLegendEditor(p) {
+  if (!isCurrentAdmin() || !p) return;
+  editingLegendId = p.id;
+  editingLegendPendingBlob = null;
+  editingLegendResetPhoto = false;
+  if ($('legendEditorHeading')) $('legendEditorHeading').textContent = `Edit ${p.n}`;
+  if ($('editProfilePreview')) $('editProfilePreview').src = profileImageSrc(p);
+  if ($('editProfileImageInput')) $('editProfileImageInput').value = '';
+  if ($('editProfileName')) $('editProfileName').value = p.n || '';
+  if ($('editProfileNick')) $('editProfileNick').value = p.nick || '';
+  if ($('editProfileTitle')) $('editProfileTitle').value = p.title || '';
+  if ($('editProfileNature')) $('editProfileNature').value = p.nature || '';
+  if ($('editProfileSpecial')) $('editProfileSpecial').value = p.special || '';
+  if ($('editProfileMemory')) $('editProfileMemory').value = p.memory || '';
+  resetConfirmTap($('editProfileDeleteBtn'));
+  showPage(PAGE.LEGEND_EDITOR, { title: `Edit ${p.n}` });
+}
+
+$('editProfileImageInput')?.addEventListener('change', (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  editingLegendPendingBlob = file;
+  editingLegendResetPhoto = false;
+  if ($('editProfilePreview')) $('editProfilePreview').src = URL.createObjectURL(file);
+});
+
+$('editProfileResetImgBtn')?.addEventListener('click', () => {
+  editingLegendPendingBlob = null;
+  editingLegendResetPhoto = true;
+  if ($('editProfileImageInput')) $('editProfileImageInput').value = '';
+  if ($('editProfilePreview')) $('editProfilePreview').src = 'assets/common.jpg';
+});
+
+$('legendEditorForm')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!isCurrentAdmin()) return showToast('Admin permission required');
+  const all = await getAll('profiles');
+  const p = all.find((x) => x.id === editingLegendId);
+  if (!p) return showToast('Legend not found');
+
+  const nextName = $('editProfileName')?.value.trim() || p.n;
+  const updated = {
+    ...p,
+    n: nextName,
+    nick: $('editProfileNick')?.value.trim() || '',
+    title: $('editProfileTitle')?.value.trim() || '',
+    nature: $('editProfileNature')?.value.trim() || '',
+    special: $('editProfileSpecial')?.value.trim() || '',
+    memory: $('editProfileMemory')?.value.trim() || '',
+    profileVer: Number(p.profileVer || 3) + 1,
+    updated: Date.now()
+  };
+  if (editingLegendResetPhoto) {
+    delete updated.imageBlob;
+    updated.image = 'assets/common.jpg';
+  } else if (editingLegendPendingBlob) {
+    updated.imageBlob = editingLegendPendingBlob;
+  }
+
+  markSelfCreated(updated.id, updated.updated);
+  await put('profiles', updated);
+  queueCloudOp('profile:' + updated.id, () => window.OGCloud.pushProfile(updated));
+
+  if ($('editSyncAccountName')?.checked) {
+    const linkedAcc = cachedAccounts.find((a) => a.profileId === updated.id);
+    if (linkedAcc && linkedAcc.name !== nextName) {
+      const nextAcc = { ...linkedAcc, name: nextName, updated: Date.now() };
+      markSelfCreated(nextAcc.id, nextAcc.updated);
+      await put('accounts', nextAcc);
+      cachedAccounts = cachedAccounts.map((a) => (a.id === nextAcc.id ? nextAcc : a));
+      if (currentAuthAccount?.id === nextAcc.id) {
+        currentAuthAccount = nextAcc;
+        saveAuthSession(nextAcc);
+        syncRoleAndAccountUI();
+      }
+      queueCloudOp('account:' + nextAcc.id, () => window.OGCloud.pushAccount(nextAcc));
+    }
+  }
+
+  await renderPeople();
+  const refreshed = activeProfiles.find((x) => x.id === updated.id) || updated;
+  renderProfileDetailBody(refreshed);
+  if (isCurrentAdmin()) renderAdminPanels();
+  showToast(`Updated ${updated.n} & synced everywhere`);
+  goBackInApp();
+});
+
+$('editProfileDeleteBtn')?.addEventListener('click', async () => {
+  if (!isCurrentAdmin()) return showToast('Admin permission required');
+  const btn = $('editProfileDeleteBtn');
+  if (!confirmTap(btn, 'Tap again to delete')) return;
+  const all = await getAll('profiles');
+  const p = all.find((x) => x.id === editingLegendId);
+  if (!p) return;
+  await recycleItem('profile', p.id, p);
+  await del('profiles', p.id);
+  if (p.builtin) localStorage.setItem('deleted_' + p.id, '1');
+  await renderPeople();
+  if (isCurrentAdmin()) renderAdminPanels();
+  showToast(`${p.n} deleted (recoverable in Restore Center)`);
+  queueCloudOp('profile-del:' + p.id, () => window.OGCloud.markProfileDeleted(p, true));
+  showPage(PAGE.LEGENDS, { replace: true });
+});
 
 function openProfile(i) {
   const p = activeProfiles[i];
@@ -899,9 +1448,13 @@ function openProfile(i) {
   showPage(PAGE.PROFILE_DETAIL, { title: p.n });
 }
 
-$('addProfileBtn').onclick = () => showPage(PAGE.NEW_PROFILE);
+$('addProfileBtn')?.addEventListener('click', () => {
+  if (!isCurrentAdmin()) return showToast('Only Admin can add Legends');
+  showPage(PAGE.NEW_PROFILE);
+});
 $('newProfileForm').onsubmit = async (e) => {
   e.preventDefault();
+  if (!isCurrentAdmin()) return showToast('Only Admin can add Legends');
   const file = $('profileImageInput').files[0] || null;
   const all = await getAll('profiles');
   const p = {
@@ -923,6 +1476,7 @@ $('newProfileForm').onsubmit = async (e) => {
   await put('profiles', p);
   e.target.reset();
   await renderPeople();
+  if (isCurrentAdmin()) renderAdminPanels();
   showToast(`Added ${p.n} to The Legends`);
   queueCloudOp('profile:' + p.id, () => window.OGCloud.pushProfile(p));
   finishSubscreenTo(PAGE.LEGENDS);
@@ -955,9 +1509,9 @@ async function hydrateBuiltins() {
   }
 }
 
-// IndexedDB stores (upgrading v14 -> v15 smoothly, ensuring message stores exist)
+// IndexedDB stores (upgrading v15 -> v16 with persistent batch accounts)
 let DB;
-const req = indexedDB.open('ogLegendsMemories', 15);
+const req = indexedDB.open('ogLegendsMemories', 16);
 req.onupgradeneeded = (e) => {
   const db = e.target.result;
   if (!db.objectStoreNames.contains('folders')) db.createObjectStore('folders', { keyPath: 'id' });
@@ -966,6 +1520,7 @@ req.onupgradeneeded = (e) => {
     s.createIndex('folderId', 'folderId', { unique: false });
   }
   if (!db.objectStoreNames.contains('profiles')) db.createObjectStore('profiles', { keyPath: 'id' });
+  if (!db.objectStoreNames.contains('accounts')) db.createObjectStore('accounts', { keyPath: 'id' });
   if (!db.objectStoreNames.contains('journeys')) db.createObjectStore('journeys', { keyPath: 'id' });
   if (!db.objectStoreNames.contains('hiddenMedia')) db.createObjectStore('hiddenMedia', { keyPath: 'id' });
   if (!db.objectStoreNames.contains('favorites')) db.createObjectStore('favorites', { keyPath: 'id' });
@@ -992,6 +1547,7 @@ req.onsuccess = async (e) => {
   DB = e.target.result;
   await hydrateBuiltins();
   await seedProfiles();
+  await seedAccountsAndRestoreSession();
   await seedJourneys();
   await seedSocialMessages();
   await renderPeople();
@@ -999,6 +1555,7 @@ req.onsuccess = async (e) => {
   await renderJourney();
   await updateV7Home();
   updateUnreadBadge();
+  syncRoleAndAccountUI();
   initCloudSyncOnce();
 };
 
@@ -1051,8 +1608,12 @@ const selectionState = {
   video: { active: false, ids: new Set() }
 };
 
-function updateSelectionBarUI(type) {
+function updateSelectionBarUI(type, hasDeletable = true) {
   const st = selectionState[type];
+  if (!hasDeletable && st.active) {
+    st.active = false;
+    st.ids.clear();
+  }
   const bar = $(type === 'photo' ? 'photoSelectBar' : 'videoSelectBar');
   const countEl = $(type === 'photo' ? 'photoSelectCount' : 'videoSelectCount');
   const delBtn = $(type === 'photo' ? 'deleteSelectedPhotosBtn' : 'deleteSelectedVideosBtn');
@@ -1060,7 +1621,10 @@ function updateSelectionBarUI(type) {
   if (bar) bar.hidden = !st.active;
   if (countEl) countEl.textContent = `${st.ids.size} selected`;
   if (delBtn) delBtn.disabled = st.ids.size === 0;
-  if (toggleBtn) toggleBtn.textContent = st.active ? 'Cancel' : 'Select';
+  if (toggleBtn) {
+    toggleBtn.hidden = !hasDeletable;
+    toggleBtn.textContent = st.active ? 'Cancel' : 'Select';
+  }
 }
 
 function setSelectionMode(type, active) {
@@ -1071,8 +1635,12 @@ function setSelectionMode(type, active) {
 }
 
 async function deleteMediaItems(items, type) {
-  if (!items.length) return;
-  for (const item of items) {
+  const allowed = items.filter((item) => canDeleteMedia(item));
+  if (!allowed.length) {
+    showToast('Only Admin or the uploader can delete these items');
+    return;
+  }
+  for (const item of allowed) {
     if (item.builtin) {
       await recycleItem('hiddenMedia', item.id, item);
       await put('hiddenMedia', { id: item.id });
@@ -1085,7 +1653,7 @@ async function deleteMediaItems(items, type) {
   }
   await renderQuickGalleries();
   await updateV7Home();
-  const label = items.length === 1 ? (type === 'photo' ? 'Photo' : 'Video') : `${items.length} ${type}s`;
+  const label = allowed.length === 1 ? (type === 'photo' ? 'Photo' : 'Video') : `${allowed.length} ${type}s`;
   showToast(`${label} deleted & synced`);
 }
 
@@ -1097,13 +1665,18 @@ async function renderQuickGalleries() {
   const photosHost = $('allPhotosQuickGrid');
   if (photosHost) {
     const photos = await getAllCombinedMedia('photo');
+    const deletablePhotos = photos.filter((x) => canDeleteMedia(x));
     const st = selectionState.photo;
+    if (st.active && !deletablePhotos.length) {
+      st.active = false;
+      st.ids.clear();
+    }
     photosHost.classList.toggle('is-selecting', st.active);
-    updateSelectionBarUI('photo');
+    updateSelectionBarUI('photo', deletablePhotos.length > 0);
     if ($('allPhotosCountLabel')) {
       $('allPhotosCountLabel').textContent = st.active
-        ? `Tap photos to select for deletion · ${st.ids.size} selected`
-        : `${photos.length} ${photos.length === 1 ? 'photo' : 'photos'} · Tap any image to view, zoom, or delete`;
+        ? `Tap your deletable photos · ${st.ids.size} selected`
+        : `${photos.length} ${photos.length === 1 ? 'photo' : 'photos'} · Tap any image to view or zoom`;
     }
     photosHost.innerHTML = '';
     if (!photos.length) {
@@ -1112,16 +1685,18 @@ async function renderQuickGalleries() {
       photos.forEach((item, index) => {
         const src = getViewerSrc(item);
         const card = document.createElement('div');
-        const isSelected = st.active && st.ids.has(item.id);
-        card.className = 'quick-media-card' + (isSelected ? ' selected' : '');
+        const deletable = canDeleteMedia(item);
+        const isSelected = st.active && deletable && st.ids.has(item.id);
+        card.className = 'quick-media-card' + (isSelected ? ' selected' : '') + (st.active && !deletable ? ' not-deletable' : '');
         card.innerHTML = `
-          ${st.active ? `<span class="quick-select-badge" aria-hidden="true">${isSelected ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : ''}</span>` : ''}
+          ${st.active && deletable ? `<span class="quick-select-badge" aria-hidden="true">${isSelected ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : ''}</span>` : ''}
           <img src="${src}" alt="${escapeHtml(item.name || 'Memory photo')}" loading="lazy" referrerpolicy="no-referrer" onerror="this.src='assets/common.jpg'">
           <div class="quick-media-caption">
             <span>${escapeHtml(item.name || 'Batch Photo')}</span>
           </div>`;
         card.onclick = () => {
           if (st.active) {
+            if (!deletable) return showToast('You can only select photos you added');
             if (st.ids.has(item.id)) st.ids.delete(item.id);
             else st.ids.add(item.id);
             renderQuickGalleries();
@@ -1138,12 +1713,17 @@ async function renderQuickGalleries() {
   const videosHost = $('allVideosQuickGrid');
   if (videosHost) {
     const videos = await getAllCombinedMedia('video');
+    const deletableVideos = videos.filter((x) => canDeleteMedia(x));
     const st = selectionState.video;
+    if (st.active && !deletableVideos.length) {
+      st.active = false;
+      st.ids.clear();
+    }
     videosHost.classList.toggle('is-selecting', st.active);
-    updateSelectionBarUI('video');
+    updateSelectionBarUI('video', deletableVideos.length > 0);
     if ($('allVideosCountLabel')) {
       $('allVideosCountLabel').textContent = st.active
-        ? `Tap videos to select for deletion · ${st.ids.size} selected`
+        ? `Tap your deletable videos · ${st.ids.size} selected`
         : `${videos.length} ${videos.length === 1 ? 'video' : 'videos'} · Tap to watch in full player`;
     }
     videosHost.innerHTML = '';
@@ -1153,10 +1733,11 @@ async function renderQuickGalleries() {
       videos.forEach((item, index) => {
         const src = getViewerSrc(item);
         const card = document.createElement('article');
-        const isSelected = st.active && st.ids.has(item.id);
-        card.className = 'quick-video-card' + (isSelected ? ' selected' : '');
+        const deletable = canDeleteMedia(item);
+        const isSelected = st.active && deletable && st.ids.has(item.id);
+        card.className = 'quick-video-card' + (isSelected ? ' selected' : '') + (st.active && !deletable ? ' not-deletable' : '');
         card.innerHTML = `
-          ${st.active ? `<span class="quick-select-badge" aria-hidden="true">${isSelected ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : ''}</span>` : ''}
+          ${st.active && deletable ? `<span class="quick-select-badge" aria-hidden="true">${isSelected ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : ''}</span>` : ''}
           <div class="quick-video-thumb">
             <video src="${src}" muted playsinline preload="metadata"></video>
             <button class="quick-play-overlay" type="button" aria-label="Play ${escapeHtml(item.name || 'Video')}"><svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg></button>
@@ -1164,11 +1745,12 @@ async function renderQuickGalleries() {
           <div class="quick-video-meta">
             <div>
               <strong>${escapeHtml(item.name || 'Batch Video')}</strong>
-              <small>${item.builtin ? 'Archive Montage' : 'Device Upload'}</small>
+              <small>${item.builtin ? 'Archive Montage' : (item.addedBy ? `Added by ${escapeHtml(item.addedBy)}` : 'Device Upload')}</small>
             </div>
           </div>`;
         card.onclick = () => {
           if (st.active) {
+            if (!deletable) return showToast('You can only select videos you added');
             if (st.ids.has(item.id)) st.ids.delete(item.id);
             else st.ids.add(item.id);
             renderQuickGalleries();
@@ -1238,6 +1820,7 @@ function renderViewer() {
   const item = currentViewerItems[currentViewerIndex];
   if (!item) return;
   resetConfirmTap($('viewerDelete'));
+  if ($('viewerDelete')) $('viewerDelete').hidden = !canDeleteMedia(item);
   $('viewerCount').textContent = `${currentViewerIndex + 1} / ${currentViewerItems.length}`;
   if ($('viewerTitle')) $('viewerTitle').textContent = item.name || (currentViewerType === 'photo' ? 'Photo Memory' : 'Video Memory');
   const stage = $('viewerStage');
@@ -1321,7 +1904,8 @@ async function addMedia(type) {
   if (!files.length) return 0;
   const folderId = type === 'photo' ? 'builtin-photos' : 'builtin-videos';
   const createdList = [];
-  const uploader = getChatSender();
+  const acc = getCurrentAccount();
+  const uploader = acc?.name || getChatSender();
   for (const file of files) {
     const item = {
       id: 'm-' + Date.now() + '-' + Math.random().toString(36).slice(2),
@@ -1330,6 +1914,7 @@ async function addMedia(type) {
       name: file.name,
       blob: file,
       addedBy: uploader,
+      ownerId: acc?.id || '',
       created: Date.now(),
       updated: Date.now()
     };
@@ -1390,25 +1975,31 @@ async function renderJourney() {
         ? `<video src="${u}" controls playsinline></video>`
         : `<img src="${u}" alt="journey" referrerpolicy="no-referrer">`;
     }
+    const allowDel = canDeleteJourney(j);
+    const byTag = !j.builtin && j.addedBy ? ` · Added by ${escapeHtml(j.addedBy)}` : '';
     c.innerHTML = `
       <div class="journey-step">${String(idx + 1).padStart(2, '0')}</div>
       <div class="journey-body">
-        <b>${escapeHtml(j.date)}</b>
+        <b>${escapeHtml(j.date)}${byTag}</b>
         <h3>${escapeHtml(j.title)}</h3>
         ${media}
         <p>${escapeHtml(j.message)}</p>
-        <button class="mini-btn danger journey-delete" type="button"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg><span>Delete Memory</span></button>
+        ${allowDel ? '<button class="mini-btn danger journey-delete" type="button"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg><span>Delete Memory</span></button>' : ''}
       </div>`;
-    c.querySelector('.journey-delete').onclick = async (ev) => {
-      if (!confirmTap(ev.currentTarget, 'Tap again to delete')) return;
-      await recycleItem('journey', j.id, j);
-      await del('journeys', j.id);
-      if (j.builtin) localStorage.setItem('deleted_' + j.id, '1');
-      renderJourney();
-      updateV7Home();
-      showToast('Journey memory deleted');
-      queueCloudOp('journey-del:' + j.id, () => window.OGCloud.markJourneyDeleted(j, true));
-    };
+    const delBtn = c.querySelector('.journey-delete');
+    if (delBtn) {
+      delBtn.onclick = async (ev) => {
+        if (!canDeleteJourney(j)) return showToast('Only Admin or the creator can delete this');
+        if (!confirmTap(ev.currentTarget, 'Tap again to delete')) return;
+        await recycleItem('journey', j.id, j);
+        await del('journeys', j.id);
+        if (j.builtin) localStorage.setItem('deleted_' + j.id, '1');
+        renderJourney();
+        updateV7Home();
+        showToast('Journey memory deleted');
+        queueCloudOp('journey-del:' + j.id, () => window.OGCloud.markJourneyDeleted(j, true));
+      };
+    }
     host.appendChild(c);
   });
   updateV7Home();
@@ -1418,11 +2009,14 @@ $('addJourneyBtn').onclick = () => showPage(PAGE.NEW_JOURNEY);
 $('newJourneyForm').onsubmit = async (e) => {
   e.preventDefault();
   const file = $('journeyMedia').files[0] || null;
+  const acc = getCurrentAccount();
   const j = {
     id: 'journey-' + Date.now(),
     date: $('journeyDate').value.trim(),
     title: $('journeyTitle').value.trim(),
     message: $('journeyMessage').value.trim(),
+    addedBy: acc?.name || getChatSender(),
+    ownerId: acc?.id || '',
     order: Date.now(),
     updated: Date.now(),
     builtin: false
@@ -1665,13 +2259,15 @@ async function refreshViewerV7() {
   if (!item || !DB) return;
   const meta = await getMeta(item.id);
   if ($('viewerMetaLine')) {
-    $('viewerMetaLine').textContent = [meta?.date, meta?.caption].filter(Boolean).join(' • ') || (item.builtin ? 'Batch 2025–26 Archive' : 'Device Upload');
+    $('viewerMetaLine').textContent = [meta?.date, meta?.caption].filter(Boolean).join(' • ')
+      || (item.builtin ? 'Batch 2025–26 Archive' : (item.addedBy ? `Added by ${item.addedBy}` : 'Device Upload'));
   }
 }
 
 $('viewerDelete').onclick = async () => {
   const item = currentViewerItems[currentViewerIndex];
   if (!item) return;
+  if (!canDeleteMedia(item)) return showToast('Only Admin or the uploader can delete this');
   if (!confirmTap($('viewerDelete'), 'Confirm?')) return;
   stopSlideshow();
   await deleteMediaItems([item], currentViewerType);
@@ -1815,10 +2411,7 @@ let chatRenderSeq = 0;
 let replyingToMsg = null; // { id, sender, snippet }
 
 function getChatSender() {
-  return localStorage.getItem('og_chat_sender') || 'Rehan';
-}
-function setChatSender(name) {
-  localStorage.setItem('og_chat_sender', name || 'Rehan');
+  return currentAuthAccount?.name || localStorage.getItem('og_chat_sender') || 'Legend';
 }
 function senderAccentColor(name) {
   let h = 0;
@@ -1886,54 +2479,7 @@ $('chatCancelReplyBtn')?.addEventListener('click', clearReplyTarget);
 function syncSenderDropdown() {
   const current = getChatSender();
   if ($('chatWhoLabel')) $('chatWhoLabel').textContent = current;
-  const host = $('chatSenderChips');
-  if (!host) return;
-  const names = [...new Set([...activeProfiles.map((p) => p.n), current, 'Guest Friend'])].filter(Boolean);
-  host.innerHTML = '';
-  names.forEach((name) => {
-    const chip = document.createElement('button');
-    chip.type = 'button';
-    chip.className = 'chat-sender-chip' + (name === current ? ' active' : '');
-    const accent = senderAccentColor(name);
-    chip.innerHTML = `<span class="chat-chip-dot" style="color:${accent}">${escapeHtml(senderInitials(name))}</span><span>${escapeHtml(name)}</span>`;
-    chip.onclick = async () => {
-      setChatSender(name);
-      closeWhoTray();
-      syncSenderDropdown();
-      await renderGroupChat();
-      if ($('msgTextInput')?.value.trim()) emitTypingStatus(true, { force: true });
-      showToast(`Writing as ${name}`);
-    };
-    host.appendChild(chip);
-  });
 }
-
-$('chatWhoToggleBtn')?.addEventListener('click', () => {
-  const tray = $('chatWhoTray');
-  const btn = $('chatWhoToggleBtn');
-  if (!tray || !btn) return;
-  const opening = tray.hidden;
-  tray.hidden = !opening;
-  btn.setAttribute('aria-expanded', opening ? 'true' : 'false');
-  if (opening) {
-    syncSenderDropdown();
-    if ($('customSenderInput')) $('customSenderInput').value = '';
-  }
-});
-
-$('customSenderWrap')?.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const input = $('customSenderInput');
-  const name = input?.value.trim();
-  if (!name) return;
-  setChatSender(name);
-  if (input) input.value = '';
-  closeWhoTray();
-  syncSenderDropdown();
-  await renderGroupChat();
-  if ($('msgTextInput')?.value.trim()) emitTypingStatus(true, { force: true });
-  showToast(`Writing as ${name}`);
-});
 
 async function seedSocialMessages() {
   const grpMsgs = await getAll('groupMessages');
@@ -2349,7 +2895,7 @@ async function renderGroupChat({ preserveScroll = false } = {}) {
 
   const banner = document.createElement('div');
   banner.className = 'chat-welcome-banner';
-  banner.innerHTML = '<strong><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 18h18v2.2H3V18Zm0-2.5L1.6 7.4a1 1 0 0 1 1.58-.98L7.6 9.8 11.15 4.2a1 1 0 0 1 1.7 0l3.55 5.6 4.42-3.38a1 1 0 0 1 1.58.98L21 15.5H3Z"/></svg> The OG Legends Group</strong><br>One shared room for the whole batch — tap your name above to switch sender, reply, react, or share photos &amp; videos.';
+  banner.innerHTML = '<strong><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 18h18v2.2H3V18Zm0-2.5L1.6 7.4a1 1 0 0 1 1.58-.98L7.6 9.8 11.15 4.2a1 1 0 0 1 1.7 0l3.55 5.6 4.42-3.38a1 1 0 0 1 1.58.98L21 15.5H3Z"/></svg> The OG Legends Group</strong><br>One shared room for the whole batch — reply, react, or share photos &amp; videos with everyone.';
   feed.appendChild(banner);
 
   if (!items.length) {
@@ -2361,6 +2907,7 @@ async function renderGroupChat({ preserveScroll = false } = {}) {
   }
 
   let lastDateLabel = '';
+  const myAccId = currentAuthAccount?.id || '';
   items.forEach((m) => {
     const dLabel = formatDateLabel(m.created);
     if (dLabel !== lastDateLabel) {
@@ -2372,7 +2919,9 @@ async function renderGroupChat({ preserveScroll = false } = {}) {
     }
 
     const myDevId = getDeviceId();
-    const isMe = m.sender === sender && (!m.senderDeviceId || m.senderDeviceId === myDevId);
+    const isMe = m.ownerId
+      ? m.ownerId === myAccId
+      : (m.sender === sender && (!m.senderDeviceId || m.senderDeviceId === myDevId));
     const rInfo = isMe ? getReceiptInfo(m) : null;
     const row = document.createElement('div');
     row.className = 'chat-row ' + (isMe ? 'me' : 'them');
@@ -2403,6 +2952,7 @@ async function renderGroupChat({ preserveScroll = false } = {}) {
       ? `<div class="chat-avatar-dot" style="color:${accent}" aria-hidden="true">${escapeHtml(senderInitials(m.sender))}</div>`
       : '';
 
+    const allowDel = canDeleteMessage(m);
     row.innerHTML = `
       ${avatarHtml}
       <div class="chat-bubble">
@@ -2410,7 +2960,7 @@ async function renderGroupChat({ preserveScroll = false } = {}) {
           <span class="chat-sender-name" style="color:${isMe ? 'var(--accent)' : accent}">${escapeHtml(m.sender)}</span>
           <div class="chat-bubble-actions">
             <button class="chat-mini-act reply" type="button" title="Reply" aria-label="Reply to message"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg></button>
-            <button class="chat-mini-act del" type="button" title="Delete message" aria-label="Delete message"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
+            ${allowDel ? '<button class="chat-mini-act del" type="button" title="Delete message" aria-label="Delete message"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>' : ''}
           </div>
         </div>
         ${quoteHtml}
@@ -2431,15 +2981,19 @@ async function renderGroupChat({ preserveScroll = false } = {}) {
     }
 
     row.querySelector('.chat-mini-act.reply').onclick = () => setReplyTarget(m);
-    row.querySelector('.chat-mini-act.del').onclick = async () => {
-      if (replyingToMsg?.id === m.id) clearReplyTarget();
-      await del('groupMessages', m.id);
-      await markMessagesSeen();
-      await renderGroupChat({ preserveScroll: true });
-      await updateV7Home();
-      showToast('Message deleted');
-      queueCloudOp('gm-del:' + m.id, () => window.OGCloud.markMessageDeleted(m));
-    };
+    const delBtn = row.querySelector('.chat-mini-act.del');
+    if (delBtn) {
+      delBtn.onclick = async () => {
+        if (!canDeleteMessage(m)) return showToast('You can only delete your own messages');
+        if (replyingToMsg?.id === m.id) clearReplyTarget();
+        await del('groupMessages', m.id);
+        await markMessagesSeen();
+        await renderGroupChat({ preserveScroll: true });
+        await updateV7Home();
+        showToast('Message deleted');
+        queueCloudOp('gm-del:' + m.id, () => window.OGCloud.markMessageDeleted(m));
+      };
+    }
     row.querySelectorAll('.chat-react-chip').forEach((chip) => {
       chip.onclick = async () => {
         const emoji = chip.dataset.emoji;
@@ -2510,12 +3064,14 @@ $('msgComposeForm')?.addEventListener('submit', async (e) => {
   if (!text && !pendingMsgMedia) return;
   emitTypingStatus(false, { force: true });
   await waitDB();
-  const sender = getChatSender();
+  const acc = getCurrentAccount();
+  const sender = acc?.name || getChatSender();
   const nowTs = Date.now();
   const msg = {
     id: 'gm-' + nowTs + '-' + Math.random().toString(36).slice(2),
     groupId: SHARED_GROUP_ID,
     sender,
+    ownerId: acc?.id || '',
     senderDeviceId: getDeviceId(),
     text,
     deliveredTo: {},
@@ -2546,19 +3102,11 @@ $('msgComposeForm')?.addEventListener('submit', async (e) => {
   $('msgTextInput')?.focus();
   queueCloudOp('gm:' + msg.id, () => window.OGCloud.pushMessage(msg))
     .then(async (ok) => {
-      if (!ok) return;
-      const allMsgs = await getAll('groupMessages');
-      const existing = allMsgs.find((x) => x.id === msg.id);
-      if (existing && existing.syncState === 'sending') {
-        existing.syncState = 'sent';
-        await put('groupMessages', existing);
-        if (currentPage === PAGE.MESSAGES) {
-          await renderGroupChat({ preserveScroll: true });
-        }
-      }
+      if (ok) await markGroupMessageSent(msg.id);
     })
-    .catch((err) => {
+    .catch(async (err) => {
       if (err?.message === 'FILE_TOO_LARGE_FOR_CLOUD') {
+        await markGroupMessageSent(msg.id);
         showToast('Media saved on device (max 25 MB for online sync)');
       } else {
         showToast('Message queued — will sync online automatically');
@@ -2568,6 +3116,7 @@ $('msgComposeForm')?.addEventListener('submit', async (e) => {
 
 let clearChatConfirmTimer = null;
 $('msgClearThreadBtn')?.addEventListener('click', async () => {
+  if (!isCurrentAdmin()) return showToast('Only Admin can clear group messages');
   const btn = $('msgClearThreadBtn');
   if (btn.dataset.confirming !== '1') {
     btn.dataset.confirming = '1';
@@ -2702,14 +3251,209 @@ $('themePicker')?.addEventListener('click', (e) => {
   applyTheme(btn.dataset.themeChoice, true);
 });
 $('toolsBtn').onclick = () => {
-  $('restoreList').hidden = true;
+  if ($('restoreList')) $('restoreList').hidden = true;
+  if ($('adminLegendsPanel')) $('adminLegendsPanel').hidden = true;
+  if ($('adminAccountsPanel')) $('adminAccountsPanel').hidden = true;
+  if ($('changeOwnPassForm')) {
+    $('changeOwnPassForm').reset();
+    $('changeOwnPassForm').hidden = true;
+  }
   applyTheme(document.documentElement.dataset.theme || 'obsidian-gold', false);
   syncPermissionUI();
+  syncRoleAndAccountUI();
+  if (isCurrentAdmin()) renderAdminPanels();
   showPage(PAGE.TOOLS);
 };
-$('restoreBtn').onclick = renderRestoreCenter;
+
+$('adminToggleLegendsBtn')?.addEventListener('click', () => {
+  if (!isCurrentAdmin()) return showToast('Admin permission required');
+  const p = $('adminLegendsPanel');
+  if (!p) return;
+  p.hidden = !p.hidden;
+  if (!p.hidden) {
+    if ($('adminAccountsPanel')) $('adminAccountsPanel').hidden = true;
+    if ($('restoreList')) $('restoreList').hidden = true;
+    renderAdminPanels();
+  }
+});
+
+$('adminToggleAccountsBtn')?.addEventListener('click', () => {
+  if (!isCurrentAdmin()) return showToast('Admin permission required');
+  const p = $('adminAccountsPanel');
+  if (!p) return;
+  p.hidden = !p.hidden;
+  if (!p.hidden) {
+    if ($('adminLegendsPanel')) $('adminLegendsPanel').hidden = true;
+    if ($('restoreList')) $('restoreList').hidden = true;
+    renderAdminPanels();
+  }
+});
+
+$('adminAddLegendBtn')?.addEventListener('click', () => {
+  if (!isCurrentAdmin()) return showToast('Admin permission required');
+  showPage(PAGE.NEW_PROFILE);
+});
+
+$('adminCreateAccountForm')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!isCurrentAdmin()) return showToast('Admin permission required');
+  const name = $('adminNewAccName')?.value.trim();
+  const pass = $('adminNewAccPass')?.value || '';
+  if (!name) return showToast('Enter a member name');
+  if (pass.length < 5) return showToast('Password must be at least 5 characters');
+  if (cachedAccounts.some((a) => String(a.name || '').toLowerCase() === name.toLowerCase())) {
+    return showToast(`An account for "${name}" already exists`);
+  }
+  const matchedProfile = activeProfiles.find((p) => p.n.toLowerCase() === name.toLowerCase());
+  const salt = generateSaltHex();
+  const passHash = await hashPasswordWithSalt(salt, pass);
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24) || 'member';
+  const newAcc = {
+    id: `acc-${slug}-${Date.now().toString(36).slice(-4)}`,
+    profileId: matchedProfile?.id || '',
+    name,
+    role: 'member',
+    salt,
+    passHash,
+    passVersion: 1,
+    active: true,
+    order: 100 + cachedAccounts.length,
+    updated: Date.now()
+  };
+  markSelfCreated(newAcc.id, newAcc.updated);
+  await put('accounts', newAcc);
+  cachedAccounts = [...cachedAccounts, newAcc].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+  e.target.reset();
+  renderAuthNameGrid();
+  renderAdminPanels();
+  showToast(`Login created for ${name} & synced!`);
+  queueCloudOp('account:' + newAcc.id, () => window.OGCloud.pushAccount(newAcc));
+});
+
+function renderAdminPanels() {
+  if (!isCurrentAdmin()) return;
+
+  const legendsHost = $('adminLegendsList');
+  if (legendsHost) {
+    legendsHost.innerHTML = '';
+    const profs = [...activeProfiles].sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
+    if (!profs.length) {
+      legendsHost.innerHTML = '<div class="empty-state">No Legends in archive.</div>';
+    } else {
+      profs.forEach((p) => {
+        const row = document.createElement('div');
+        row.className = 'admin-row';
+        row.innerHTML = `
+          <div class="admin-row-main">
+            <div class="admin-row-info">
+              <strong>${escapeHtml(p.n)}</strong>
+              <small>${escapeHtml([p.nick, p.title].filter(Boolean).join(' · ') || 'Legend')}</small>
+            </div>
+            <div class="admin-row-btns">
+              <button class="mini-btn" type="button">Edit Everything</button>
+            </div>
+          </div>`;
+        row.querySelector('button').onclick = () => openSecretLegendEditor(p);
+        legendsHost.appendChild(row);
+      });
+    }
+  }
+
+  const accHost = $('adminAccountsList');
+  if (accHost) {
+    accHost.innerHTML = '';
+    const accs = [...cachedAccounts].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+    accs.forEach((acc) => {
+      const isSelfAdmin = acc.id === 'acc-rehan';
+      const isActive = acc.active !== false;
+      const row = document.createElement('div');
+      row.className = 'admin-row';
+      row.innerHTML = `
+        <div class="admin-row-main">
+          <div class="admin-row-info">
+            <strong>${escapeHtml(acc.name)}</strong>
+            <small>${isSelfAdmin ? 'Admin · Active' : (isActive ? 'Member · Active' : 'Member · Disabled')}</small>
+          </div>
+          <div class="admin-row-btns">
+            <button class="mini-btn admin-reset-toggle" type="button">Reset Pass</button>
+            ${!isSelfAdmin ? `<button class="mini-btn ${isActive ? 'danger' : ''} admin-status-toggle" type="button">${isActive ? 'Disable' : 'Enable'}</button>` : ''}
+          </div>
+        </div>
+        <form class="admin-row-reset" hidden>
+          <input type="text" minlength="5" maxlength="40" placeholder="New password for ${escapeHtml(acc.name)}" required />
+          <button class="primary-btn small" type="submit">Save</button>
+        </form>`;
+
+      const resetForm = row.querySelector('.admin-row-reset');
+      const resetInput = resetForm.querySelector('input');
+      row.querySelector('.admin-reset-toggle').onclick = () => {
+        resetForm.hidden = !resetForm.hidden;
+        if (!resetForm.hidden) {
+          resetInput.value = '';
+          resetInput.focus();
+        }
+      };
+      resetForm.onsubmit = async (ev) => {
+        ev.preventDefault();
+        if (!isCurrentAdmin()) return;
+        const newPass = resetInput.value;
+        if (newPass.length < 5) return showToast('Password must be at least 5 characters');
+        const salt = generateSaltHex();
+        const passHash = await hashPasswordWithSalt(salt, newPass);
+        const updatedAcc = {
+          ...acc,
+          salt,
+          passHash,
+          passVersion: Number(acc.passVersion || 1) + 1,
+          updated: Date.now()
+        };
+        markSelfCreated(updatedAcc.id, updatedAcc.updated);
+        await put('accounts', updatedAcc);
+        cachedAccounts = cachedAccounts.map((x) => (x.id === updatedAcc.id ? updatedAcc : x));
+        if (currentAuthAccount?.id === updatedAcc.id) {
+          currentAuthAccount = updatedAcc;
+          saveAuthSession(updatedAcc);
+        }
+        resetForm.hidden = true;
+        resetInput.value = '';
+        renderAdminPanels();
+        showToast(`Password reset for ${updatedAcc.name} & synced`);
+        queueCloudOp('account:' + updatedAcc.id, () => window.OGCloud.pushAccount(updatedAcc));
+      };
+
+      const statusBtn = row.querySelector('.admin-status-toggle');
+      if (statusBtn) {
+        statusBtn.onclick = async () => {
+          if (!isCurrentAdmin()) return;
+          const updatedAcc = {
+            ...acc,
+            active: !isActive,
+            updated: Date.now()
+          };
+          markSelfCreated(updatedAcc.id, updatedAcc.updated);
+          await put('accounts', updatedAcc);
+          cachedAccounts = cachedAccounts.map((x) => (x.id === updatedAcc.id ? updatedAcc : x));
+          renderAuthNameGrid();
+          renderAdminPanels();
+          showToast(`${updatedAcc.name} ${updatedAcc.active ? 'enabled' : 'disabled'}`);
+          queueCloudOp('account:' + updatedAcc.id, () => window.OGCloud.pushAccount(updatedAcc));
+        };
+      }
+
+      accHost.appendChild(row);
+    });
+  }
+}
+
+$('restoreBtn').onclick = () => {
+  if (!isCurrentAdmin()) return showToast('Admin permission required');
+  if ($('adminLegendsPanel')) $('adminLegendsPanel').hidden = true;
+  if ($('adminAccountsPanel')) $('adminAccountsPanel').hidden = true;
+  renderRestoreCenter();
+};
 
 async function renderRestoreCenter() {
+  if (!isCurrentAdmin()) return showToast('Admin permission required');
   const host = $('restoreList');
   host.hidden = false;
   host.innerHTML = '';
@@ -2842,6 +3586,7 @@ async function decodeValue(v) {
 }
 
 $('exportBtn').onclick = async () => {
+  if (!isCurrentAdmin()) return showToast('Admin permission required');
   const data = { version: 11, created: new Date().toISOString(), localStorage: {} };
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
@@ -2862,6 +3607,10 @@ $('exportBtn').onclick = async () => {
 };
 
 $('importInput').onchange = async (e) => {
+  if (!isCurrentAdmin()) {
+    e.target.value = '';
+    return showToast('Admin permission required');
+  }
   const file = e.target.files[0];
   if (!file) return;
   try {
@@ -2906,10 +3655,12 @@ $('importInput').onchange = async (e) => {
 // REAL-TIME ONLINE CLOUD SYNC ACROSS ALL PHONES (FIRESTORE)
 // =========================================================================
 let cloudSyncStarted = false;
+let cloudBootSeededAccounts = false;
 let cloudBootSeededMessages = false;
 let cloudBootSeededProfiles = false;
 let cloudBootSeededJourneys = false;
 const cloudHydrated = {
+  accounts: false,
   groupMessages: false,
   mediaItems: false,
   profiles: false,
@@ -2952,16 +3703,41 @@ function scheduleCloudRetry() {
   }, 6000);
 }
 
+async function markGroupMessageSent(msgId) {
+  if (!DB || !msgId) return;
+  try {
+    const allMsgs = await getAll('groupMessages');
+    const existing = allMsgs.find((x) => x.id === msgId);
+    if (existing && existing.syncState === 'sending') {
+      existing.syncState = 'sent';
+      await put('groupMessages', existing);
+      if (currentPage === PAGE.MESSAGES) {
+        await renderGroupChat({ preserveScroll: true });
+      }
+    }
+  } catch {}
+}
+
 async function flushPendingCloudOps() {
   if (!window.OGCloud || !pendingCloudOps.size) return;
   const entries = [...pendingCloudOps.entries()];
   for (const [key, fn] of entries) {
     try {
-      await fn();
-      pendingCloudOps.delete(key);
+      const ok = await fn();
+      if (ok !== false) {
+        pendingCloudOps.delete(key);
+        if (key.startsWith('gm:')) {
+          await markGroupMessageSent(key.slice(3));
+        }
+      } else {
+        scheduleCloudRetry();
+      }
     } catch (err) {
       if (err?.message === 'FILE_TOO_LARGE_FOR_CLOUD') {
         pendingCloudOps.delete(key);
+        if (key.startsWith('gm:')) {
+          await markGroupMessageSent(key.slice(3));
+        }
       } else {
         scheduleCloudRetry();
       }
@@ -2977,6 +3753,75 @@ function initCloudSyncOnce() {
   flushPendingCloudOps();
 
   cloud.startRealtimeSync({
+    async onAccounts(rows) {
+      if (!rows.length && !cloudBootSeededAccounts) {
+        cloudBootSeededAccounts = true;
+        cloudHydrated.accounts = true;
+        const locals = await getAll('accounts');
+        for (const a of locals) {
+          queueCloudOp('account:' + a.id, () => cloud.pushAccount(a));
+        }
+        return;
+      }
+      cloudBootSeededAccounts = true;
+      cloudHydrated.accounts = true;
+      const locals = await getAll('accounts');
+      const localMap = new Map(locals.map((x) => [x.id, x]));
+      const cloudMap = new Map(rows.map((r) => [r.id, r]));
+      let changed = false;
+
+      for (const r of rows) {
+        const cur = localMap.get(r.id);
+        const isNewer = !cur || Number(r.updated || 0) > Number(cur.updated || 0);
+        if (isNewer) {
+          const rec = {
+            id: r.id,
+            profileId: r.profileId || cur?.profileId || '',
+            name: r.name || cur?.name || 'Legend',
+            role: r.id === 'acc-rehan' && r.role === 'admin' ? 'admin' : 'member',
+            salt: r.salt || cur?.salt || '',
+            passHash: r.passHash || cur?.passHash || '',
+            passVersion: Math.max(1, Number(r.passVersion || cur?.passVersion || 1)),
+            active: r.active !== false,
+            order: Number(r.order ?? cur?.order ?? 999),
+            updated: Number(r.updated || Date.now())
+          };
+          await put('accounts', rec);
+          changed = true;
+        }
+      }
+
+      for (const a of locals) {
+        const remote = cloudMap.get(a.id);
+        const localNewer = !remote || Number(a.updated || 0) > Number(remote.updated || 0);
+        const key = 'account:' + a.id + ':' + (a.updated || 0);
+        if (localNewer && !uploadedMissingIds.has(key)) {
+          uploadedMissingIds.add(key);
+          queueCloudOp('account:' + a.id, () => cloud.pushAccount(a));
+        }
+      }
+
+      if (changed) {
+        cachedAccounts = (await getAll('accounts')).sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+        if (currentAuthAccount) {
+          const fresh = cachedAccounts.find((a) => a.id === currentAuthAccount.id);
+          if (!fresh || fresh.active === false || Number(fresh.passVersion || 1) > Number(currentAuthAccount.passVersion || 1)) {
+            currentAuthAccount = null;
+            saveAuthSession(null);
+            syncRoleAndAccountUI();
+            showAuthGate('Your password or account status was updated — please sign in again');
+          } else {
+            currentAuthAccount = fresh;
+            saveAuthSession(fresh);
+            localStorage.setItem('og_chat_sender', fresh.name);
+            syncRoleAndAccountUI();
+          }
+        }
+        renderAuthNameGrid();
+        if (isCurrentAdmin() && currentPage === PAGE.TOOLS) renderAdminPanels();
+      }
+    },
+
     async onGroupMessages(rows, snapshot) {
       latestCloudGroupRows = rows;
       const pendingWriteIds = new Set(
@@ -3033,6 +3878,7 @@ function initCloudSyncOnce() {
             id: r.id,
             groupId: r.groupId || SHARED_GROUP_ID,
             sender: r.sender || 'Legend',
+            ownerId: r.ownerId || cur?.ownerId || '',
             senderDeviceId: nextSenderDevId,
             text: r.text || '',
             created: Number(r.created || Date.now()),
@@ -3148,7 +3994,8 @@ function initCloudSyncOnce() {
               type: r.type === 'video' ? 'video' : 'photo',
               name: r.name || 'Batch Memory',
               blob,
-              addedBy: r.addedBy || 'Legend',
+              addedBy: r.addedBy || cur?.addedBy || 'Legend',
+              ownerId: r.ownerId || cur?.ownerId || '',
               created: Number(r.created || Date.now()),
               updated: Number(r.updated || r.created || Date.now())
             });
@@ -3271,6 +4118,8 @@ function initCloudSyncOnce() {
 
       if (changed) {
         await renderPeople();
+        syncRoleAndAccountUI();
+        if (isCurrentAdmin() && currentPage === PAGE.TOOLS) renderAdminPanels();
         if (incomingProfiles.length) {
           const latest = incomingProfiles[incomingProfiles.length - 1];
           notifyBatchEvent({
@@ -3327,6 +4176,8 @@ function initCloudSyncOnce() {
             date: r.date || '',
             title: r.title || '',
             message: r.message || '',
+            addedBy: r.addedBy || cur?.addedBy || '',
+            ownerId: r.ownerId || cur?.ownerId || '',
             order: Number(r.order || Date.now()),
             builtin: Boolean(r.builtin),
             updated: Number(r.updated || Date.now())

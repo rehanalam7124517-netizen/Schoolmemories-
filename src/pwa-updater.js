@@ -189,8 +189,9 @@ window.__ogApkUpdateProgress = (pct, status) => {
   notifyUpdaterState({ apkProgress: pct, apkStatus: status });
 };
 
-// Initialize Web/PWA auto-update Service Worker only outside Capacitor native APK
-if (!isNativeApk() && 'serviceWorker' in navigator) {
+// Initialize Web/PWA auto-update Service Worker only in production web builds (never in Capacitor APK or Vite dev mode)
+const isProdWeb = !isNativeApk() && !import.meta.env?.DEV;
+if (isProdWeb && 'serviceWorker' in navigator) {
   const hadController = Boolean(navigator.serviceWorker.controller);
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (hadController) {
@@ -220,6 +221,10 @@ if (!isNativeApk() && 'serviceWorker' in navigator) {
       notifyUpdaterState({ offlineReady: true });
     },
   });
+} else if (!isNativeApk() && import.meta.env?.DEV && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((regs) => {
+    regs.forEach((reg) => reg.unregister().catch(() => {}));
+  }).catch(() => {});
 } else if (isNativeApk()) {
   setTimeout(() => checkApkUpdate(false), 4000);
 }

@@ -72,10 +72,30 @@ service cloud.firestore {
         );
     }
 
+    function isValidBatchAccount(data, docId) {
+      return data.keys().hasAll(['id', 'batchKey', 'name', 'role', 'salt', 'passHash', 'passVersion', 'active', 'order', 'updated'])
+        && data.keys().hasOnly([
+          'id', 'batchKey', 'profileId', 'name', 'role', 'salt', 'passHash',
+          'passVersion', 'active', 'order', 'updated'
+        ])
+        && data.id == docId
+        && isBatchMemberPayload(data)
+        && isOptString(data, 'profileId', 128)
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 80
+        && data.role is string && (data.role == 'admin' || data.role == 'member')
+        && (data.role != 'admin' || data.id == 'acc-rehan')
+        && data.salt is string && data.salt.size() >= 8 && data.salt.size() <= 64
+        && data.passHash is string && data.passHash.size() >= 32 && data.passHash.size() <= 128
+        && data.passVersion is number && data.passVersion >= 1
+        && data.active is bool
+        && data.order is number
+        && data.updated is number && data.updated > 0;
+    }
+
     function isValidGroupMessage(data, docId) {
       return data.keys().hasAll(['id', 'batchKey', 'groupId', 'sender', 'text', 'created', 'updated', 'deleted'])
         && data.keys().hasOnly([
-          'id', 'batchKey', 'groupId', 'sender', 'senderDeviceId', 'text',
+          'id', 'batchKey', 'groupId', 'sender', 'ownerId', 'senderDeviceId', 'text',
           'mediaData', 'mediaType', 'mediaName', 'chunked', 'chunkCount',
           'replyTo', 'reactions', 'deliveredTo', 'readBy', 'created', 'updated', 'deleted'
         ])
@@ -83,6 +103,7 @@ service cloud.firestore {
         && isBatchMemberPayload(data)
         && data.groupId is string && data.groupId == 'grp-og-legends'
         && data.sender is string && data.sender.size() >= 1 && data.sender.size() <= 80
+        && isOptString(data, 'ownerId', 80)
         && isOptString(data, 'senderDeviceId', 80)
         && data.text is string && data.text.size() <= 4000
         && isOptString(data, 'mediaData', 850000)
@@ -104,7 +125,7 @@ service cloud.firestore {
         && data.keys().hasOnly([
           'id', 'batchKey', 'folderId', 'type', 'name',
           'mimeType', 'dataUrl', 'chunked', 'chunkCount',
-          'addedBy', 'created', 'updated', 'deleted'
+          'addedBy', 'ownerId', 'created', 'updated', 'deleted'
         ])
         && data.id == docId
         && isBatchMemberPayload(data)
@@ -116,6 +137,7 @@ service cloud.firestore {
         && isOptBool(data, 'chunked')
         && isOptNumber(data, 'chunkCount')
         && isOptString(data, 'addedBy', 80)
+        && isOptString(data, 'ownerId', 80)
         && data.created is number && data.created > 0
         && data.updated is number && data.updated >= data.created
         && data.deleted is bool;
@@ -160,7 +182,7 @@ service cloud.firestore {
       return data.keys().hasAll(['id', 'batchKey', 'date', 'title', 'message', 'order', 'updated', 'deleted'])
         && data.keys().hasOnly([
           'id', 'batchKey', 'date', 'title', 'message',
-          'order', 'builtin', 'mediaData', 'mediaType', 'updated', 'deleted'
+          'order', 'builtin', 'addedBy', 'ownerId', 'mediaData', 'mediaType', 'updated', 'deleted'
         ])
         && data.id == docId
         && isBatchMemberPayload(data)
@@ -169,6 +191,8 @@ service cloud.firestore {
         && data.message is string && data.message.size() >= 1 && data.message.size() <= 4000
         && data.order is number
         && isOptBool(data, 'builtin')
+        && isOptString(data, 'addedBy', 80)
+        && isOptString(data, 'ownerId', 80)
         && isOptString(data, 'mediaData', 850000)
         && isOptString(data, 'mediaType', 80)
         && data.updated is number && data.updated > 0
@@ -233,6 +257,22 @@ service cloud.firestore {
       allow list, write: if false;
     }
 
+    // Permanent Batch Member Accounts (salted SHA-256 hashes only)
+    match /batchAccounts/{accountId} {
+      allow get: if isValidId(accountId) && isBatchMemberPayload(existing());
+      allow list: if isBatchMemberPayload(existing());
+      allow create: if isValidId(accountId) && isValidBatchAccount(incoming(), accountId);
+      allow update: if isValidId(accountId)
+                    && isValidBatchAccount(incoming(), accountId)
+                    && incoming().id == existing().id
+                    && incoming().batchKey == existing().batchKey
+                    && incoming().role == existing().role
+                    && incoming().diff(existing()).affectedKeys().hasOnly([
+                      'name', 'profileId', 'salt', 'passHash', 'passVersion', 'active', 'order', 'updated'
+                    ]);
+      allow delete: if false;
+    }
+
     // Shared Batch Group Messages
     match /groupMessages/{messageId} {
       allow get: if isValidId(messageId) && isBatchMemberPayload(existing());
@@ -244,6 +284,7 @@ service cloud.firestore {
                     && incoming().batchKey == existing().batchKey
                     && incoming().created == existing().created
                     && incoming().sender == existing().sender
+                    && (!('ownerId' in existing()) || incoming().ownerId == existing().ownerId)
                     && (!('senderDeviceId' in existing()) || incoming().senderDeviceId == existing().senderDeviceId)
                     && (
                       incoming().diff(existing()).affectedKeys().hasOnly(['reactions', 'updated', 'deleted', 'text'])
@@ -278,9 +319,10 @@ service cloud.firestore {
                     && incoming().batchKey == existing().batchKey
                     && incoming().created == existing().created
                     && incoming().type == existing().type
+                    && (!('ownerId' in existing()) || incoming().ownerId == existing().ownerId)
                     && incoming().diff(existing()).affectedKeys().hasOnly([
                       'deleted', 'updated', 'name', 'mimeType', 'dataUrl',
-                      'chunked', 'chunkCount', 'addedBy', 'folderId'
+                      'chunked', 'chunkCount', 'addedBy', 'ownerId', 'folderId'
                     ]);
       allow delete: if isValidId(mediaId) && isBatchMemberPayload(existing());
     }
@@ -319,9 +361,10 @@ service cloud.firestore {
                     && isValidJourney(incoming(), journeyId)
                     && incoming().id == existing().id
                     && incoming().batchKey == existing().batchKey
+                    && (!('ownerId' in existing()) || incoming().ownerId == existing().ownerId)
                     && incoming().diff(existing()).affectedKeys().hasOnly([
                       'date', 'title', 'message', 'mediaData', 'mediaType',
-                      'updated', 'deleted', 'order', 'builtin'
+                      'updated', 'deleted', 'order', 'builtin', 'addedBy', 'ownerId'
                     ]);
       allow delete: if isValidId(journeyId) && isBatchMemberPayload(existing());
     }

@@ -26,7 +26,7 @@ const app = initializeApp(firebaseConfig);
 export const db = initializeFirestore(
   app,
   {
-    experimentalForceLongPolling: true,
+    experimentalAutoDetectLongPolling: true,
     ignoreUndefinedProperties: true
   },
   firebaseConfig.firestoreDatabaseId
@@ -243,8 +243,10 @@ function stopSync() {
 function subscribeCollection(colName, onData) {
   const q = query(collection(db, colName), where('batchKey', '==', BATCH_KEY));
   let queue = Promise.resolve();
+  const snapOpts = { includeMetadataChanges: colName === 'groupMessages' };
   const unsub = onSnapshot(
     q,
+    snapOpts,
     (snapshot) => {
       const rows = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
       queue = queue
@@ -307,6 +309,7 @@ window.OGCloud = {
 
   startRealtimeSync(handlers = {}) {
     stopSync();
+    if (handlers.onAccounts) subscribeCollection('batchAccounts', handlers.onAccounts);
     if (handlers.onGroupMessages) subscribeCollection('groupMessages', handlers.onGroupMessages);
     if (handlers.onGroupTyping) subscribeCollection('groupTyping', handlers.onGroupTyping);
     if (handlers.onMediaItems) subscribeCollection('mediaItems', handlers.onMediaItems);
@@ -316,6 +319,24 @@ window.OGCloud = {
     if (handlers.onLetters) subscribeCollection('letters', handlers.onLetters);
     if (handlers.onHiddenMedia) subscribeCollection('hiddenMedia', handlers.onHiddenMedia);
     if (handlers.onAppState) subscribeCollection('appState', handlers.onAppState);
+  },
+
+  async pushAccount(acc) {
+    const id = sanitizeId(acc.id);
+    const payload = {
+      id,
+      batchKey: BATCH_KEY,
+      profileId: String(acc.profileId || '').slice(0, 128),
+      name: String(acc.name || 'Legend').slice(0, 80) || 'Legend',
+      role: acc.role === 'admin' && id === 'acc-rehan' ? 'admin' : 'member',
+      salt: String(acc.salt || '').slice(0, 64),
+      passHash: String(acc.passHash || '').slice(0, 128),
+      passVersion: Math.max(1, Number(acc.passVersion || 1)),
+      active: acc.active !== false,
+      order: Number(acc.order ?? 999),
+      updated: Number(acc.updated || Date.now())
+    };
+    return upsertDoc('batchAccounts', id, payload, OperationType.WRITE);
   },
 
   async pushMessage(msg) {
@@ -338,6 +359,7 @@ window.OGCloud = {
       batchKey: BATCH_KEY,
       groupId: String(msg.groupId || 'grp-og-legends').slice(0, 64),
       sender: String(msg.sender || 'Legend').slice(0, 80) || 'Legend',
+      ownerId: String(msg.ownerId || '').slice(0, 80),
       senderDeviceId: String(msg.senderDeviceId || '').slice(0, 80),
       text: String(msg.text || '').slice(0, 4000),
       mediaData: mediaInfo.inlineData || '',
@@ -446,6 +468,7 @@ window.OGCloud = {
       batchKey: BATCH_KEY,
       groupId: String(msg.groupId || 'grp-og-legends').slice(0, 64),
       sender: String(msg.sender || 'Legend').slice(0, 80) || 'Legend',
+      ownerId: String(msg.ownerId || '').slice(0, 80),
       senderDeviceId: String(msg.senderDeviceId || '').slice(0, 80),
       text: String(msg.text || '').slice(0, 4000),
       reactions: nextReactions,
@@ -471,6 +494,7 @@ window.OGCloud = {
       batchKey: BATCH_KEY,
       groupId: String(msg.groupId || 'grp-og-legends').slice(0, 64),
       sender: String(msg.sender || 'Legend').slice(0, 80) || 'Legend',
+      ownerId: String(msg.ownerId || '').slice(0, 80),
       senderDeviceId: String(msg.senderDeviceId || '').slice(0, 80),
       text: String(msg.text || '').slice(0, 4000),
       deliveredTo: msg.deliveredTo && typeof msg.deliveredTo === 'object' ? msg.deliveredTo : {},
@@ -504,6 +528,7 @@ window.OGCloud = {
       chunked: Boolean(mediaInfo.chunked),
       chunkCount: Number(mediaInfo.chunkCount || 0),
       addedBy: String(item.addedBy || 'Legend').slice(0, 80),
+      ownerId: String(item.ownerId || '').slice(0, 80),
       created,
       updated,
       deleted: Boolean(item.deleted)
@@ -520,6 +545,8 @@ window.OGCloud = {
       folderId: String(itemOrId.folderId || (itemOrId.type === 'video' ? 'builtin-videos' : 'builtin-photos')).slice(0, 64),
       type: itemOrId.type === 'video' ? 'video' : 'photo',
       name: String(itemOrId.name || 'Batch Memory').slice(0, 200),
+      addedBy: String(itemOrId.addedBy || 'Legend').slice(0, 80),
+      ownerId: String(itemOrId.ownerId || '').slice(0, 80),
       created: Number(itemOrId.created || nowTs),
       updated: Math.max(Number(itemOrId.created || nowTs), nowTs),
       deleted: Boolean(deleted)
@@ -600,6 +627,8 @@ window.OGCloud = {
       message: String(j.message || '').slice(0, 4000) || 'School memory',
       order: Number(j.order || Date.now()),
       builtin: Boolean(j.builtin),
+      addedBy: String(j.addedBy || '').slice(0, 80),
+      ownerId: String(j.ownerId || '').slice(0, 80),
       mediaData,
       mediaType: String(mediaType || '').slice(0, 80),
       updated: Number(j.updated || Date.now()),
@@ -619,6 +648,8 @@ window.OGCloud = {
       message: String(journeyOrId.message || '').slice(0, 4000) || 'School memory',
       order: Number(journeyOrId.order || nowTs),
       builtin: Boolean(journeyOrId.builtin),
+      addedBy: String(journeyOrId.addedBy || '').slice(0, 80),
+      ownerId: String(journeyOrId.ownerId || '').slice(0, 80),
       updated: nowTs,
       deleted: Boolean(deleted)
     } : null;

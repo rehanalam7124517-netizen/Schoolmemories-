@@ -3,7 +3,7 @@ import path from 'node:path';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-const APP_VERSION = '15.9.2';
+const APP_VERSION = '16.0.2';
 const BUILD_STAMP = String(Date.now());
 const APK_UPDATE_URL = process.env.VITE_APK_UPDATE_URL || '';
 
@@ -77,6 +77,7 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 3000,
     allowedHosts: true,
+    hmr: false,
   },
   preview: {
     host: '0.0.0.0',
@@ -96,7 +97,7 @@ export default defineConfig({
         'pwa-maskable-512x512.png',
       ],
       manifest: {
-        id: '/',
+        id: './',
         name: 'The OG Legends — Our Memories',
         short_name: 'OG Legends',
         description:
@@ -105,8 +106,8 @@ export default defineConfig({
         background_color: '#090a0f',
         display: 'standalone',
         orientation: 'portrait-primary',
-        start_url: '/',
-        scope: '/',
+        start_url: './',
+        scope: './',
         icons: [
           {
             src: 'pwa-192x192.png',
@@ -194,7 +195,7 @@ export default defineConfig({
         ],
       },
       devOptions: {
-        enabled: true,
+        enabled: false,
         type: 'module',
       },
     }),
