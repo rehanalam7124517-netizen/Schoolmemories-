@@ -7,7 +7,7 @@ android {
         def rawCode = project.findProperty('appVersionCode')?.toString()?.trim()
         def ciVersionCode = (rawCode && rawCode ==~ /\d+/) ? rawCode.toInteger() : 100
         def rawName = project.findProperty('appVersionName')?.toString()?.trim()
-        def ciVersionName = rawName ? rawName : "16.0.2"
+        def ciVersionName = rawName ? rawName : "16.0.3"
         applicationId "com.oglegends.memories"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion

@@ -185,10 +185,10 @@ function syncPageUI(i, persist = true, customTitle = null) {
   bottomNavItems.forEach((btn) => {
     const isActive = Number(btn.dataset.navPage) === currentPage;
     btn.classList.toggle('active', isActive);
-    if (isActive && typeof btn.scrollIntoView === 'function') {
-      btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-    }
   });
+  if (window.scrollX || document.documentElement.scrollLeft) {
+    window.scrollTo(0, 0);
+  }
 
   const titleText = customTitle || PAGE_TITLES[currentPage] || 'The OG Legends';
   if ($('appBarTitle')) $('appBarTitle').textContent = titleText;

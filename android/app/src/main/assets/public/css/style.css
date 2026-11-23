@@ -141,6 +141,8 @@
 }
 
 html, body {
+  width: 100%;
+  max-width: 100%;
   height: 100%;
   margin: 0;
   color: var(--text);
@@ -151,7 +153,15 @@ html, body {
   background-color: var(--bg);
   background-image: var(--bg-glow);
   overflow: hidden;
+  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  width: 100%;
+  max-width: 100%;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 button, input, textarea, select {
@@ -172,15 +182,21 @@ h1, h2, h3 {
 
 /* ==================== ANDROID APK APP SHELL ==================== */
 .site-shell {
+  width: 100%;
+  max-width: min(1480px, 100%);
   height: 100dvh;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: calc(60px + env(safe-area-inset-top, 0px)) minmax(0, 1fr);
-  max-width: 1480px;
   margin: 0 auto;
   position: relative;
+  overflow: hidden;
 }
 
 .topbar {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   background: var(--surface-elev);
   border-bottom: 1px solid var(--line);
   backdrop-filter: blur(18px);
@@ -189,6 +205,7 @@ h1, h2, h3 {
   justify-content: space-between;
   gap: 8px;
   padding: calc(8px + env(safe-area-inset-top, 0px)) 14px 8px;
+  overflow: hidden;
   z-index: 30;
 }
 
@@ -196,7 +213,9 @@ h1, h2, h3 {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex: 1 1 0;
   min-width: 0;
+  overflow: hidden;
 }
 
 .brand-btn {
@@ -214,7 +233,10 @@ h1, h2, h3 {
   font-weight: 700;
   font-size: 1.12rem;
   letter-spacing: -0.02em;
+  flex: 0 1 auto;
   min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   transition: background 0.16s cubic-bezier(0.16, 1, 0.3, 1), transform 0.14s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .brand-btn:hover { background: var(--surface-hover); }
@@ -237,13 +259,20 @@ h1, h2, h3 {
   object-fit: cover;
   display: block;
 }
-.brand-text { overflow: hidden; text-overflow: ellipsis; }
+.brand-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .top-actions {
   display: flex;
   align-items: center;
   gap: 6px;
   flex: 0 0 auto;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .nav-icon {
@@ -296,6 +325,9 @@ h1, h2, h3 {
 .apk-body {
   display: grid;
   grid-template-columns: 248px minmax(0, 1fr);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   min-height: 0;
   overflow: hidden;
 }
@@ -591,6 +623,8 @@ h1, h2, h3 {
 /* ==================== VIEWPORT & PAGES ==================== */
 .page-viewport {
   position: relative;
+  width: 100%;
+  max-width: 100%;
   min-width: 0;
   overflow: hidden;
   background: transparent;
@@ -599,6 +633,9 @@ h1, h2, h3 {
 .page {
   position: absolute;
   inset: 0;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -621,6 +658,12 @@ h1, h2, h3 {
   padding-bottom: 14px;
   border-bottom: 1px solid var(--line);
   flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
+}
+.section-head > div {
+  min-width: 0;
+  max-width: 100%;
 }
 .section-head h2 {
   margin: 0;
@@ -628,12 +671,15 @@ h1, h2, h3 {
   letter-spacing: -0.025em;
   font-weight: 700;
   line-height: 1.15;
+  overflow-wrap: break-word;
 }
 .section-actions {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
 }
 .counter {
   font-family: var(--font-mono);
@@ -651,6 +697,8 @@ h1, h2, h3 {
   min-height: 40px;
   font-size: 0.84rem;
   width: min(250px, 100%);
+  min-width: 0;
+  max-width: 100%;
   outline: none;
 }
 .inline-search:focus { border-color: var(--accent); }
@@ -796,12 +844,19 @@ h1, h2, h3 {
   border-radius: 18px;
   padding: 14px 16px;
   min-height: 68px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   display: flex;
   align-items: center;
   gap: 12px;
   text-align: left;
   cursor: pointer;
   transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.16s ease, background 0.16s ease;
+}
+.launcher-tile > div {
+  min-width: 0;
+  flex: 1 1 0;
 }
 .launcher-tile:hover {
   border-color: var(--accent-border);
@@ -828,8 +883,8 @@ h1, h2, h3 {
   border-color: transparent;
   transform: scale(1.05);
 }
-.launcher-tile strong { display: block; font-size: 0.92rem; font-weight: 700; line-height: 1.2; }
-.launcher-tile small { display: block; font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+.launcher-tile strong { display: block; font-size: 0.92rem; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
+.launcher-tile small { display: block; font-size: 0.75rem; color: var(--muted); margin-top: 2px; overflow-wrap: anywhere; }
 
 /* Home Legends Grid (no horizontal slide) */
 .home-people-strip {
@@ -999,6 +1054,8 @@ h1, h2, h3 {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 16px;
+  width: 100%;
+  min-width: 0;
   max-width: 860px;
   margin: 0 auto;
 }
@@ -1006,6 +1063,9 @@ h1, h2, h3 {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
   align-items: stretch;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   border: 1px solid var(--line);
   background: var(--surface);
   border-radius: 18px;
@@ -1041,8 +1101,8 @@ h1, h2, h3 {
   letter-spacing: 0.03em;
   margin-bottom: 6px;
 }
-.person-body h3 { margin: 0 0 8px; font-size: 1.24rem; font-weight: 700; }
-.person-body p { margin: 3px 0; color: var(--muted); font-size: 0.86rem; }
+.person-body h3 { margin: 0 0 8px; font-size: 1.24rem; font-weight: 700; overflow-wrap: anywhere; }
+.person-body p { margin: 3px 0; color: var(--muted); font-size: 0.86rem; overflow-wrap: anywhere; }
 .person-body strong { color: var(--text); font-weight: 600; }
 
 /* ==================== JOURNEY TIMELINE ==================== */
@@ -2446,7 +2506,7 @@ h1, h2, h3 {
 @media (max-width: 899px) {
   .drawer-btn { display: grid; }
   .site-shell.subscreen-mode .drawer-btn { display: none; }
-  .apk-body { grid-template-columns: 1fr; }
+  .apk-body { grid-template-columns: minmax(0, 1fr); }
 
   .nav-drawer {
     position: fixed;
@@ -2465,21 +2525,29 @@ h1, h2, h3 {
 @media (max-width: 760px) {
   /* Native Android Phone Layout: Top App Bar (60px + safe-area) + Scrollable Feed + Bottom Nav (64px) */
   .site-shell {
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: calc(60px + env(safe-area-inset-top, 0px)) minmax(0, 1fr) calc(64px + env(safe-area-inset-bottom, 0px));
   }
   .topbar {
-    padding: calc(10px + env(safe-area-inset-top, 0px)) 10px 8px;
+    padding: calc(8px + env(safe-area-inset-top, 0px)) 10px 8px;
+    gap: 6px;
     min-height: calc(60px + env(safe-area-inset-top, 0px));
     height: auto;
   }
-  .brand-text { font-size: 1.02rem; max-width: 44vw; }
-  .nav-icon { width: 44px; height: 44px; }
+  .brand-btn { padding: 4px 6px; gap: 7px; min-height: 40px; }
+  .brand-mark { width: 30px; height: 30px; }
+  .brand-text { font-size: 0.98rem; max-width: none; }
+  .nav-icon { width: 38px; height: 38px; border-radius: 11px; flex: 0 0 auto; }
 
   .drawer-primary-only { display: none; }
 
   .android-bottom-nav {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
     align-items: center;
     background: var(--surface-elev);
     backdrop-filter: blur(18px);
@@ -2497,15 +2565,24 @@ h1, h2, h3 {
     align-items: center;
     justify-content: center;
     gap: 2px;
-    padding: 2px 0;
+    padding: 2px 1px;
+    min-width: 0;
+    width: 100%;
     min-height: 48px;
+    overflow: hidden;
     cursor: pointer;
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     font-weight: 500;
+  }
+  .bnav-item > span:last-child {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .bnav-pill {
     position: relative;
-    width: 52px;
+    width: min(52px, 88%);
     height: 28px;
     border-radius: 999px;
     display: grid;
@@ -2538,10 +2615,10 @@ h1, h2, h3 {
 
   .android-fab {
     display: inline-flex;
-    right: 16px;
+    right: 14px;
     bottom: calc(74px + env(safe-area-inset-bottom));
-    width: 56px;
-    height: 56px;
+    width: 54px;
+    height: 54px;
     padding: 0;
     justify-content: center;
     border-radius: 18px;
@@ -2550,18 +2627,22 @@ h1, h2, h3 {
   .page { padding: 14px 14px 92px; }
   .page.messages-page { padding: 0; }
   .page.viewer-page { padding: 10px 14px; }
-  .hero-card, .final-card { grid-template-columns: 1fr; border-radius: 22px; }
-  .hero-copy { padding: 20px 18px; }
+  .section-actions { width: 100%; }
+  .inline-search { width: 100%; flex: 1 1 180px; }
+  .hero-card, .final-card { grid-template-columns: minmax(0, 1fr); border-radius: 22px; min-width: 0; max-width: 100%; }
+  .hero-copy { padding: 20px 16px; min-width: 0; }
+  .hero-copy h1, .hero-lead, .hero-quote { max-width: 100%; overflow-wrap: anywhere; }
   .hero-photo-wrap { border-left: 0; border-bottom: 1px solid var(--line); min-height: 0; }
   .hero-photo { max-height: 260px; min-height: 0; aspect-ratio: 16 / 10; height: auto; }
-  .home-band { padding: 16px; border-radius: 18px; }
-  .person-card { grid-template-columns: 1fr; }
+  .home-band { padding: 15px 14px; border-radius: 18px; }
+  .person-card { grid-template-columns: minmax(0, 1fr); }
   .person-img-wrap { border-right: 0; border-bottom: 1px solid var(--line); }
   .person-card img { aspect-ratio: 16 / 10; min-height: 0; height: auto; }
+  .person-body { padding: 16px; }
 
   .launcher-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .launcher-tile { padding: 12px; min-height: 62px; }
-  .launcher-icon { width: 38px; height: 38px; border-radius: 11px; font-size: 1.1rem; }
+  .launcher-tile { padding: 11px 10px; min-height: 62px; gap: 9px; }
+  .launcher-icon { width: 36px; height: 36px; border-radius: 11px; font-size: 1.05rem; }
 
   .home-people-strip {
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -2581,10 +2662,16 @@ h1, h2, h3 {
   .stats-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .stat-item:nth-child(even) { border-right: 0; }
   .stat-item:last-child:nth-child(odd) { grid-column: 1 / -1; border-right: 0; border-bottom: 0; }
-  .chapters-grid, .wall-grid, .tool-grid, .sheet-action-grid { grid-template-columns: 1fr; }
+  .chapters-grid, .wall-grid, .tool-grid, .sheet-action-grid { grid-template-columns: minmax(0, 1fr); min-width: 0; max-width: 100%; }
+  .timeline, .timeline-card, .journey-body, .quick-media-masonry, .quick-media-card, .quick-video-grid, .quick-video-card, .memory-day-section, .random-pro, .subpage-shell, .subpage-card {
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+    overflow-wrap: anywhere;
+  }
   .perm-banner { flex-wrap: wrap; padding: 13px 14px; gap: 11px; }
   .perm-banner-actions { width: 100%; justify-content: flex-end; }
-  .profile-top { grid-template-columns: 1fr; }
+  .profile-top { grid-template-columns: minmax(0, 1fr); }
   .timeline-card { grid-template-columns: 36px minmax(0, 1fr); gap: 12px; padding: 14px; }
   .journey-step { width: 36px; height: 36px; font-size: 0.78rem; }
 
@@ -2598,7 +2685,7 @@ h1, h2, h3 {
     display: none;
   }
   .subpage { padding: 14px 14px 36px; }
-  .subpage-card { padding: 18px 16px; border-radius: 18px; }
+  .subpage-card { padding: 18px 14px; border-radius: 18px; }
 
   .app-toast { bottom: calc(80px + env(safe-area-inset-bottom)); }
   .site-shell.subscreen-mode ~ .app-toast { bottom: 24px; }
@@ -3129,10 +3216,57 @@ h1, h2, h3 {
   cursor: not-allowed;
 }
 
+@media (max-width: 760px) {
+  .pwa-install-top-btn {
+    height: 34px;
+    padding: 0 10px;
+    font-size: 0.74rem;
+    gap: 5px;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+  .top-account-pill {
+    height: 34px;
+    flex: 0 0 auto;
+  }
+}
+
 @media (max-width: 480px) {
   .auth-name-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .topbar {
+    padding: calc(8px + env(safe-area-inset-top, 0px)) 8px 8px;
+    gap: 4px;
+  }
+  .top-left { gap: 4px; }
+  .top-actions { gap: 4px; }
+  .nav-icon { width: 35px; height: 35px; border-radius: 10px; }
+  .brand-btn { padding: 3px 4px; gap: 6px; min-height: 36px; }
+  .brand-mark { width: 28px; height: 28px; }
+  .brand-text { font-size: 0.92rem; }
+  .pwa-install-top-btn {
+    height: 32px;
+    padding: 0 8px;
+    font-size: 0.71rem;
+    gap: 4px;
+    border-radius: 10px;
+  }
   .top-account-name { display: none; }
-  .top-account-pill { padding: 3px; }
+  .top-account-pill {
+    width: 34px;
+    height: 34px;
+    padding: 2px;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 380px) {
+  .nav-icon { width: 32px; height: 32px; }
+  .top-account-pill { width: 32px; height: 32px; }
+  .top-account-avatar { width: 26px; height: 26px; font-size: 0.64rem; }
+  .pwa-install-top-btn { height: 30px; padding: 0 7px; font-size: 0.68rem; gap: 3px; }
+  .pwa-install-top-btn svg { width: 14px; height: 14px; }
+  .home-people-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .home-person-chip img { width: 56px; height: 56px; }
 }
 
 

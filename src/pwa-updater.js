@@ -1,6 +1,6 @@
 import { registerSW } from 'virtual:pwa-register';
 
-/* global __APP_VERSION__, __APP_BUILD_TIME__, __APK_UPDATE_URL__ */
+/* global __IS_BUILD__, __APP_VERSION__, __APP_BUILD_TIME__, __APK_UPDATE_URL__ */
 
 const APP_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '15.9.0';
 const APP_BUILD_TIME = typeof __APP_BUILD_TIME__ !== 'undefined' ? __APP_BUILD_TIME__ : '';
@@ -190,7 +190,8 @@ window.__ogApkUpdateProgress = (pct, status) => {
 };
 
 // Initialize Web/PWA auto-update Service Worker only in production web builds (never in Capacitor APK or Vite dev mode)
-const isProdWeb = !isNativeApk() && !import.meta.env?.DEV;
+const IS_PROD_BUILD = typeof __IS_BUILD__ !== 'undefined' ? Boolean(__IS_BUILD__) : Boolean(import.meta.env?.PROD);
+const isProdWeb = !isNativeApk() && IS_PROD_BUILD;
 if (isProdWeb && 'serviceWorker' in navigator) {
   const hadController = Boolean(navigator.serviceWorker.controller);
   navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -221,7 +222,7 @@ if (isProdWeb && 'serviceWorker' in navigator) {
       notifyUpdaterState({ offlineReady: true });
     },
   });
-} else if (!isNativeApk() && import.meta.env?.DEV && 'serviceWorker' in navigator) {
+} else if (!isNativeApk() && !IS_PROD_BUILD && 'serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then((regs) => {
     regs.forEach((reg) => reg.unregister().catch(() => {}));
   }).catch(() => {});

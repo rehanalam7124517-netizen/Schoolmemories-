@@ -3,7 +3,7 @@ import path from 'node:path';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-const APP_VERSION = '16.0.2';
+const APP_VERSION = '16.0.3';
 const BUILD_STAMP = String(Date.now());
 const APK_UPDATE_URL = process.env.VITE_APK_UPDATE_URL || '';
 
@@ -66,9 +66,10 @@ function copyStaticDirectories() {
   };
 }
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   base: './',
   define: {
+    __IS_BUILD__: JSON.stringify(command === 'build'),
     __APP_VERSION__: JSON.stringify(APP_VERSION),
     __APP_BUILD_TIME__: JSON.stringify(BUILD_STAMP),
     __APK_UPDATE_URL__: JSON.stringify(APK_UPDATE_URL),
@@ -200,4 +201,4 @@ export default defineConfig({
       },
     }),
   ],
-});
+}));
