@@ -749,6 +749,20 @@ function profileImageSrc(p) {
   return p?.imageBlob ? URL.createObjectURL(p.imageBlob) : (p?.image || 'assets/common.jpg');
 }
 const PROFILE_SEED_VER = 3;
+const BUILTIN_SEED_TS = 1700000000000;
+function isUntouchedBuiltinProfile(existing, seed) {
+  return Boolean(
+    existing
+    && !existing.imageBlob
+    && (existing.image || 'assets/common.jpg') === 'assets/common.jpg'
+    && existing.n === seed.n
+    && existing.nick === seed.nick
+    && existing.title === seed.title
+    && existing.nature === seed.nature
+    && existing.special === seed.special
+    && existing.memory === seed.memory
+  );
+}
 async function seedProfiles() {
   const saved = await getAll('profiles');
   for (let i = 0; i < PEOPLE.length; i++) {
@@ -756,7 +770,7 @@ async function seedProfiles() {
     const existing = saved.find((x) => x.id === id);
     if (!localStorage.getItem('deleted_' + id)) {
       if (!existing) {
-        await put('profiles', { ...PEOPLE[i], id, builtin: true, order: i, image: 'assets/common.jpg', profileVer: PROFILE_SEED_VER, updated: Date.now() });
+        await put('profiles', { ...PEOPLE[i], id, builtin: true, order: i, image: 'assets/common.jpg', profileVer: PROFILE_SEED_VER, updated: BUILTIN_SEED_TS });
       } else if (HAS_SMALLCAPS.test(existing.n || '') || (existing.profileVer || 0) < PROFILE_SEED_VER) {
         await put('profiles', {
           ...existing,
@@ -766,8 +780,10 @@ async function seedProfiles() {
           order: existing.order ?? i,
           image: existing.image || 'assets/common.jpg',
           profileVer: PROFILE_SEED_VER,
-          updated: Date.now()
+          updated: existing.imageBlob ? Date.now() : BUILTIN_SEED_TS
         });
+      } else if (isUntouchedBuiltinProfile(existing, PEOPLE[i]) && Number(existing.updated || 0) > BUILTIN_SEED_TS) {
+        await put('profiles', { ...existing, updated: BUILTIN_SEED_TS });
       }
     }
   }
@@ -1351,8 +1367,8 @@ async function seedJourneys() {
   for (const j of JOURNEY_SEED) {
     const existing = saved.find((x) => x.id === j.id);
     if (!localStorage.getItem('deleted_' + j.id)) {
-      if (!existing) await put('journeys', j);
-      else if (HAS_SMALLCAPS.test(existing.title || '')) await put('journeys', { ...existing, ...j });
+      if (!existing) await put('journeys', { ...j, updated: BUILTIN_SEED_TS });
+      else if (HAS_SMALLCAPS.test(existing.title || '')) await put('journeys', { ...existing, ...j, updated: existing.updated || BUILTIN_SEED_TS });
     }
   }
 }
@@ -2760,11 +2776,30 @@ async function renderRestoreCenter() {
     row.className = 'restore-row';
     row.innerHTML = `<span>${deletedKeys.length} hidden built-in items</span><button class="mini-btn" type="button">Restore All</button>`;
     row.querySelector('button').onclick = async () => {
+      const restoredIds = deletedKeys.map((k) => k.slice('deleted_'.length));
       deletedKeys.forEach((k) => localStorage.removeItem(k));
       await seedProfiles(); await seedJourneys();
+      const nowTs = Date.now();
+      const [allProfs, allJourns] = await Promise.all([getAll('profiles'), getAll('journeys')]);
+      for (const pid of restoredIds) {
+        const p = allProfs.find((x) => x.id === pid);
+        if (p) {
+          p.updated = nowTs;
+          markSelfCreated(p.id, nowTs);
+          await put('profiles', p);
+          queueCloudOp('profile:' + p.id, () => window.OGCloud.pushProfile({ ...p, deleted: false }));
+        }
+        const j = allJourns.find((x) => x.id === pid);
+        if (j) {
+          j.updated = nowTs;
+          markSelfCreated(j.id, nowTs);
+          await put('journeys', j);
+          queueCloudOp('journey:' + j.id, () => window.OGCloud.pushJourney({ ...j, deleted: false }));
+        }
+      }
       await renderPeople(); await renderQuickGalleries(); await renderJourney();
       await renderRestoreCenter(); await updateV7Home();
-      showToast('All built-in items restored');
+      showToast('All built-in items restored & synced');
     };
     host.appendChild(row);
   }
@@ -2844,7 +2879,23 @@ $('importInput').onchange = async (e) => {
     await seedProfiles(); await seedJourneys(); await seedSocialMessages();
     await renderPeople(); await renderQuickGalleries(); await renderJourney();
     await updateV7Home(); updateUnreadBadge();
-    showToast('Backup imported successfully');
+    if (window.OGCloud) {
+      const [profs, journs, meds, msgs, metas, lets, hids] = await Promise.all([
+        getAll('profiles'), getAll('journeys'), getAll('media'),
+        getAll('groupMessages'), getAll('mediaMeta'), getAll('letters'), getAll('hiddenMedia')
+      ]);
+      profs.forEach((p) => queueCloudOp('profile:' + p.id, () => window.OGCloud.pushProfile({ ...p, updated: p.updated || Date.now(), deleted: false })));
+      journs.forEach((j) => queueCloudOp('journey:' + j.id, () => window.OGCloud.pushJourney({ ...j, updated: j.updated || Date.now(), deleted: false })));
+      meds.forEach((m) => queueCloudOp('media:' + m.id, () => window.OGCloud.pushMediaItem(m)));
+      msgs.filter((m) => m.groupId === SHARED_GROUP_ID && !/^gm-[1-5]$/.test(m.id))
+        .forEach((m) => queueCloudOp('gm:' + m.id, () => window.OGCloud.pushMessage(m)));
+      metas.forEach((m) => queueCloudOp('meta:' + m.id, () => window.OGCloud.pushMediaMeta(m)));
+      lets.forEach((l) => queueCloudOp('letter:' + l.id, () => window.OGCloud.pushLetter(l)));
+      hids.forEach((h) => queueCloudOp('hidden:' + h.id, () => window.OGCloud.setHiddenMedia(h.id, true)));
+      const modIds = memoryDaySavedIds();
+      if (modIds.length) queueCloudOp('appState:memoryOfDay', () => window.OGCloud.pushMemoryOfDay(modIds));
+    }
+    showToast('Backup imported & syncing across devices');
   } catch {
     showToast('Invalid backup file');
   }
@@ -3001,7 +3052,12 @@ function initCloudSyncOnce() {
           changed = true;
 
           if (!cur?.mediaBlob && (r.mediaData || r.chunked)) {
-            const mediaBlob = await cloud.resolveCloudBlob(r.id, r.mediaData, r.chunked, r.mediaType, r.chunkCount);
+            let mediaBlob = null;
+            try {
+              mediaBlob = await cloud.resolveCloudBlob(r.id, r.mediaData, r.chunked, r.mediaType, r.chunkCount);
+            } catch (err) {
+              console.warn('[OGCloud] chat media resolve deferred:', r.id, err?.message || err);
+            }
             if (mediaBlob) {
               baseRec.mediaBlob = mediaBlob;
               baseRec.mediaType = r.mediaType || mediaBlob.type;
@@ -3077,7 +3133,14 @@ function initCloudSyncOnce() {
         const needBlob = !cur?.blob && Boolean(r.dataUrl || r.chunked);
         const isNewer = !cur || Number(r.updated || 0) > Number(cur.updated || 0);
         if (isNewer || needBlob) {
-          const blob = cur?.blob || await cloud.resolveCloudBlob(r.id, r.dataUrl, r.chunked, r.mimeType, r.chunkCount);
+          let blob = cur?.blob || null;
+          if (!blob) {
+            try {
+              blob = await cloud.resolveCloudBlob(r.id, r.dataUrl, r.chunked, r.mimeType, r.chunkCount);
+            } catch (err) {
+              console.warn('[OGCloud] media resolve deferred:', r.id, err?.message || err);
+            }
+          }
           if (blob) {
             await put('media', {
               id: r.id,
@@ -3170,6 +3233,7 @@ function initCloudSyncOnce() {
         const higherVer = Number(r.profileVer || 0) > Number(cur?.profileVer || 0);
         const sameVerNewer = Number(r.profileVer || 0) >= Number(cur?.profileVer || 0) && Number(r.updated || 0) > Number(cur?.updated || 0);
         if (!cur || higherVer || sameVerNewer || needBlob) {
+          if (r.builtin) localStorage.removeItem('deleted_' + r.id);
           const isRemoteChange = wasHydrated && !isSelfCreated(r.id, r.updated);
           if (isRemoteChange && (!cur || sameVerNewer)) {
             incomingProfiles.push({ kind: cur ? 'update' : 'new', row: r });
@@ -3253,6 +3317,7 @@ function initCloudSyncOnce() {
         const needBlob = !cur?.mediaBlob && Boolean(r.mediaData);
         const isNewer = !cur || Number(r.updated || 0) > Number(cur.updated || 0);
         if (isNewer || needBlob) {
+          if (r.builtin) localStorage.removeItem('deleted_' + r.id);
           if (!cur && wasHydrated && !isSelfCreated(r.id, r.updated)) {
             incomingJourneys.push(r);
           }
@@ -3357,6 +3422,7 @@ function initCloudSyncOnce() {
     async onHiddenMedia(rows) {
       const locals = await getAll('hiddenMedia');
       const localSet = new Set(locals.map((x) => x.id));
+      const cloudMap = new Map(rows.map((r) => [r.id, r]));
       let changed = false;
       for (const r of rows) {
         if (r.hidden && !localSet.has(r.id)) {
@@ -3365,6 +3431,12 @@ function initCloudSyncOnce() {
         } else if (!r.hidden && localSet.has(r.id)) {
           await del('hiddenMedia', r.id);
           changed = true;
+        }
+      }
+      for (const h of locals) {
+        if (!cloudMap.has(h.id) && !uploadedMissingIds.has('hidden:' + h.id)) {
+          uploadedMissingIds.add('hidden:' + h.id);
+          queueCloudOp('hidden:' + h.id, () => cloud.setHiddenMedia(h.id, true));
         }
       }
       if (changed) {
@@ -3391,6 +3463,12 @@ function initCloudSyncOnce() {
               tag: 'app-mod'
             });
           }
+        }
+      } else if (!mod && !uploadedMissingIds.has('appState:memoryOfDay')) {
+        const localIds = memoryDaySavedIds();
+        if (localIds.length) {
+          uploadedMissingIds.add('appState:memoryOfDay');
+          queueCloudOp('appState:memoryOfDay', () => cloud.pushMemoryOfDay(localIds));
         }
       }
     }

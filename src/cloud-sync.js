@@ -104,7 +104,7 @@ function dataUrlToBlob(dataUrl, fallbackType = 'application/octet-stream') {
   }
 }
 
-async function compressImageToDataUrl(fileOrBlob, maxSide = 1280, maxChars = 540000) {
+async function compressImageToDataUrl(fileOrBlob, maxSide = 1280, maxChars = 540000, hardCap = MAX_INLINE_DATA_CHARS) {
   if (!fileOrBlob) return '';
   if (!String(fileOrBlob.type || '').startsWith('image/')) {
     return blobToDataUrl(fileOrBlob);
@@ -120,7 +120,7 @@ async function compressImageToDataUrl(fileOrBlob, maxSide = 1280, maxChars = 540
     const natW = img.naturalWidth || 1;
     const natH = img.naturalHeight || 1;
     let scale = Math.min(1, maxSide / Math.max(natW, natH));
-    const qualities = [0.82, 0.7, 0.58, 0.46];
+    const qualities = [0.82, 0.7, 0.58, 0.46, 0.35];
     for (let attempt = 0; attempt < qualities.length; attempt++) {
       const w = Math.max(1, Math.round(natW * scale));
       const h = Math.max(1, Math.round(natH * scale));
@@ -130,16 +130,17 @@ async function compressImageToDataUrl(fileOrBlob, maxSide = 1280, maxChars = 540
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, w, h);
       const out = canvas.toDataURL('image/jpeg', qualities[attempt]);
-      if (out.length <= maxChars || attempt === qualities.length - 1) {
+      if (out.length <= maxChars || (attempt === qualities.length - 1 && out.length <= hardCap)) {
         return out;
       }
-      scale *= 0.78;
+      scale *= 0.75;
     }
-    return '';
-  } catch {
+    throw new Error('FILE_TOO_LARGE_FOR_CLOUD');
+  } catch (err) {
+    if (err?.message === 'FILE_TOO_LARGE_FOR_CLOUD') throw err;
     // Fallback for uncommon image formats if small enough inline
     const raw = await blobToDataUrl(fileOrBlob);
-    if (raw.length <= MAX_INLINE_DATA_CHARS) return raw;
+    if (raw.length <= hardCap) return raw;
     throw new Error('FILE_TOO_LARGE_FOR_CLOUD');
   } finally {
     URL.revokeObjectURL(objUrl);
@@ -533,7 +534,9 @@ window.OGCloud = {
     const id = sanitizeId(p.id);
     let imageData = p.imageData || '';
     if (p.imageBlob) {
-      imageData = await compressImageToDataUrl(p.imageBlob, 560, 420000);
+      imageData = await compressImageToDataUrl(p.imageBlob, 560, 420000, 740000);
+    } else if (imageData.length > 740000) {
+      imageData = '';
     }
     const payload = {
       id,

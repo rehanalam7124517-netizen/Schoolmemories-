@@ -3,7 +3,7 @@ import path from 'node:path';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-const APP_VERSION = '15.9.0';
+const APP_VERSION = '15.9.2';
 const BUILD_STAMP = String(Date.now());
 const APK_UPDATE_URL = process.env.VITE_APK_UPDATE_URL || '';
 
