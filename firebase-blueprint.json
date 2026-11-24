@@ -21,6 +21,8 @@
         "reactions": { "type": "object" },
         "deliveredTo": { "type": "object" },
         "readBy": { "type": "object" },
+        "poll": { "type": "object" },
+        "pollVotes": { "type": "object" },
         "created": { "type": "number" },
         "updated": { "type": "number" },
         "deleted": { "type": "boolean" }

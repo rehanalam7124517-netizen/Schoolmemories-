@@ -172,8 +172,9 @@ function syncPageUI(i, persist = true, customTitle = null) {
   if (was === PAGE.VIEWER && currentPage !== PAGE.VIEWER) {
     cleanupViewerOnLeave();
   }
-  if (was === PAGE.MESSAGES && currentPage !== PAGE.MESSAGES && typeof emitTypingStatus === 'function') {
-    emitTypingStatus(false);
+  if (was === PAGE.MESSAGES && currentPage !== PAGE.MESSAGES) {
+    if (typeof emitTypingStatus === 'function') emitTypingStatus(false);
+    if (typeof stopPollCountdownTimer === 'function') stopPollCountdownTimer();
   }
   if (was !== currentPage && typeof pauseAllForegroundVideo === 'function') {
     pauseAllForegroundVideo();
@@ -1101,6 +1102,7 @@ $('authLoginForm')?.addEventListener('submit', async (e) => {
   await updateV7Home();
   if (currentPage === PAGE.MESSAGES) await renderGroupChat();
   showToast(`Welcome back, ${acc.name}!`);
+  tryConsumeDeepLinkPoll();
 });
 
 $('topAccountBtn')?.addEventListener('click', () => $('toolsBtn')?.click());
@@ -1557,6 +1559,7 @@ req.onsuccess = async (e) => {
   updateUnreadBadge();
   syncRoleAndAccountUI();
   initCloudSyncOnce();
+  tryConsumeDeepLinkPoll();
 };
 
 function store(name, mode = 'readonly') { return DB.transaction(name, mode).objectStore(name); }
@@ -2409,6 +2412,178 @@ let pendingMsgMedia = null; // { blob, mediaType, name, previewUrl }
 let activeChatObjectUrls = [];
 let chatRenderSeq = 0;
 let replyingToMsg = null; // { id, sender, snippet }
+const expandedPollIds = new Set();
+let pollDraftOptions = ['', ''];
+let selectedPollDurationMs = 0;
+let selectedPollDurationLabel = '';
+let pollCountdownInterval = null;
+let pendingDeepLinkPollId = (() => {
+  try {
+    return new URLSearchParams(window.location.search).get('poll') || '';
+  } catch {
+    return '';
+  }
+})();
+let highlightPollMsgId = '';
+
+const POLL_PRESETS = {
+  'reunion-date': {
+    question: 'When should we plan The OG Legends Reunion?',
+    options: ['Next Sunday', 'End of This Month', 'During Next Break', 'Any Weekend Works'],
+    allowMultiple: true
+  },
+  'meetup-spot': {
+    question: 'Where should our next batch meetup happen?',
+    options: ['Cafe & Hangout', 'Trip / Park Spot', 'School Campus Visit', 'Dinner Party'],
+    allowMultiple: false
+  },
+  'weekend-plan': {
+    question: 'What is the plan for this weekend?',
+    options: ['Cricket / Games', 'Evening Hangout', 'Movie & Food', 'Group Call'],
+    allowMultiple: true
+  },
+  'batch-keepsake': {
+    question: 'What memory should we add next to the archive?',
+    options: ['Classroom Throwbacks', 'Kushinagar Trip Clips', 'Funny Bloopers', 'Friend Letters'],
+    allowMultiple: false
+  }
+};
+
+function getPollVoterKey() {
+  const acc = getCurrentAccount();
+  return safeReceiptKey(acc?.id || getDeviceId());
+}
+
+function isPollClosedOrExpired(poll, now = Date.now()) {
+  if (!poll) return false;
+  if (poll.closed) return true;
+  const exp = Number(poll.expiresAt || 0);
+  return exp > 0 && now >= exp;
+}
+
+function formatPollCountdown(expiresAt, now = Date.now()) {
+  const exp = Number(expiresAt || 0);
+  if (!exp || exp <= 0) {
+    return { hasLimit: false, ended: false, text: '', urgent: false };
+  }
+  const diff = exp - now;
+  if (diff <= 0) {
+    return { hasLimit: true, ended: true, text: 'Ended · Final results', urgent: false };
+  }
+  const totalSecs = Math.ceil(diff / 1000);
+  const d = Math.floor(totalSecs / 86400);
+  const h = Math.floor((totalSecs % 86400) / 3600);
+  const m = Math.floor((totalSecs % 3600) / 60);
+  const s = totalSecs % 60;
+  let span = '';
+  if (d > 0) span = `${d}d ${h}h`;
+  else if (h > 0) span = `${h}h ${m}m`;
+  else if (m > 0) span = `${m}m ${String(s).padStart(2, '0')}s`;
+  else span = `${s}s`;
+  return {
+    hasLimit: true,
+    ended: false,
+    text: `Ends in ${span}`,
+    urgent: diff < 3600000
+  };
+}
+
+function stopPollCountdownTimer() {
+  if (pollCountdownInterval) {
+    clearInterval(pollCountdownInterval);
+    pollCountdownInterval = null;
+  }
+}
+
+function syncPollCountdownTimer(hasActiveTimedPoll) {
+  stopPollCountdownTimer();
+  if (!hasActiveTimedPoll || currentPage !== PAGE.MESSAGES) return;
+  pollCountdownInterval = setInterval(() => {
+    if (currentPage !== PAGE.MESSAGES) {
+      stopPollCountdownTimer();
+      return;
+    }
+    const timerEls = $('msgFeedHost')?.querySelectorAll('.chat-poll-timer[data-poll-expires]');
+    if (!timerEls || !timerEls.length) {
+      stopPollCountdownTimer();
+      return;
+    }
+    const now = Date.now();
+    let expiredJustNow = false;
+    timerEls.forEach((el) => {
+      const exp = Number(el.dataset.pollExpires || 0);
+      if (!exp) return;
+      const cd = formatPollCountdown(exp, now);
+      if (cd.ended) {
+        expiredJustNow = true;
+      } else {
+        el.textContent = cd.text;
+        el.classList.toggle('urgent', cd.urgent);
+      }
+    });
+    if (expiredJustNow) {
+      stopPollCountdownTimer();
+      renderGroupChat({ preserveScroll: true });
+    }
+  }, 1000);
+}
+
+function getPollNonVoterNames(msg) {
+  const opts = Array.isArray(msg?.poll?.options) ? msg.poll.options : [];
+  const validIds = new Set(opts.map((o) => o.id));
+  const votesMap = msg?.pollVotes && typeof msg.pollVotes === 'object' ? msg.pollVotes : {};
+  const votedKeys = new Set();
+  const votedNamesLower = new Set();
+  Object.entries(votesMap).forEach(([k, entry]) => {
+    if (!entry || !Array.isArray(entry.options)) return;
+    const picked = entry.options.filter((id) => validIds.has(id));
+    if (!picked.length) return;
+    votedKeys.add(safeReceiptKey(k));
+    if (entry.name) votedNamesLower.add(String(entry.name).trim().toLowerCase());
+  });
+
+  const roster = cachedAccounts.filter((a) => a && a.active !== false);
+  if (roster.length) {
+    return roster
+      .filter((acc) => !votedKeys.has(safeReceiptKey(acc.id)) && !votedNamesLower.has(String(acc.name || '').trim().toLowerCase()))
+      .map((acc) => acc.name || 'Legend');
+  }
+  return activeProfiles
+    .map((p) => p?.n)
+    .filter((n) => n && !votedNamesLower.has(String(n).trim().toLowerCase()));
+}
+
+function hasAccountVotedOnPoll(msg, voterKey, voterName) {
+  const opts = Array.isArray(msg?.poll?.options) ? msg.poll.options : [];
+  const validIds = new Set(opts.map((o) => o.id));
+  const votesMap = msg?.pollVotes && typeof msg.pollVotes === 'object' ? msg.pollVotes : {};
+  const mine = votesMap[voterKey];
+  if (mine && Array.isArray(mine.options) && mine.options.some((id) => validIds.has(id))) {
+    return true;
+  }
+  const lower = String(voterName || '').trim().toLowerCase();
+  if (!lower) return false;
+  return Object.values(votesMap).some(
+    (entry) => entry
+      && String(entry.name || '').trim().toLowerCase() === lower
+      && Array.isArray(entry.options)
+      && entry.options.some((id) => validIds.has(id))
+  );
+}
+
+function tryConsumeDeepLinkPoll() {
+  if (!pendingDeepLinkPollId || !currentAuthAccount) return;
+  highlightPollMsgId = pendingDeepLinkPollId;
+  pendingDeepLinkPollId = '';
+  try {
+    const u = new URL(window.location.href);
+    if (u.searchParams.has('poll')) {
+      u.searchParams.delete('poll');
+      history.replaceState(currentHistState, '', u.pathname + u.search + u.hash);
+    }
+  } catch {}
+  openMessagesDialog();
+}
 
 function getChatSender() {
   return currentAuthAccount?.name || localStorage.getItem('og_chat_sender') || 'Legend';
@@ -2456,6 +2631,109 @@ function closeWhoTray() {
   if ($('chatWhoToggleBtn')) $('chatWhoToggleBtn').setAttribute('aria-expanded', 'false');
 }
 
+function syncDurationButtonsUI() {
+  document.querySelectorAll('#pollDurationBar .poll-dur-btn').forEach((btn) => {
+    const btnMs = Number(btn.dataset.pollDur || 0);
+    const active = btnMs === selectedPollDurationMs;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+}
+
+function renderPollDraftOptions() {
+  const listEl = $('pollOptionsList');
+  if (!listEl) return;
+  listEl.innerHTML = '';
+  pollDraftOptions.forEach((val, idx) => {
+    const row = document.createElement('div');
+    row.className = 'poll-opt-row';
+
+    const letterBadge = document.createElement('span');
+    letterBadge.className = 'poll-opt-letter';
+    letterBadge.setAttribute('aria-hidden', 'true');
+    letterBadge.textContent = String.fromCharCode(65 + idx);
+    row.appendChild(letterBadge);
+
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.className = 'poll-opt-input';
+    inp.maxLength = 100;
+    inp.placeholder = `Option ${idx + 1}`;
+    inp.value = val;
+    inp.autocomplete = 'off';
+    inp.addEventListener('input', () => {
+      pollDraftOptions[idx] = inp.value;
+    });
+    inp.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (idx === pollDraftOptions.length - 1 && pollDraftOptions.length < 6) {
+          pollDraftOptions.push('');
+          renderPollDraftOptions();
+          listEl.querySelectorAll('.poll-opt-input')[pollDraftOptions.length - 1]?.focus();
+        }
+      }
+    });
+    row.appendChild(inp);
+
+    if (pollDraftOptions.length > 2) {
+      const rmBtn = document.createElement('button');
+      rmBtn.type = 'button';
+      rmBtn.className = 'poll-opt-remove';
+      rmBtn.title = 'Remove option';
+      rmBtn.setAttribute('aria-label', `Remove option ${idx + 1}`);
+      rmBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+      rmBtn.addEventListener('click', () => {
+        pollDraftOptions.splice(idx, 1);
+        renderPollDraftOptions();
+      });
+      row.appendChild(rmBtn);
+    }
+    listEl.appendChild(row);
+  });
+
+  if ($('pollAddOptBtn')) $('pollAddOptBtn').disabled = pollDraftOptions.length >= 6;
+  if ($('pollOptionsHint')) $('pollOptionsHint').textContent = `${pollDraftOptions.length} of 6 options`;
+}
+
+function resetPollBuilder() {
+  pollDraftOptions = ['', ''];
+  selectedPollDurationMs = 0;
+  selectedPollDurationLabel = '';
+  if ($('pollQuestionInput')) $('pollQuestionInput').value = '';
+  if ($('pollAllowMultiInput')) $('pollAllowMultiInput').checked = false;
+  syncDurationButtonsUI();
+  renderPollDraftOptions();
+}
+
+function openPollBuilder() {
+  const box = $('chatPollBuilder');
+  if (!box) return;
+  closeWhoTray();
+  if (!pollDraftOptions.length || pollDraftOptions.length < 2) {
+    pollDraftOptions = ['', ''];
+  }
+  syncDurationButtonsUI();
+  renderPollDraftOptions();
+  box.hidden = false;
+  $('msgPollBtn')?.setAttribute('aria-expanded', 'true');
+  setTimeout(() => $('pollQuestionInput')?.focus(), 40);
+}
+
+function closePollBuilder(reset = false) {
+  const box = $('chatPollBuilder');
+  if (box) box.hidden = true;
+  $('msgPollBtn')?.setAttribute('aria-expanded', 'false');
+  if (reset) resetPollBuilder();
+}
+
+function togglePollBuilder() {
+  const box = $('chatPollBuilder');
+  if (!box) return;
+  if (box.hidden) openPollBuilder();
+  else closePollBuilder(false);
+}
+
 function clearReplyTarget() {
   replyingToMsg = null;
   if ($('chatReplyAuthor')) $('chatReplyAuthor').textContent = '';
@@ -2465,8 +2743,9 @@ function clearReplyTarget() {
 
 function setReplyTarget(m) {
   if (!m) return;
-  const snippet = m.text?.trim()
-    || (m.mediaType?.startsWith('video') ? '🎥 Video' : (m.mediaBlob ? '📷 Photo' : 'Message'));
+  const snippet = m.poll?.question
+    ? `📊 Poll: ${m.poll.question}`
+    : (m.text?.trim() || (m.mediaType?.startsWith('video') ? '🎥 Video' : (m.mediaBlob ? '📷 Photo' : 'Message')));
   replyingToMsg = { id: m.id, sender: m.sender || 'Legend', snippet };
   if ($('chatReplyAuthor')) $('chatReplyAuthor').textContent = `Replying to ${replyingToMsg.sender}`;
   if ($('chatReplySnippet')) $('chatReplySnippet').textContent = replyingToMsg.snippet;
@@ -2475,6 +2754,33 @@ function setReplyTarget(m) {
 }
 
 $('chatCancelReplyBtn')?.addEventListener('click', clearReplyTarget);
+$('msgPollBtn')?.addEventListener('click', togglePollBuilder);
+$('pollCancelBtn')?.addEventListener('click', () => closePollBuilder(false));
+$('pollAddOptBtn')?.addEventListener('click', () => {
+  if (pollDraftOptions.length >= 6) return;
+  pollDraftOptions.push('');
+  renderPollDraftOptions();
+  const inputs = $('pollOptionsList')?.querySelectorAll('.poll-opt-input');
+  inputs?.[inputs.length - 1]?.focus();
+});
+document.querySelectorAll('#pollDurationBar .poll-dur-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    selectedPollDurationMs = Number(btn.dataset.pollDur || 0);
+    selectedPollDurationLabel = btn.dataset.pollDurLabel || '';
+    syncDurationButtonsUI();
+  });
+});
+document.querySelectorAll('.poll-preset-chip[data-poll-preset]').forEach((chip) => {
+  chip.addEventListener('click', () => {
+    const preset = POLL_PRESETS[chip.dataset.pollPreset];
+    if (!preset) return;
+    if ($('pollQuestionInput')) $('pollQuestionInput').value = preset.question;
+    if ($('pollAllowMultiInput')) $('pollAllowMultiInput').checked = Boolean(preset.allowMultiple);
+    pollDraftOptions = [...preset.options];
+    renderPollDraftOptions();
+    $('pollQuestionInput')?.focus();
+  });
+});
 
 function syncSenderDropdown() {
   const current = getChatSender();
@@ -2844,9 +3150,220 @@ async function markMessagesSeen() {
   updateUnreadBadge();
 }
 
+async function submitBatchPoll() {
+  const question = ($('pollQuestionInput')?.value || '').trim().slice(0, 200);
+  if (!question) {
+    $('pollQuestionInput')?.focus();
+    return showToast('Enter a poll question first');
+  }
+  const cleanOpts = pollDraftOptions
+    .map((o) => String(o || '').trim().slice(0, 100))
+    .filter(Boolean);
+  if (cleanOpts.length < 2) {
+    return showToast('Add at least 2 poll options');
+  }
+  const uniqueOpts = [];
+  const seenLower = new Set();
+  for (const text of cleanOpts) {
+    const key = text.toLowerCase();
+    if (!seenLower.has(key)) {
+      seenLower.add(key);
+      uniqueOpts.push(text);
+    }
+  }
+  if (uniqueOpts.length < 2) {
+    return showToast('Poll options must be distinct');
+  }
+
+  emitTypingStatus(false, { force: true });
+  await waitDB();
+  const acc = getCurrentAccount();
+  const sender = acc?.name || getChatSender();
+  const nowTs = Date.now();
+  const expiresAt = selectedPollDurationMs > 0 ? nowTs + selectedPollDurationMs : 0;
+  const poll = {
+    question,
+    options: uniqueOpts.slice(0, 6).map((text, idx) => ({ id: `opt-${idx}`, text })),
+    allowMultiple: Boolean($('pollAllowMultiInput')?.checked),
+    closed: false,
+    closedAt: 0,
+    expiresAt,
+    durationLabel: selectedPollDurationLabel || '',
+    nudgeAt: 0,
+    nudgedBy: ''
+  };
+  const msg = {
+    id: 'gm-' + nowTs + '-' + Math.random().toString(36).slice(2),
+    groupId: SHARED_GROUP_ID,
+    sender,
+    ownerId: acc?.id || '',
+    senderDeviceId: getDeviceId(),
+    text: '',
+    poll,
+    pollVotes: {},
+    deliveredTo: {},
+    readBy: {},
+    syncState: 'sending',
+    created: nowTs,
+    updated: nowTs
+  };
+  if (replyingToMsg) {
+    msg.replyTo = { ...replyingToMsg };
+  }
+
+  markSelfCreated(msg.id, msg.updated);
+  maybePromptPermissionOnce();
+  await put('groupMessages', msg);
+  closePollBuilder(true);
+  clearReplyTarget();
+  closeWhoTray();
+  await markMessagesSeen();
+  await renderGroupChat();
+  await updateV7Home();
+  showToast('Poll sent to batch chat');
+  queueCloudOp('gm:' + msg.id, () => window.OGCloud.pushMessage(msg))
+    .then(async (ok) => {
+      if (ok) await markGroupMessageSent(msg.id);
+    })
+    .catch(() => {
+      showToast('Poll queued — will sync online automatically');
+    });
+}
+
+$('pollSubmitBtn')?.addEventListener('click', submitBatchPoll);
+
+async function castPollVote(msg, optionId) {
+  if (!DB || !msg?.poll || !optionId) return;
+  if (isPollClosedOrExpired(msg.poll)) return showToast('This poll has ended');
+  await waitDB();
+  const allMsgs = await getAll('groupMessages');
+  const rec = allMsgs.find((x) => x.id === msg.id) || { ...msg };
+  if (!rec.poll || isPollClosedOrExpired(rec.poll)) return showToast('This poll has ended');
+
+  const validOptIds = new Set((rec.poll.options || []).map((o) => o.id));
+  if (!validOptIds.has(optionId)) return;
+
+  const voterKey = getPollVoterKey();
+  const voterName = getChatSender();
+  const votesMap = rec.pollVotes && typeof rec.pollVotes === 'object' ? { ...rec.pollVotes } : {};
+  const existingEntry = votesMap[voterKey];
+  const prevSelected = Array.isArray(existingEntry?.options)
+    ? existingEntry.options.filter((id) => validOptIds.has(id))
+    : [];
+
+  let nextSelected;
+  if (rec.poll.allowMultiple) {
+    nextSelected = prevSelected.includes(optionId)
+      ? prevSelected.filter((id) => id !== optionId)
+      : [...prevSelected, optionId];
+  } else {
+    nextSelected = prevSelected.includes(optionId) && prevSelected.length === 1
+      ? []
+      : [optionId];
+  }
+
+  const nowTs = Date.now();
+  const voteEntry = {
+    name: voterName,
+    options: nextSelected,
+    at: nowTs
+  };
+  votesMap[voterKey] = voteEntry;
+  rec.pollVotes = votesMap;
+  rec.updated = Math.max(Number(rec.updated || 0), nowTs);
+  markSelfCreated(rec.id, rec.updated);
+  await put('groupMessages', rec);
+  await renderGroupChat({ preserveScroll: true });
+
+  queueCloudOp(`gm-vote:${rec.id}:${voterKey}`, () => window.OGCloud.voteOnPoll(rec, voterKey, voteEntry))
+    .catch(() => showToast('Vote saved on device — will sync online'));
+}
+
+async function togglePollClosedState(msg) {
+  if (!DB || !msg?.poll) return;
+  if (!canDeleteMessage(msg)) return showToast('Only poll creator or Admin can change poll status');
+  await waitDB();
+  const allMsgs = await getAll('groupMessages');
+  const rec = allMsgs.find((x) => x.id === msg.id) || { ...msg };
+  if (!rec.poll) return;
+
+  const currentlyEnded = isPollClosedOrExpired(rec.poll);
+  const nextClosed = !currentlyEnded;
+  const nowTs = Date.now();
+  const wasExpired = Number(rec.poll.expiresAt || 0) > 0 && nowTs >= Number(rec.poll.expiresAt);
+  rec.poll = {
+    ...rec.poll,
+    closed: nextClosed,
+    closedAt: nextClosed ? nowTs : 0,
+    ...(!nextClosed && wasExpired ? { expiresAt: 0, durationLabel: '' } : {})
+  };
+  rec.updated = Math.max(Number(rec.updated || 0), nowTs);
+  markSelfCreated(rec.id, rec.updated);
+  await put('groupMessages', rec);
+  await renderGroupChat({ preserveScroll: true });
+  showToast(nextClosed ? 'Poll closed' : 'Poll reopened');
+
+  queueCloudOp(`gm-poll:${rec.id}`, () => window.OGCloud.setPollClosed(rec, nextClosed))
+    .catch(() => showToast('Poll update queued for sync'));
+}
+
+async function shareBatchPoll(msg) {
+  if (!msg?.poll) return;
+  const sender = getChatSender();
+  const pollUrl = `${location.origin}${location.pathname}?poll=${encodeURIComponent(msg.id)}`;
+  let copied = false;
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(pollUrl);
+      copied = true;
+    }
+  } catch {}
+
+  await waitDB();
+  const allMsgs = await getAll('groupMessages');
+  const rec = allMsgs.find((x) => x.id === msg.id) || { ...msg };
+  const pendingNames = getPollNonVoterNames(rec);
+  const myNameLower = String(sender || '').trim().toLowerCase();
+  const remotePending = pendingNames.filter((n) => String(n).trim().toLowerCase() !== myNameLower);
+  const isOpen = !isPollClosedOrExpired(rec.poll);
+
+  if (isOpen && remotePending.length > 0 && navigator.onLine !== false && window.OGCloud?.nudgePoll) {
+    const nowTs = Date.now();
+    rec.poll = {
+      ...rec.poll,
+      nudgeAt: nowTs,
+      nudgedBy: sender
+    };
+    rec.updated = Math.max(Number(rec.updated || 0), nowTs);
+    markSelfCreated(rec.id, rec.updated);
+    await put('groupMessages', rec);
+    queueCloudOp('gm-nudge:' + rec.id, () => window.OGCloud.nudgePoll(rec, sender, nowTs))
+      .catch(() => {});
+  }
+
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: `OG Legends Poll · ${rec.poll.question}`,
+        text: `Vote on our batch poll: "${rec.poll.question}"`,
+        url: pollUrl
+      });
+    } catch {}
+  }
+
+  if (isOpen && remotePending.length > 0) {
+    showToast(`${copied ? 'Poll link copied · ' : ''}Alerted ${remotePending.length} ${remotePending.length === 1 ? 'Legend' : 'Legends'} who haven't voted`);
+  } else if (copied) {
+    showToast('Poll link copied to share');
+  } else {
+    showToast('Poll link ready to share');
+  }
+}
+
 async function openMessagesDialog(mentionName = null) {
   clearPendingAttachment();
   clearReplyTarget();
+  closePollBuilder(false);
   closeWhoTray();
   closeNavDrawerUI();
   const alreadyHere = currentPage === PAGE.MESSAGES;
@@ -2875,6 +3392,7 @@ async function renderGroupChat({ preserveScroll = false } = {}) {
   const seq = ++chatRenderSeq;
   const prevScroll = feed.scrollTop;
   const sender = getChatSender();
+  const myVoterKey = getPollVoterKey();
   if ($('chatWhoLabel')) $('chatWhoLabel').textContent = sender;
 
   const items = (await getAll('groupMessages'))
@@ -2895,19 +3413,22 @@ async function renderGroupChat({ preserveScroll = false } = {}) {
 
   const banner = document.createElement('div');
   banner.className = 'chat-welcome-banner';
-  banner.innerHTML = '<strong><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 18h18v2.2H3V18Zm0-2.5L1.6 7.4a1 1 0 0 1 1.58-.98L7.6 9.8 11.15 4.2a1 1 0 0 1 1.7 0l3.55 5.6 4.42-3.38a1 1 0 0 1 1.58.98L21 15.5H3Z"/></svg> The OG Legends Group</strong><br>One shared room for the whole batch — reply, react, or share photos &amp; videos with everyone.';
+  banner.innerHTML = '<strong><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 18h18v2.2H3V18Zm0-2.5L1.6 7.4a1 1 0 0 1 1.58-.98L7.6 9.8 11.15 4.2a1 1 0 0 1 1.7 0l3.55 5.6 4.42-3.38a1 1 0 0 1 1.58.98L21 15.5H3Z"/></svg> The OG Legends Group</strong><br>One shared room for the whole batch — reply, react, create polls, or share photos &amp; videos with everyone.';
   feed.appendChild(banner);
 
   if (!items.length) {
     const empty = document.createElement('div');
     empty.className = 'empty-state';
-    empty.innerHTML = `No messages yet.<br><small>Write a message or attach a photo/video below as <strong>${escapeHtml(sender)}</strong>.</small>`;
+    empty.innerHTML = `No messages yet.<br><small>Write a message, create a poll, or attach a photo/video below as <strong>${escapeHtml(sender)}</strong>.</small>`;
     feed.appendChild(empty);
     return;
   }
 
   let lastDateLabel = '';
+  let hasActiveTimedPoll = false;
   const myAccId = currentAuthAccount?.id || '';
+  const totalRosterCount = cachedAccounts.filter((a) => a && a.active !== false).length || activeProfiles.length;
+
   items.forEach((m) => {
     const dLabel = formatDateLabel(m.created);
     if (dLabel !== lastDateLabel) {
@@ -2925,6 +3446,7 @@ async function renderGroupChat({ preserveScroll = false } = {}) {
     const rInfo = isMe ? getReceiptInfo(m) : null;
     const row = document.createElement('div');
     row.className = 'chat-row ' + (isMe ? 'me' : 'them');
+    row.dataset.msgId = m.id;
 
     const quoteHtml = m.replyTo
       ? `<div class="chat-quote-box"><strong>${escapeHtml(m.replyTo.sender || 'Legend')}</strong><span>${escapeHtml(m.replyTo.snippet || '')}</span></div>`
@@ -2937,6 +3459,135 @@ async function renderGroupChat({ preserveScroll = false } = {}) {
       mediaHtml = m.mediaType?.startsWith('video')
         ? `<div class="chat-bubble-media"><video src="${u}" controls playsinline></video></div>`
         : `<div class="chat-bubble-media"><img src="${u}" alt="${escapeHtml(m.mediaName || 'Shared photo')}" referrerpolicy="no-referrer"></div>`;
+    }
+
+    const allowDel = canDeleteMessage(m);
+    const hasPoll = Boolean(m.poll && Array.isArray(m.poll.options) && m.poll.options.length >= 2);
+    let pollHtml = '';
+    const optionPcts = new Map();
+    if (hasPoll) {
+      const poll = m.poll;
+      const opts = poll.options;
+      const validIds = new Set(opts.map((o) => o.id));
+      const votesMap = m.pollVotes && typeof m.pollVotes === 'object' ? m.pollVotes : {};
+      const counts = new Map(opts.map((o) => [o.id, 0]));
+      const votersByOpt = new Map(opts.map((o) => [o.id, []]));
+      let totalVoters = 0;
+      let totalVotes = 0;
+
+      Object.entries(votesMap).forEach(([, entry]) => {
+        if (!entry || !Array.isArray(entry.options)) return;
+        const picked = [...new Set(entry.options.filter((id) => validIds.has(id)))];
+        if (!picked.length) return;
+        totalVoters += 1;
+        const vName = String(entry.name || 'Legend').trim() || 'Legend';
+        picked.forEach((optId) => {
+          counts.set(optId, (counts.get(optId) || 0) + 1);
+          votersByOpt.get(optId)?.push(vName);
+          totalVotes += 1;
+        });
+      });
+
+      const myPicked = Array.isArray(votesMap[myVoterKey]?.options)
+        ? votesMap[myVoterKey].options.filter((id) => validIds.has(id))
+        : [];
+      const hasVoted = myPicked.length > 0;
+      const nowTs = Date.now();
+      const closedByOwner = Boolean(poll.closed);
+      const expiresAt = Number(poll.expiresAt || 0);
+      const countdown = formatPollCountdown(expiresAt, nowTs);
+      const isClosedOrEnded = closedByOwner || countdown.ended;
+      if (!closedByOwner && countdown.hasLimit && !countdown.ended) {
+        hasActiveTimedPoll = true;
+      }
+
+      const maxCount = Math.max(0, ...counts.values());
+      const isExpanded = expandedPollIds.has(m.id);
+
+      const optsHtml = opts.map((opt, optIdx) => {
+        const count = counts.get(opt.id) || 0;
+        const pct = totalVoters > 0 ? Math.min(100, Math.round((count / totalVoters) * 100)) : 0;
+        optionPcts.set(opt.id, pct);
+        const voted = myPicked.includes(opt.id);
+        const leading = totalVoters > 0 && count === maxCount && count > 0;
+        const letter = String.fromCharCode(65 + optIdx);
+        const classes = [
+          'chat-poll-opt',
+          poll.allowMultiple ? 'multi' : '',
+          voted ? 'voted' : '',
+          leading ? 'leading' : ''
+        ].filter(Boolean).join(' ');
+        const checkMark = voted ? '✓' : letter;
+        return `
+          <button class="${classes}" type="button" data-poll-opt="${escapeHtml(opt.id)}" ${isClosedOrEnded ? 'disabled' : ''} aria-pressed="${voted ? 'true' : 'false'}">
+            <span class="chat-poll-opt-fill" aria-hidden="true"></span>
+            <span class="chat-poll-opt-main">
+              <span class="chat-poll-check" aria-hidden="true">${checkMark}</span>
+              <span class="chat-poll-opt-text">${escapeHtml(opt.text)}</span>
+            </span>
+            <span class="chat-poll-opt-stats">
+              <strong>${pct}%</strong>
+              <small>(${count})</small>
+            </span>
+            <span class="chat-poll-opt-track" aria-hidden="true"><span class="chat-poll-opt-bar"></span></span>
+          </button>`;
+      }).join('');
+
+      const pickedTexts = opts.filter((o) => myPicked.includes(o.id)).map((o) => o.text);
+      const votedBannerHtml = hasVoted
+        ? `<div class="chat-poll-voted-note"><strong><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg> Voted · ${escapeHtml(pickedTexts.join(', '))}</strong><span>${isClosedOrEnded ? 'Final response recorded' : 'Tap an option to change'}</span></div>`
+        : '';
+
+      const pendingNames = getPollNonVoterNames(m);
+      const bdRowsHtml = opts.map((opt) => {
+        const names = votersByOpt.get(opt.id) || [];
+        return `<div class="chat-poll-bd-row"><strong>${escapeHtml(opt.text)} (${names.length})</strong><span>${names.length ? escapeHtml(names.join(', ')) : 'No votes yet'}</span></div>`;
+      }).join('');
+      const pendingHtml = pendingNames.length && !isClosedOrEnded
+        ? `<div class="chat-poll-bd-pending"><strong>Waiting on (${pendingNames.length}):</strong> ${escapeHtml(pendingNames.join(', '))}</div>`
+        : '';
+
+      let timerMetaHtml = '';
+      if (closedByOwner) {
+        timerMetaHtml = '<span>·</span><span class="chat-poll-timer ended">Closed by creator</span>';
+      } else if (countdown.hasLimit) {
+        timerMetaHtml = `<span>·</span><span class="chat-poll-timer${countdown.ended ? ' ended' : (countdown.urgent ? ' urgent' : '')}"${!countdown.ended ? ` data-poll-expires="${expiresAt}"` : ''}>${escapeHtml(countdown.text)}</span>`;
+      }
+
+      const cueHtml = hasVoted
+        ? '<span class="chat-poll-state-cue is-voted"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg> Voted</span>'
+        : (isClosedOrEnded
+            ? '<span class="chat-poll-state-cue is-closed">Final results</span>'
+            : '<span class="chat-poll-state-cue">Tap to vote</span>');
+
+      const summaryText = totalVoters === 0
+        ? (isClosedOrEnded ? '0 votes cast' : `0 of ${totalRosterCount} voted`)
+        : (poll.allowMultiple
+            ? `${totalVotes} votes · ${totalVoters} of ${totalRosterCount} voted`
+            : `${totalVoters} of ${totalRosterCount} voted`);
+
+      pollHtml = `
+        <div class="chat-poll-card">
+          <div class="chat-poll-meta-row">
+            <div class="chat-poll-kicker">
+              <span class="chat-poll-kind">${poll.allowMultiple ? 'Multi-choice poll' : 'Batch poll'}</span>
+              ${timerMetaHtml}
+            </div>
+            ${cueHtml}
+          </div>
+          <p class="chat-poll-question">${escapeHtml(poll.question)}</p>
+          <div class="chat-poll-options">${optsHtml}</div>
+          ${votedBannerHtml}
+          <div class="chat-poll-foot">
+            <span class="chat-poll-total">${summaryText}</span>
+            <div class="chat-poll-foot-actions">
+              <button class="chat-poll-act-btn share-btn chat-poll-share-btn" type="button" title="Copy poll link & alert non-voters"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg><span>Share Poll</span></button>
+              <button class="chat-poll-act-btn chat-poll-toggle-bd" type="button">${isExpanded ? 'Hide votes' : 'View votes'}</button>
+              ${allowDel ? `<button class="chat-poll-act-btn chat-poll-close-btn${isClosedOrEnded ? '' : ' danger-tone'}" type="button">${isClosedOrEnded ? 'Reopen' : 'Close'}</button>` : ''}
+            </div>
+          </div>
+          <div class="chat-poll-breakdown" ${isExpanded ? '' : 'hidden'}>${bdRowsHtml}${pendingHtml}</div>
+        </div>`;
     }
 
     const reactionsMap = m.reactions && typeof m.reactions === 'object' ? m.reactions : {};
@@ -2952,10 +3603,9 @@ async function renderGroupChat({ preserveScroll = false } = {}) {
       ? `<div class="chat-avatar-dot" style="color:${accent}" aria-hidden="true">${escapeHtml(senderInitials(m.sender))}</div>`
       : '';
 
-    const allowDel = canDeleteMessage(m);
     row.innerHTML = `
       ${avatarHtml}
-      <div class="chat-bubble">
+      <div class="chat-bubble${hasPoll ? ' has-poll' : ''}">
         <div class="chat-bubble-head">
           <span class="chat-sender-name" style="color:${isMe ? 'var(--accent)' : accent}">${escapeHtml(m.sender)}</span>
           <div class="chat-bubble-actions">
@@ -2965,6 +3615,7 @@ async function renderGroupChat({ preserveScroll = false } = {}) {
         </div>
         ${quoteHtml}
         ${mediaHtml}
+        ${pollHtml}
         ${m.text ? `<div class="chat-bubble-text">${escapeHtml(m.text)}</div>` : ''}
         <div class="chat-bubble-bottom">
           <div class="chat-react-row">${reactHtml}</div>
@@ -2974,6 +3625,33 @@ async function renderGroupChat({ preserveScroll = false } = {}) {
           </div>
         </div>
       </div>`;
+
+    if (hasPoll) {
+      row.querySelectorAll('.chat-poll-opt').forEach((optBtn) => {
+        const optId = optBtn.dataset.pollOpt;
+        optBtn.style.setProperty('--poll-pct', `${optionPcts.get(optId) || 0}%`);
+        optBtn.onclick = () => castPollVote(m, optId);
+      });
+      const shareBtn = row.querySelector('.chat-poll-share-btn');
+      if (shareBtn) {
+        shareBtn.onclick = () => shareBatchPoll(m);
+      }
+      const bdToggle = row.querySelector('.chat-poll-toggle-bd');
+      const bdPanel = row.querySelector('.chat-poll-breakdown');
+      if (bdToggle && bdPanel) {
+        bdToggle.onclick = () => {
+          const nextOpen = bdPanel.hidden;
+          bdPanel.hidden = !nextOpen;
+          if (nextOpen) expandedPollIds.add(m.id);
+          else expandedPollIds.delete(m.id);
+          bdToggle.textContent = nextOpen ? 'Hide votes' : 'View votes';
+        };
+      }
+      const closePollBtn = row.querySelector('.chat-poll-close-btn');
+      if (closePollBtn) {
+        closePollBtn.onclick = () => togglePollClosedState(m);
+      }
+    }
 
     const statusBtn = row.querySelector('.chat-status');
     if (statusBtn && rInfo) {
@@ -2986,6 +3664,7 @@ async function renderGroupChat({ preserveScroll = false } = {}) {
       delBtn.onclick = async () => {
         if (!canDeleteMessage(m)) return showToast('You can only delete your own messages');
         if (replyingToMsg?.id === m.id) clearReplyTarget();
+        expandedPollIds.delete(m.id);
         await del('groupMessages', m.id);
         await markMessagesSeen();
         await renderGroupChat({ preserveScroll: true });
@@ -3020,7 +3699,22 @@ async function renderGroupChat({ preserveScroll = false } = {}) {
     feed.appendChild(row);
   });
 
+  syncPollCountdownTimer(hasActiveTimedPoll);
+
   requestAnimationFrame(() => {
+    if (highlightPollMsgId) {
+      const targetRow = [...feed.querySelectorAll('.chat-row')].find((el) => el.dataset.msgId === highlightPollMsgId);
+      if (targetRow) {
+        highlightPollMsgId = '';
+        targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const bubble = targetRow.querySelector('.chat-bubble');
+        if (bubble) {
+          bubble.classList.add('poll-deeplink-focus');
+          setTimeout(() => bubble.classList.remove('poll-deeplink-focus'), 3500);
+        }
+        return;
+      }
+    }
     feed.scrollTop = preserveScroll ? prevScroll : feed.scrollHeight;
   });
 }
@@ -3139,6 +3833,8 @@ $('msgClearThreadBtn')?.addEventListener('click', async () => {
     queueCloudOp('gm-del:' + m.id, () => window.OGCloud.markMessageDeleted(m));
   }
   clearReplyTarget();
+  closePollBuilder(false);
+  expandedPollIds.clear();
   await markMessagesSeen();
   await renderGroupChat();
   await updateV7Home();
@@ -3208,8 +3904,13 @@ $('searchInput')?.addEventListener('input', async () => {
     }
   });
   grpMsgs.filter((m) => m.groupId === SHARED_GROUP_ID).forEach((m) => {
-    if ([m.sender, m.text].join(' ').toLowerCase().includes(q)) {
-      out.push({ kind: 'groupMsg', title: m.text || 'Group Media', sub: `Batch Group · ${m.sender}` });
+    const pollOptText = Array.isArray(m.poll?.options) ? m.poll.options.map((o) => o.text).join(' ') : '';
+    const searchable = [m.sender, m.text, m.poll?.question, pollOptText].join(' ').toLowerCase();
+    if (searchable.includes(q)) {
+      const title = m.poll?.question
+        ? `📊 Poll: ${m.poll.question}`
+        : (m.text || 'Group Media');
+      out.push({ kind: 'groupMsg', title, sub: `Batch Group · ${m.sender}` });
     }
   });
 
@@ -3846,6 +4547,9 @@ function initCloudSyncOnce() {
       let changed = false;
       let hasBrandNewMsg = false;
       const incomingOtherMsgs = [];
+      const incomingPollNudges = [];
+      const mySender = getChatSender();
+      const myVoterKey = getPollVoterKey();
 
       for (const r of rows) {
         const cur = localMap.get(r.id);
@@ -3856,6 +4560,18 @@ function initCloudSyncOnce() {
           }
           continue;
         }
+        const hasPendingMyVote = pendingCloudOps.has(`gm-vote:${r.id}:${myVoterKey}`);
+        const hasPendingPollMeta = pendingCloudOps.has(`gm-poll:${r.id}`) || pendingCloudOps.has(`gm-nudge:${r.id}`);
+        const nextPoll = hasPendingPollMeta && cur?.poll
+          ? cur.poll
+          : (r.poll && typeof r.poll === 'object' ? r.poll : null);
+        const mergedPollVotes = { ...(r.pollVotes && typeof r.pollVotes === 'object' ? r.pollVotes : {}) };
+        if (hasPendingMyVote && cur?.pollVotes?.[myVoterKey]) {
+          mergedPollVotes[myVoterKey] = cur.pollVotes[myVoterKey];
+        }
+        const pollChanged = JSON.stringify(cur?.poll || null) !== JSON.stringify(nextPoll)
+          || JSON.stringify(cur?.pollVotes || {}) !== JSON.stringify(mergedPollVotes);
+
         const needBlob = !cur?.mediaBlob && Boolean(r.mediaData || r.chunked);
         const isNewer = !cur || Number(r.updated || 0) > Number(cur.updated || 0);
         const nextDelivered = r.deliveredTo && typeof r.deliveredTo === 'object' ? r.deliveredTo : (cur?.deliveredTo || {});
@@ -3868,11 +4584,23 @@ function initCloudSyncOnce() {
           || JSON.stringify(cur.deliveredTo || {}) !== JSON.stringify(nextDelivered)
           || JSON.stringify(cur.readBy || {}) !== JSON.stringify(nextRead);
 
-        if (isNewer || needBlob || receiptsChanged) {
+        if (isNewer || needBlob || receiptsChanged || pollChanged) {
           const isStaticSeed = /^gm-[1-5]$/.test(r.id);
           if (!cur) hasBrandNewMsg = true;
           if (!cur && wasHydrated && !isStaticSeed && !isSelfCreated(r.id)) {
             incomingOtherMsgs.push(r);
+          } else if (
+            cur
+            && wasHydrated
+            && nextPoll
+            && Number(nextPoll.nudgeAt || 0) > Number(cur.poll?.nudgeAt || 0)
+            && !isSelfCreated(r.id, r.updated)
+            && !isPollClosedOrExpired(nextPoll)
+          ) {
+            const candidatePollRec = { ...r, poll: nextPoll, pollVotes: mergedPollVotes };
+            if (!hasAccountVotedOnPoll(candidatePollRec, myVoterKey, mySender)) {
+              incomingPollNudges.push(candidatePollRec);
+            }
           }
           const baseRec = {
             id: r.id,
@@ -3881,6 +4609,8 @@ function initCloudSyncOnce() {
             ownerId: r.ownerId || cur?.ownerId || '',
             senderDeviceId: nextSenderDevId,
             text: r.text || '',
+            poll: nextPoll,
+            pollVotes: mergedPollVotes,
             created: Number(r.created || Date.now()),
             updated: Number(r.updated || r.created || Date.now()),
             replyTo: r.replyTo || null,
@@ -3931,21 +4661,41 @@ function initCloudSyncOnce() {
         await updateV7Home();
         if (currentPage === PAGE.MESSAGES) {
           await markMessagesSeen();
-          await renderGroupChat({ preserveScroll: !hasBrandNewMsg });
+          await renderGroupChat({ preserveScroll: !hasBrandNewMsg && !highlightPollMsgId });
         }
-        if (incomingOtherMsgs.length && (currentPage !== PAGE.MESSAGES || document.hidden)) {
+        if (incomingPollNudges.length) {
+          const nudge = incomingPollNudges.pop();
+          highlightPollMsgId = nudge.id;
+          notifyBatchEvent({
+            title: `📊 ${nudge.poll.nudgedBy || nudge.sender} shared a poll reminder`,
+            body: `Your vote is needed: ${nudge.poll.question}`,
+            targetPage: PAGE.MESSAGES,
+            tag: 'gm-nudge-' + nudge.id,
+            toastText: `📊 ${nudge.poll.nudgedBy || nudge.sender}: Vote needed on "${nudge.poll.question}"`
+          });
+          if (currentPage === PAGE.MESSAGES && !document.hidden) {
+            showToast(`📊 ${nudge.poll.nudgedBy || nudge.sender} invited your vote: ${nudge.poll.question.slice(0, 42)}`);
+            await renderGroupChat({ preserveScroll: true });
+          }
+        } else if (incomingOtherMsgs.length && (currentPage !== PAGE.MESSAGES || document.hidden)) {
           const latest = incomingOtherMsgs.sort((a, b) => Number(a.created || 0) - Number(b.created || 0)).pop();
           const hasMedia = Boolean(latest.mediaData || latest.chunked);
           const mediaAction = latest.mediaType?.startsWith('video') ? 'sent a video' : 'sent a photo';
-          const body = hasMedia
-            ? (latest.text ? `${mediaAction}: ${latest.text}` : `${mediaAction} in Batch Group`)
-            : (latest.text || 'Sent a new message');
+          const body = latest.poll?.question
+            ? `📊 Poll: ${latest.poll.question}`
+            : (hasMedia
+                ? (latest.text ? `${mediaAction}: ${latest.text}` : `${mediaAction} in Batch Group`)
+                : (latest.text || 'Sent a new message'));
+          const notifTitle = latest.poll?.question
+            ? `📊 ${latest.sender || 'Legend'} (Batch Poll)`
+            : `💬 ${latest.sender || 'Legend'} (Batch Group)`;
+          if (latest.poll?.question) highlightPollMsgId = latest.id;
           notifyBatchEvent({
-            title: `💬 ${latest.sender || 'Legend'} (Batch Group)`,
+            title: notifTitle,
             body,
             targetPage: PAGE.MESSAGES,
             tag: 'gm-' + latest.id,
-            toastText: `💬 ${latest.sender || 'Legend'}: ${body.slice(0, 46)}`
+            toastText: `${latest.poll?.question ? '📊' : '💬'} ${latest.sender || 'Legend'}: ${body.slice(0, 46)}`
           });
         }
       }

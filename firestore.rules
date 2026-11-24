@@ -72,6 +72,41 @@ service cloud.firestore {
         );
     }
 
+    function isValidPollMap(data) {
+      return !('poll' in data)
+        || data.poll == null
+        || (
+          data.poll is map
+          && data.poll.keys().hasAll(['question', 'options', 'allowMultiple', 'closed'])
+          && data.poll.keys().hasOnly([
+            'question', 'options', 'allowMultiple', 'closed', 'closedAt',
+            'expiresAt', 'durationLabel', 'nudgeAt', 'nudgedBy'
+          ])
+          && data.poll.question is string && data.poll.question.size() >= 1 && data.poll.question.size() <= 200
+          && data.poll.options is list && data.poll.options.size() >= 2 && data.poll.options.size() <= 6
+          && data.poll.options[0] is map
+          && data.poll.options[0].keys().hasAll(['id', 'text'])
+          && data.poll.options[1] is map
+          && data.poll.options[1].keys().hasAll(['id', 'text'])
+          && data.poll.allowMultiple is bool
+          && data.poll.closed is bool
+          && isOptNumber(data.poll, 'closedAt')
+          && isOptNumber(data.poll, 'expiresAt')
+          && isOptString(data.poll, 'durationLabel', 32)
+          && isOptNumber(data.poll, 'nudgeAt')
+          && isOptString(data.poll, 'nudgedBy', 80)
+        );
+    }
+
+    function isValidPollVotesMap(data) {
+      return !('pollVotes' in data)
+        || data.pollVotes == null
+        || (
+          data.pollVotes is map
+          && data.pollVotes.keys().size() <= 50
+        );
+    }
+
     function isValidBatchAccount(data, docId) {
       return data.keys().hasAll(['id', 'batchKey', 'name', 'role', 'salt', 'passHash', 'passVersion', 'active', 'order', 'updated'])
         && data.keys().hasOnly([
@@ -97,7 +132,8 @@ service cloud.firestore {
         && data.keys().hasOnly([
           'id', 'batchKey', 'groupId', 'sender', 'ownerId', 'senderDeviceId', 'text',
           'mediaData', 'mediaType', 'mediaName', 'chunked', 'chunkCount',
-          'replyTo', 'reactions', 'deliveredTo', 'readBy', 'created', 'updated', 'deleted'
+          'replyTo', 'reactions', 'deliveredTo', 'readBy', 'poll', 'pollVotes',
+          'created', 'updated', 'deleted'
         ])
         && data.id == docId
         && isBatchMemberPayload(data)
@@ -115,6 +151,8 @@ service cloud.firestore {
         && isValidReactionsMap(data)
         && isValidReceiptMap(data, 'deliveredTo')
         && isValidReceiptMap(data, 'readBy')
+        && isValidPollMap(data)
+        && isValidPollVotesMap(data)
         && data.created is number && data.created > 0
         && data.updated is number && data.updated >= data.created
         && data.deleted is bool;
@@ -289,6 +327,8 @@ service cloud.firestore {
                     && (
                       incoming().diff(existing()).affectedKeys().hasOnly(['reactions', 'updated', 'deleted', 'text'])
                       || incoming().diff(existing()).affectedKeys().hasOnly(['deliveredTo', 'readBy', 'updated'])
+                      || incoming().diff(existing()).affectedKeys().hasOnly(['pollVotes', 'updated'])
+                      || incoming().diff(existing()).affectedKeys().hasOnly(['poll', 'updated'])
                     );
       allow delete: if isValidId(messageId) && isBatchMemberPayload(existing());
     }

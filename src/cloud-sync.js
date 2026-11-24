@@ -292,6 +292,27 @@ async function patchDoc(colName, docId, fields, fallbackFullPayload = null) {
   }
 }
 
+function buildPollPayload(rawPoll, overrides = {}) {
+  if (!rawPoll || typeof rawPoll !== 'object') return null;
+  const merged = { ...rawPoll, ...overrides };
+  return {
+    question: String(merged.question || '').slice(0, 200),
+    options: Array.isArray(merged.options)
+      ? merged.options.slice(0, 6).map((opt, idx) => ({
+          id: String(opt?.id || `opt-${idx}`).slice(0, 32),
+          text: String(opt?.text || '').slice(0, 100)
+        }))
+      : [],
+    allowMultiple: Boolean(merged.allowMultiple),
+    closed: Boolean(merged.closed),
+    closedAt: Number(merged.closedAt || 0),
+    expiresAt: Number(merged.expiresAt || 0),
+    durationLabel: String(merged.durationLabel || '').slice(0, 32),
+    nudgeAt: Number(merged.nudgeAt || 0),
+    nudgedBy: String(merged.nudgedBy || '').slice(0, 80)
+  };
+}
+
 window.OGCloud = {
   BATCH_KEY,
   MAX_VIDEO_SYNC_BYTES,
@@ -377,6 +398,8 @@ window.OGCloud = {
       reactions: msg.reactions && typeof msg.reactions === 'object' ? msg.reactions : {},
       deliveredTo: msg.deliveredTo && typeof msg.deliveredTo === 'object' ? msg.deliveredTo : {},
       readBy: msg.readBy && typeof msg.readBy === 'object' ? msg.readBy : {},
+      poll: buildPollPayload(msg.poll),
+      pollVotes: msg.pollVotes && typeof msg.pollVotes === 'object' ? msg.pollVotes : {},
       created,
       updated,
       deleted: Boolean(msg.deleted)
@@ -505,6 +528,115 @@ window.OGCloud = {
     } : null;
     return patchDoc('groupMessages', msgId, {
       deleted: true,
+      updated
+    }, fallback);
+  },
+
+  async voteOnPoll(msg, voterKey, voteEntry) {
+    const msgId = typeof msg === 'string' ? msg : msg?.id;
+    const safeVoterKey = sanitizeId(voterKey || 'voter').slice(0, 64);
+    const nowTs = Date.now();
+    const created = Number((typeof msg === 'object' && msg?.created) || nowTs);
+    const updated = Math.max(created, nowTs);
+    const entry = {
+      name: String(voteEntry?.name || 'Legend').slice(0, 80) || 'Legend',
+      options: Array.isArray(voteEntry?.options) ? voteEntry.options.slice(0, 6).map((x) => String(x).slice(0, 32)) : [],
+      at: Number(voteEntry?.at || nowTs)
+    };
+    const nextPollVotes = {
+      ...(typeof msg === 'object' && msg?.pollVotes && typeof msg.pollVotes === 'object' ? msg.pollVotes : {}),
+      [safeVoterKey]: entry
+    };
+    const fallback = typeof msg === 'object' && msg ? {
+      id: sanitizeId(msgId),
+      batchKey: BATCH_KEY,
+      groupId: String(msg.groupId || 'grp-og-legends').slice(0, 64),
+      sender: String(msg.sender || 'Legend').slice(0, 80) || 'Legend',
+      ownerId: String(msg.ownerId || '').slice(0, 80),
+      senderDeviceId: String(msg.senderDeviceId || '').slice(0, 80),
+      text: String(msg.text || '').slice(0, 4000),
+      reactions: msg.reactions && typeof msg.reactions === 'object' ? msg.reactions : {},
+      deliveredTo: msg.deliveredTo && typeof msg.deliveredTo === 'object' ? msg.deliveredTo : {},
+      readBy: msg.readBy && typeof msg.readBy === 'object' ? msg.readBy : {},
+      poll: buildPollPayload(msg.poll),
+      pollVotes: nextPollVotes,
+      created,
+      updated,
+      deleted: Boolean(msg.deleted)
+    } : null;
+    return patchDoc('groupMessages', msgId, {
+      [`pollVotes.${safeVoterKey}`]: entry,
+      updated
+    }, fallback);
+  },
+
+  async setPollClosed(msg, closed) {
+    const msgId = typeof msg === 'string' ? msg : msg?.id;
+    const nowTs = Date.now();
+    const created = Number((typeof msg === 'object' && msg?.created) || nowTs);
+    const updated = Math.max(created, nowTs);
+    const nextClosed = Boolean(closed);
+    const basePoll = msg?.poll && typeof msg.poll === 'object' ? msg.poll : null;
+    if (!basePoll) return false;
+    const wasExpired = Number(basePoll.expiresAt || 0) > 0 && Number(basePoll.expiresAt || 0) <= nowTs;
+    const nextPoll = buildPollPayload(basePoll, {
+      closed: nextClosed,
+      closedAt: nextClosed ? nowTs : 0,
+      ...(!nextClosed && wasExpired ? { expiresAt: 0, durationLabel: '' } : {})
+    });
+    const fallback = typeof msg === 'object' && msg ? {
+      id: sanitizeId(msgId),
+      batchKey: BATCH_KEY,
+      groupId: String(msg.groupId || 'grp-og-legends').slice(0, 64),
+      sender: String(msg.sender || 'Legend').slice(0, 80) || 'Legend',
+      ownerId: String(msg.ownerId || '').slice(0, 80),
+      senderDeviceId: String(msg.senderDeviceId || '').slice(0, 80),
+      text: String(msg.text || '').slice(0, 4000),
+      reactions: msg.reactions && typeof msg.reactions === 'object' ? msg.reactions : {},
+      deliveredTo: msg.deliveredTo && typeof msg.deliveredTo === 'object' ? msg.deliveredTo : {},
+      readBy: msg.readBy && typeof msg.readBy === 'object' ? msg.readBy : {},
+      poll: nextPoll,
+      pollVotes: msg.pollVotes && typeof msg.pollVotes === 'object' ? msg.pollVotes : {},
+      created,
+      updated,
+      deleted: Boolean(msg.deleted)
+    } : null;
+    return patchDoc('groupMessages', msgId, {
+      poll: nextPoll,
+      updated
+    }, fallback);
+  },
+
+  async nudgePoll(msg, nudgedByName, nudgeAt) {
+    const msgId = typeof msg === 'string' ? msg : msg?.id;
+    const nowTs = Number(nudgeAt || Date.now());
+    const created = Number((typeof msg === 'object' && msg?.created) || nowTs);
+    const updated = Math.max(created, nowTs);
+    const basePoll = msg?.poll && typeof msg.poll === 'object' ? msg.poll : null;
+    if (!basePoll) return false;
+    const nextPoll = buildPollPayload(basePoll, {
+      nudgeAt: nowTs,
+      nudgedBy: String(nudgedByName || 'Legend').slice(0, 80)
+    });
+    const fallback = typeof msg === 'object' && msg ? {
+      id: sanitizeId(msgId),
+      batchKey: BATCH_KEY,
+      groupId: String(msg.groupId || 'grp-og-legends').slice(0, 64),
+      sender: String(msg.sender || 'Legend').slice(0, 80) || 'Legend',
+      ownerId: String(msg.ownerId || '').slice(0, 80),
+      senderDeviceId: String(msg.senderDeviceId || '').slice(0, 80),
+      text: String(msg.text || '').slice(0, 4000),
+      reactions: msg.reactions && typeof msg.reactions === 'object' ? msg.reactions : {},
+      deliveredTo: msg.deliveredTo && typeof msg.deliveredTo === 'object' ? msg.deliveredTo : {},
+      readBy: msg.readBy && typeof msg.readBy === 'object' ? msg.readBy : {},
+      poll: nextPoll,
+      pollVotes: msg.pollVotes && typeof msg.pollVotes === 'object' ? msg.pollVotes : {},
+      created,
+      updated,
+      deleted: Boolean(msg.deleted)
+    } : null;
+    return patchDoc('groupMessages', msgId, {
+      poll: nextPoll,
       updated
     }, fallback);
   },
